@@ -8,6 +8,8 @@ from utils import *
 load_functions_from("functions")
 load_functions_from("views")
 
+st.write("ok")
+
 st.set_page_config(page_title="Gestione ECOM", layout="wide")
 
 st.markdown(
