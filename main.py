@@ -2,29 +2,15 @@ import os
 import importlib
 import streamlit as st
 
-# ----------------------------
-# Funzione per caricare moduli dinamicamente
-# ----------------------------
-def load_functions_from(folder_name):
-    # Path assoluto della cartella contenente main.py
-    base_path = os.path.dirname(os.path.abspath(__file__))
-    folder_path = os.path.join(base_path, folder_name)
-
-    # Controllo che la cartella esista
-    if not os.path.exists(folder_path):
-        raise FileNotFoundError(f"La cartella {folder_path} non esiste!")
-
-    # Scansiona tutti i file .py nella cartella
-    for file in os.listdir(folder_path):
+def load_functions_from(folder):
+    for file in os.listdir(folder):
         if file.endswith(".py") and file != "__init__.py":
-            module_name = file[:-3]  # rimuove .py
-            module = importlib.import_module(f"{folder_name}.{module_name}")
-
-            # Aggiunge tutte le funzioni nello scope globale
+            module_name = file[:-3]
+            module = importlib.import_module(f"{folder}.{module_name}")
             globals().update({k: v for k, v in module.__dict__.items() if callable(v)})
 
 # Carica viste e funzioni
-load_functions_from("funzioni")
+load_functions_from("functions")
 load_functions_from("viste")
 
 st.set_page_config(page_title="Gestione ECOM", layout="wide")
