@@ -1,7 +1,4 @@
 import streamlit as st
-from utils import *
-
-load_functions_from("functions")
 
 def homepage():
     st.title("Homepage")
