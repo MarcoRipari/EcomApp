@@ -13,7 +13,7 @@ def load_functions_from(folder_name):
             module_name = file[:-3]
             module = importlib.import_module(f"{folder_name}.{module_name}")
             # Aggiunge tutte le funzioni nello scope globale
-            globals().update({k: v for k, v in module.__dict__.items() if callable(v)}
+            globals().update({k: v for k, v in module.__dict__.items() if callable(v)})
 
 # Carica viste e funzioni
 load_functions_from("funzioni")
