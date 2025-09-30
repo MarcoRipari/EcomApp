@@ -2,12 +2,18 @@ import streamlit as st
 import os
 import importlib
 
-def load_functions_from(folder):
-    for file in os.listdir(folder):
+def load_functions_from(folder_name):
+    # path assoluto rispetto a main.py
+    base_path = os.path.dirname(__file__)
+    folder_path = os.path.join(base_path, folder_name)
+
+    # Lista dei file Python nella cartella
+    for file in os.listdir(folder_path):
         if file.endswith(".py") and file != "__init__.py":
             module_name = file[:-3]
-            module = importlib.import_module(f"{folder}.{module_name}")
-            globals().update({k: v for k, v in module.__dict__.items() if callable(v)})
+            module = importlib.import_module(f"{folder_name}.{module_name}")
+            # Aggiunge tutte le funzioni nello scope globale
+            globals().update({k: v for k, v in module.__dict__.items() if callable(v)}
 
 # Carica viste e funzioni
 load_functions_from("funzioni")
