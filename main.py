@@ -11,10 +11,10 @@ def load_functions_from(folder):
 
 # Carica viste e funzioni
 load_functions_from("functions")
-load_functions_from("viste")
+load_functions_from("views")
 
 st.set_page_config(page_title="Gestione ECOM", layout="wide")
-
+e
 st.markdown(
     """
     <style>
