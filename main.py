@@ -1,17 +1,25 @@
-import streamlit as st
 import os
 import importlib
+import streamlit as st
 
+# ----------------------------
+# Funzione per caricare moduli dinamicamente
+# ----------------------------
 def load_functions_from(folder_name):
-    # path assoluto rispetto a main.py
-    base_path = os.path.dirname(__file__)
+    # Path assoluto della cartella contenente main.py
+    base_path = os.path.dirname(os.path.abspath(__file__))
     folder_path = os.path.join(base_path, folder_name)
 
-    # Lista dei file Python nella cartella
+    # Controllo che la cartella esista
+    if not os.path.exists(folder_path):
+        raise FileNotFoundError(f"La cartella {folder_path} non esiste!")
+
+    # Scansiona tutti i file .py nella cartella
     for file in os.listdir(folder_path):
         if file.endswith(".py") and file != "__init__.py":
-            module_name = file[:-3]
+            module_name = file[:-3]  # rimuove .py
             module = importlib.import_module(f"{folder_name}.{module_name}")
+
             # Aggiunge tutte le funzioni nello scope globale
             globals().update({k: v for k, v in module.__dict__.items() if callable(v)})
 
