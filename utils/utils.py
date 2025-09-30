@@ -2,11 +2,12 @@ import os
 import importlib
 
 def load_functions_from(folder_name):
-    base_path = os.path.dirname(os.path.abspath(__file__))  # path di main.py
-    folder_path = os.path.join(base_path, folder_name)
-
-    print("Controllo path funzioni:", folder_path)
-    print("Esiste?", os.path.exists(folder_path))
+    """
+    Carica tutte le funzioni da una cartella e le mette nello scope globale.
+    """
+    # path assoluto della cartella che contiene main.py
+    base_path = os.path.dirname(os.path.abspath(__file__))  # se eseguito da main.py, va bene
+    folder_path = os.path.join(base_path, folder_name)      # folder_name = "functions" o "views"
 
     if not os.path.exists(folder_path):
         raise FileNotFoundError(f"La cartella {folder_path} non esiste!")
