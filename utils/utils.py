@@ -7,8 +7,8 @@ def load_functions_from(folder_name):
     e le aggiunge allo scope globale di chi importa questa funzione.
     """
     # path assoluto della cartella contenente main.py
-    base_path = os.path.dirname(os.path.abspath(__file__))
-    folder_path = os.path.join(base_path, "..", folder_name)
+    base_path = os.path.dirname(os.path.abspath(__file__))  # path di main.py
+    folder_path = os.path.join(base_path, folder_name)      # cartella viste/
 
     if not os.path.exists(folder_path):
         raise FileNotFoundError(f"La cartella {folder_path} non esiste!")
