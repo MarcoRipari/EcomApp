@@ -10,4 +10,5 @@ def foto_import_ordini():
 
   if uploaded_files:
     for file in uploaded_files:
-      st.write(file)
+      output = read_csv_auto_encoding(file)
+      st.write(output)
