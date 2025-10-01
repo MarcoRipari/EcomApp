@@ -41,5 +41,3 @@ def foto_import_ordini():
       with st.spinner("Upload su GSheet in corso..."):
         sheet_ordini.append_rows(data, value_input_option="RAW")
         st.success("Caricati correttamente su GSheet")
-
-def foto_genera_lista_da_ordini()
