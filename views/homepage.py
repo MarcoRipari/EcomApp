@@ -8,7 +8,8 @@ def load_functions_from(folder_name):
     e le aggiunge allo scope globale del modulo che lo chiama.
     """
     base_path = os.path.dirname(os.path.abspath(__file__))
-    folder_path = os.path.join(base_path, folder_name)
+    #folder_path = os.path.join(base_path, folder_name)
+    folder_path = os.path.join(base_path, "..", folder_name)
 
     st.write(folder_path)
 
