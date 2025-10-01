@@ -25,6 +25,7 @@ def foto_import_ordini():
       output = read_csv_auto_encoding(file)
       df = pd.DataFrame(output[1:])
       df["COD.CLIENTI"] = df["COD.CLIENTI"].map(map_cod_cli)
-      
-      data = df.values().tolist()
+
+      data = df.fillna("").astype(str)
+      data = data.values.tolist()
       sheet_ordini.append_rows(data, value_input_option="RAW")
