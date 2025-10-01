@@ -34,7 +34,6 @@ def foto_import_ordini():
     except Exception as e:
       st.write(f"Errore: {e}")
 
-    st.dataframe(df_totale)
     data = df_totale.fillna("").astype(str).values.tolist()
     
     if st.button("Carica su GSheet"):
