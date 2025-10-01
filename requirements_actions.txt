@@ -1,0 +1,9 @@
+aiohttp
+gspread
+google-auth
+pandas
+python-dotenv
+google-api-python-client
+pillow
+dropbox
+imagehash
