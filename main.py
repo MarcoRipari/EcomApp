@@ -3,7 +3,6 @@ import os
 import importlib
 
 from utils import *
-            
 
 # Carica viste e funzioni
 load_functions_from("functions")
