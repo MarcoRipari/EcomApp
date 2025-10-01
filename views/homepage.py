@@ -2,9 +2,8 @@ import streamlit as st
 import os
 import importlib
 
-from utils import load_functions_from
+from utils import *
             
-
 load_functions_from("functions")
 
 def homepage():
