@@ -13,5 +13,5 @@ def foto_import_ordini():
     for file in uploaded_files:
       output = read_csv_auto_encoding(file)
       df = pd.DataFrame(output)
-      df = pd.DataFrame(df[3:])
+      df = pd.DataFrame(df[2:])
       st.write(df)
