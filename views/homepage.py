@@ -4,7 +4,7 @@ import importlib
 
 from utils import *
             
-load_functions_from("functions")
+load_functions_from("functions", globals())
 
 def homepage():
     st.title("Homepage")
