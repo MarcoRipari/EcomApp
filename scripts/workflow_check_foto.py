@@ -13,56 +13,6 @@ from google.oauth2.service_account import Credentials
 import dropbox
 from dropbox.files import WriteMode
 
-DEBUG = 0  # Imposta a 0 per eseguire lo script completo
-async def test_debug():
-    sku = "2012889010C02"
-    riscattare = True
-    sem = asyncio.Semaphore(1)
-
-    async with aiohttp.ClientSession() as session:
-        #url = "https://drive.google.com/uc?export=download&id=1GVjmhKEPNQTiFfnAuDM-NsCJEC2DLBM2"
-        url = "https://drive.google.com/uc?export=download&id=1lLyYfJmbRxR7aRVdKdt1Ev78SUHALi0d"
-
-        async def fetch_image():
-            try:
-                async with session.get(url, timeout=TIMEOUT_SECONDS) as get_resp:
-                    if get_resp.status == 200:
-                        img_bytes = await get_resp.read()
-                        return Image.open(io.BytesIO(img_bytes)).convert("RGB")
-                    else:
-                        print(f"❌ Impossibile scaricare immagine per {sku}. Status: {get_resp.status}")
-                        return None
-            except Exception as e:
-                print(f"❌ Errore durante il download immagine: {e}")
-                return None
-
-        new_img = await fetch_image()
-        if not new_img:
-            return
-
-        old_name, old_img = get_dropbox_latest_image(sku)
-        if riscattare:
-            if not old_img or not images_are_equal(new_img, old_img):
-                if old_name:
-                    date_suffix = datetime.now().strftime("%d%m%Y")
-                    ext = old_name.split(".")[-1]
-                    new_old_name = f"{sku}_{date_suffix}.{ext}"
-                    try:
-                        dbx.files_move_v2(
-                            from_path=f"/repository/{sku}/{old_name}",
-                            to_path=f"/repository/{sku}/{new_old_name}",
-                            allow_shared_folder=True,
-                            autorename=True
-                        )
-                        print(f"📦 Vecchia immagine rinominata in {new_old_name}")
-                    except Exception as e:
-                        print(f"⚠️ Errore nel rinominare {old_name}: {e}")
-                save_image_to_dropbox(sku, f"{sku}.jpg", new_img)
-                print(f"✅ Nuova immagine salvata per {sku}")
-            else:
-                print(f"🟰 Immagine identica già presente per {sku}. Nessuna azione.")
-        else:
-            print(f"⚠️ RISCATTARE non era True, nessuna azione eseguita.")
 # -------------------------------
 # CONFIG
 # -------------------------------
@@ -241,7 +191,7 @@ async def main():
     print(f"✅ Verificate: {len(results)}")
 
     output_col_k = []  # Colonna SCATTARE
-    output_col_p = []  # Colonna RISCATTARE
+    output_col_l = []  # Colonna RISCATTARE
     
     for i, row in enumerate(rows):
         sku = row[sku_idx].strip() if len(row) > sku_idx else ""
@@ -250,19 +200,19 @@ async def main():
     
         # Imposta RISCATTARE = FALSE solo se l'immagine è stata salvata effettivamente
         if salvata and len(row) > riscattare_idx and row[riscattare_idx].strip().lower() == "true":
-            output_col_p.append(["FALSE"])
+            output_col_l.append(["FALSE"])
         else:
-            output_col_p.append([""])
+            output_col_l.append([""])
     
     # Aggiorna le due colonne nel foglio
     sheet.batch_update([
         {
-            "range": f"K3:K{len(output_col_k)+2}",
+            "range": f"K3:K{len(output_col_k)+1}",
             "values": output_col_k
         },
         {
-            "range": f"P3:P{len(output_col_p)+2}",
-            "values": output_col_p
+            "range": f"P3:P{len(output_col_l)+1}",
+            "values": output_col_l
         }
     ])
     
