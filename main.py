@@ -10,8 +10,6 @@ def load_functions_from(folder_name):
     base_path = os.path.dirname(os.path.abspath(__file__))
     folder_path = os.path.join(base_path, folder_name)
 
-    st.write(base_path)
-
     if not os.path.exists(folder_path):
         raise FileNotFoundError(f"La cartella {folder_path} non esiste!")
 
