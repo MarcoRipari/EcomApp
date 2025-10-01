@@ -157,5 +157,4 @@ with st.sidebar:
             page = f"{main_page_name} - {sub_page}"
 
 if page == "Home":
-    #homepage()
-    foto_import_ordini()
+    homepage()
