@@ -220,7 +220,4 @@ async def main():
     
 if __name__ == "__main__":
     import asyncio
-    if DEBUG:
-        asyncio.run(test_debug())
-    else:
-        asyncio.run(main())
+    asyncio.run(main())
