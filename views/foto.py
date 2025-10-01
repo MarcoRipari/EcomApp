@@ -26,5 +26,5 @@ def foto_import_ordini():
       df = pd.DataFrame(output[1:])
       df["COD.CLIENTI"] = df["COD.CLIENTI"].map(map_cod_cli)
       
-      data = df
+      data = df.values().tolist()
       sheet_ordini.append_rows(data, value_input_option="RAW")
