@@ -1,3 +1,6 @@
+import streamlit as st
+import pandas as pd
+
 def read_csv_auto_encoding(uploaded_file, separatore=None):
     raw_data = uploaded_file.read()
     result = chardet.detect(raw_data)
