@@ -4,6 +4,9 @@ from utils import *
 
 load_functions_from("functions", globals())
 
+foto_sheet_id = "1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4"
+sheet_ordini = get_sheet(foto_sheet_id, "ORDINI")
+
 map_cod_cli = {
   "0019243.016":"ECOM",
   "0039632":"ZFS",
@@ -20,4 +23,6 @@ def foto_import_ordini():
       output = read_csv_auto_encoding(file)
       df = pd.DataFrame(output[1:])
       df["COD.CLIENTI"] = df["COD.CLIENTI"].map(map_cod_cli)
-      st.write(df)
+      
+      data = df.values.tolist()
+      sheet_ordini.append_rows(data, value_input_option="RAW")
