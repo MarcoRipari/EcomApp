@@ -26,7 +26,7 @@ def foto_import_ordini():
       df = pd.DataFrame(output[1:])
       df["COD.CLIENTI"] = df["COD.CLIENTI"].map(map_cod_cli)
 
-      st.write(df.headers())
+      st.write(df)
       
       data = df.fillna("").astype(str)
       data = data.values.tolist()
