@@ -4,3 +4,4 @@ gspread
 gspread-formatting
 google-api-python-client
 pydrive2
+chardet
