@@ -18,7 +18,6 @@ from dropbox.files import WriteMode
 # -------------------------------
 SHEET_ID = os.environ.get("FOTO_GSHEET_ID")
 SERVICE_ACCOUNT_JSON = os.environ.get("SERVICE_ACCOUNT_JSON")
-DROPBOX_TOKEN = os.environ.get("DROPBOX_TOKEN")
 DROPBOX_REFRESH_TOKEN = os.environ.get("DROPBOX_REFRESH_TOKEN")
 DROPBOX_APP_KEY = os.environ.get("DROPBOX_APP_KEY")
 DROPBOX_APP_SECRET = os.environ.get("DROPBOX_APP_SECRET")
@@ -36,7 +35,6 @@ credentials = Credentials.from_service_account_info(
     scopes=["https://www.googleapis.com/auth/spreadsheets"]
 )
 gs_client = gspread.authorize(credentials)
-#dbx = dropbox.Dropbox(DROPBOX_TOKEN)
 dbx = dropbox.Dropbox(
     oauth2_refresh_token=DROPBOX_REFRESH_TOKEN,
     app_key=DROPBOX_APP_KEY,
