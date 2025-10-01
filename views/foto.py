@@ -26,8 +26,9 @@ def foto_import_ordini():
     try:
       for file in uploaded_files:
         output = read_csv_auto_encoding(file)
-        df = pd.DataFrame(output[1:])
+        df = pd.DataFrame(output[1:].astype(str))
         df["COD.CLIENTI"] = df["COD.CLIENTI"].map(map_cod_cli)
+        df["SKU"] = df["Cod"] + df["Var."] + df["Col."]
         df_totale = pd.concat([df_totale, df], ignore_index=True)
       st.success("File CSV caricati correttamente.")
     except Exception as e:
@@ -36,5 +37,8 @@ def foto_import_ordini():
     data = df_totale.fillna("").astype(str).values.tolist()
     
     if st.button("Carica su GSheet"):
-      sheet_ordini.append_rows(data, value_input_option="RAW")
-      st.success("Caricati correttamente su GSheet")
+      with st.spinner("Upload su GSheet in corso..."):
+        sheet_ordini.append_rows(data, value_input_option="RAW")
+        st.success("Caricati correttamente su GSheet")
+
+def foto_genera_lista_da_ordini()
