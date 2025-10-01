@@ -23,17 +23,19 @@ def foto_import_ordini():
   df_totale = pd.DataFrame()
    
   if uploaded_files:
-    for file in uploaded_files:
-      st.write(len(df_totale))
-      output = read_csv_auto_encoding(file)
-      df = pd.DataFrame(output[1:])
-      df["COD.CLIENTI"] = df["COD.CLIENTI"].map(map_cod_cli)
-      df_totale = pd.concat([df_totale, df], ignore_index=True)
+    try:
+      for file in uploaded_files:
+        st.write(len(df_totale))
+        output = read_csv_auto_encoding(file)
+        df = pd.DataFrame(output[1:])
+        df["COD.CLIENTI"] = df["COD.CLIENTI"].map(map_cod_cli)
+        df_totale = pd.concat([df_totale, df], ignore_index=True)
+      st.success("File CSV caricati correttamente.")
+    except Exception as e:
+      st.write(f"Errore{e}")
       
     data = df_totale.fillna("").astype(str).values.tolist()
-
-    st.dataframe(df_totale)
     
     if st.button("Carica su GSheet"):
       sheet_ordini.append_rows(data, value_input_option="RAW")
-      st.success("Caricati correttamente")
+      st.success("Caricati correttamente su GSheet")
