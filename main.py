@@ -2,7 +2,7 @@ import streamlit as st
 import os
 import importlib
 
-import utils
+from utils import *
 
 # Carica viste e funzioni
 load_functions_from("functions", globals())
