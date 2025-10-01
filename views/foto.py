@@ -29,6 +29,7 @@ def foto_import_ordini():
       df = pd.DataFrame(output[1:])
       df["COD.CLIENTI"] = df["COD.CLIENTI"].map(map_cod_cli)
       if len(df_totale)<=0:
+        headers = df.columns.tolist()
         df_totale = pd.DataFrame(df, columns=headers)
       else:
         df_totale.append(df)
