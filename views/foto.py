@@ -35,6 +35,7 @@ def foto_import_ordini():
         
     data = df_totale.fillna("").astype(str)
     data = data.values.tolist()
+    
     if st.button("Carica su GSheet"):
       sheet_ordini.append_rows(data, value_input_option="RAW")
       st.success("Caricati correttamente")
