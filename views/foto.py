@@ -32,7 +32,7 @@ def foto_import_ordini():
         headers = df.columns.tolist()
         df_totale = pd.DataFrame(df, columns=headers)
       else:
-        df_totale.concat([df_totale, df], ignore_index=True)
+        df_totale = pd.concat([df_totale, df], ignore_index=True)
         
     data = df_totale.fillna("").astype(str)
     data = data.values.tolist()
