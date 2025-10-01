@@ -205,11 +205,11 @@ async def main():
     # Aggiorna le due colonne nel foglio
     sheet.batch_update([
         {
-            "range": f"K3:K{len(output_col_k)+1}",
+            "range": f"K2:K{len(output_col_k)+1}",
             "values": output_col_k
         },
         {
-            "range": f"P3:P{len(output_col_l)+1}",
+            "range": f"P2:P{len(output_col_l)+1}",
             "values": output_col_l
         }
     ])
