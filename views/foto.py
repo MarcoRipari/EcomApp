@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 from utils import *
 
 load_functions_from("functions", globals())
@@ -11,4 +12,6 @@ def foto_import_ordini():
   if uploaded_files:
     for file in uploaded_files:
       output = read_csv_auto_encoding(file)
-      st.write(output)
+      headers = output[1]
+      df = pd.DataFrame(output[2:], headers=headers)
+      st.write(df)
