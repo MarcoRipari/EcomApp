@@ -1,4 +1,6 @@
-dash
-dash-bootstrap-components
-google-api-python-client
+streamlit
 google-auth
+gspread
+gspread-formatting
+google-api-python-client
+pydrive2
