@@ -174,8 +174,8 @@ async def main():
         print("❌ Foglio vuoto.")
         return
 
-    header = all_data[1]
-    rows = all_data[2:]
+    header = all_data[0]
+    rows = all_data[1:]
 
     try:
         sku_idx = header.index("SKU")
