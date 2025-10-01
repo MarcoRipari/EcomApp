@@ -7,3 +7,7 @@ def foto_import_ordini():
   st.title("Importa ordini nuova stagione")
 
   uploaded_files = st.file_uploader("Carica i file CSV", type="csv", accept_multiple_files=True)
+
+  if uploaded_files:
+    for file in uploaded_file:
+      st.write(file)
