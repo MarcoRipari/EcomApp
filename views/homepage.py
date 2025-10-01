@@ -8,10 +8,11 @@ def load_functions_from(folder_name):
     e le aggiunge allo scope globale del modulo che lo chiama.
     """
     base_path = os.path.dirname(os.path.abspath(__file__))
+    base_path = os.path.dirname(base_path)
     #folder_path = os.path.join(base_path, folder_name)
-    folder_path = os.path.join(base_path, "..", folder_name)
+    folder_path = os.path.join(base_path, folder_name)
 
-    st.write(folder_path)
+    st.write(folder_path)e
 
     if not os.path.exists(folder_path):
         raise FileNotFoundError(f"La cartella {folder_path} non esiste!")
