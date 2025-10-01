@@ -21,10 +21,10 @@ def foto_import_ordini():
   uploaded_files = st.file_uploader("Carica i file CSV", type="csv", accept_multiple_files=True)
   
   df_totale = pd.DataFrame()
-  st.write(len(df_totale))
-  
+   
   if uploaded_files:
     for file in uploaded_files:
+      st.write(len(df_totale))
       output = read_csv_auto_encoding(file)
       df = pd.DataFrame(output[1:])
       df["COD.CLIENTI"] = df["COD.CLIENTI"].map(map_cod_cli)
