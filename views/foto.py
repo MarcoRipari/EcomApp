@@ -25,7 +25,6 @@ def foto_import_ordini():
   if uploaded_files:
     try:
       for file in uploaded_files:
-        st.write(len(df_totale))
         output = read_csv_auto_encoding(file)
         df = pd.DataFrame(output[1:])
         df["COD.CLIENTI"] = df["COD.CLIENTI"].map(map_cod_cli)
