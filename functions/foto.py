@@ -54,6 +54,11 @@ def mostra_riscattare(sku_input):
     with cols[2]:
         ristampa_checkbox = st.checkbox("🔁 Ristampa", value=riscattare, key=f"ristampa_{row['SKU']}")
 
+        if ristampa_checkbox:
+          st.write("Aggiunta")
+        else:
+          st.write("Rimossa")
+
 def aggiungi_da_riscattare(sku_input):
   lista_da_riscattare = df[df["RISCATTARE"] == True]
   lista_da_riscattare = lista_da_riscattare["SKU"]
