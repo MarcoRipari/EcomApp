@@ -15,6 +15,9 @@ map_cod_cli = {
   "0034630":"AMAZON"
 }
 
+def foto_dashboard():
+  st.title("Dashboard")
+
 def foto_import_ordini():
   st.title("Importa ordini nuova stagione")
 
