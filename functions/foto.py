@@ -42,10 +42,10 @@ def mostra_riscattare(sku_input):
     
     if not riscattare:
       riscattare = False
-    
-    st.write(row)
+
     image_url = f"https://repository.falc.biz/fal001{row['SKU'].lower()}-1.jpg"
     cols = st.columns([1, 3, 1])
+    
     with cols[0]:
         st.image(image_url, width=100, caption=row["SKU"])
     with cols[1]:
