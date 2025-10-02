@@ -38,8 +38,10 @@ def mostra_riscattare(sku_input):
   def toggle_callback(riscattare):
     if riscattare == True:
       st.write("spento - togliere")
+      riscattare = False
     else:
       st.write("acceso - aggiungere")
+      riscattare = True
     
   sku_norm = sku_input.strip().upper()
   match = df[(df["SKU"] == sku_norm) & (df["SCATTARE"] == False)]
