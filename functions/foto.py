@@ -40,10 +40,6 @@ def mostra_riscattare(sku_input):
     row = match.iloc[0]
     st.write(row)
     image_url = f"https://repository.falc.biz/fal001{row['SKU'].lower()}-1.jpg"
-    cols = st.columns([1, 3, 1])
-    with cols[0]:
-        st.image(image_url, width=100, caption=row["SKU"])
-
 
 def aggiungi_da_riscattare(sku_input):
   lista_da_riscattare = df[df["RISCATTARE"] == True]
