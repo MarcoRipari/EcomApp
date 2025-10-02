@@ -67,7 +67,7 @@ def mostra_riscattare(sku_input):
         value=riscattare,
         key=f"ristampa_{row['SKU']}",
         on_change=toggle_callback,
-        args=(riscattare,)  # parametri da passare alla callback
+        args=(riscattare,)
     )
           
 
