@@ -24,8 +24,6 @@ st.markdown(
 
 # 📁 Caricamento dati
 # Sidebar: menu
-page = "Homepage"
-
 with st.sidebar:
     DEBUG = st.checkbox("🪛 Debug")
     # Togliere per riattivare password e nome
@@ -41,7 +39,7 @@ with st.sidebar:
         }
 
     if "user" not in st.session_state or st.session_state.user is None:
-        page = "Home"
+        page = "Homepage"
         st.markdown("## 🔑 Login")
         with st.form("login_user"):
             email = st.text_input("Username")
@@ -160,7 +158,7 @@ with st.sidebar:
             )
             page = f"{main_page_name} - {sub_page}"
 
-if page == "Homepage" or not page:
+if page == "Homepage":
     homepage()
 
 elif page == "Foto - Dashboard":
