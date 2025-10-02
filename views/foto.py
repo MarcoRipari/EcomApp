@@ -8,7 +8,6 @@ load_functions_from("functions", globals())
 
 foto_sheet_id = "1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4"
 sheet_ordini = get_sheet(foto_sheet_id, "ORDINI")
-df = pd.DataFrame(sheet_ordini)
 
 map_cod_cli = {
   "0019243.016":"ECOM",
@@ -30,10 +29,7 @@ def foto_riscattare():
   st.title("Riscattare")
   
   sku_input = st.text_input("Inserisci SKU")
-  
-  if sku_input:
-    sku_norm = sku_input.strip().upper()
-    match = lista_da_riscattare[lista_da_riscattare["SKU"] == sku_norm]
+  mostra_riscattare(sku_input)
   
 
 def foto_import_ordini():
