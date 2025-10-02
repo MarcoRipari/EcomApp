@@ -47,17 +47,22 @@ def mostra_riscattare(sku_input):
     cols = st.columns([1, 3, 1])
     
     with cols[0]:
-        st.image(image_url, width=100, caption=row["SKU"])
+      st.image(image_url, width=100, caption=row["SKU"])
     with cols[1]:
-        st.markdown(f"**{row['DESCRIZIONE']}**")
-        st.markdown(f"*Canale*: {row['CANALE']}  \n*Collezione*: {row['COLLEZIONE']}")
+      st.markdown(f"**{row['DESCRIZIONE']}**")
+      st.markdown(f"*Canale*: {row['CANALE']}  \n*Collezione*: {row['COLLEZIONE']}")
     with cols[2]:
-        ristampa_checkbox = st.checkbox("🔁 Ristampa", value=riscattare, key=f"ristampa_{row['SKU']}")
+      ristampa_checkbox = st.checkbox("🔁 Ristampa", value=riscattare, key=f"ristampa_{row['SKU']}")
+      test = st.checkbox("Test")
+      if test:
+        st.write("Aggiunta")
+      else:
+        st.write("Rimossa")
 
-        if ristampa_checkbox:
-          st.write("Aggiunta")
-        else:
-          st.write("Rimossa")
+      if ristampa_checkbox:
+        st.write("Aggiunta")
+      else:
+        st.write("Rimossa")
 
 def aggiungi_da_riscattare(sku_input):
   lista_da_riscattare = df[df["RISCATTARE"] == True]
