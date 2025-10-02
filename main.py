@@ -53,7 +53,7 @@ with st.sidebar:
         user = st.session_state.user
         st.write(f"Accesso eseguito come: {user["nome"]}")
 
-        menu_item_list = [{"name":"Home", "icon":"house", "role":["guest","logistica","customer care","admin"]},
+        menu_item_list = [{"name":"Homepage", "icon":"house", "role":["guest","logistica","customer care","admin"]},
                           {"name":"Catalogo", "icon":"list", "role":["logistica","customer care","admin"]},
                           {"name":"Ordini", "icon":"truck", "role":["logistica","customer care","admin"]},
                           {"name":"Descrizioni", "icon":"list", "role":["customer care","admin"]},
@@ -69,7 +69,8 @@ with st.sidebar:
                              {"main":"Catalogo", "name":"Aggiungi ordini stagione", "icon":"plus", "role":["logistica","customer care","admin"]},
                              {"main":"Ordini", "name":"Dashboard", "icon":"bar-chart", "role":["admin"]},
                              {"main":"Ordini", "name":"Importa", "icon":"plus", "role":["admin"]},
-                             {"main":"Foto", "name":"Gestione", "icon":"gear", "role":["guest","logistica","customer care","admin"]},
+                             {"main":"Foto", "name":"Dashboard", "icon":"gear", "role":["guest","logistica","customer care","admin"]},
+                             {"main":"Foto", "name":"Import ordini stagione", "icon":"gear", "role":["guest","logistica","customer care","admin"]},
                              {"main":"Foto", "name":"Riscatta SKU", "icon":"repeat", "role":["guest","logistica","customer care","admin"]},
                              {"main":"Foto", "name":"Aggiungi SKUs", "icon":"plus", "role":["guest","logistica","customer care","admin"]},
                              {"main":"Foto", "name":"Storico", "icon":"book", "role":["guest","logistica","customer care","admin"]},
