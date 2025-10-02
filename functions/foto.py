@@ -63,6 +63,7 @@ def mostra_riscattare(sku_input):
         value=st.session_state[key],
         key=key
       )
+      st.write("ok")
       
       # Controllo se lo stato è cambiato
       if ristampa_checkbox != st.session_state[key]:
