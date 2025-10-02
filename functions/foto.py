@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
-from streamlit_toggle import st_toggle_switch
+#from streamlit_toggle import st_toggle_switch
+import  streamlit_toggle as tog
 
 from .gsheet import get_sheet
 from .utils import normalize_bool
@@ -53,7 +54,7 @@ def mostra_riscattare(sku_input):
       st.markdown(f"**{row['DESCRIZIONE']}**")
       st.markdown(f"*Canale*: {row['CANALE']}  \n*Collezione*: {row['COLLEZIONE']}")
     with cols[2]:
-      toggle = st_toggle_switch(
+      toggle = tog.st_toggle_switch(
         label="Ristampa",
         key="ristampa_trigger",
         default_value=False,
