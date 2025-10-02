@@ -63,7 +63,6 @@ def mostra_riscattare(sku_input):
         else:
           st.write("Rimossa")
           
-        st.session_state[f"ristampa_{row['SKU']}"] = ristampa_checkbox
 
 def aggiungi_da_riscattare(sku_input):
   lista_da_riscattare = df[df["RISCATTARE"] == True]
