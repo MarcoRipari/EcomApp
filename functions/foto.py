@@ -1,5 +1,5 @@
 import streamlit as st
-from gsheet import get_sheet
+from .gsheet import get_sheet
 
 sheet = get_sheet(st.secrets("FOTO_GSHEET_ID"), "LISTA")
 
