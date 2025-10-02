@@ -24,6 +24,8 @@ st.markdown(
 
 # 📁 Caricamento dati
 # Sidebar: menu
+page = "Homepage"
+
 with st.sidebar:
     DEBUG = st.checkbox("🪛 Debug")
     # Togliere per riattivare password e nome
