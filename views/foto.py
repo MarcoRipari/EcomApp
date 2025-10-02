@@ -22,12 +22,14 @@ def foto_dashboard():
   st.write(count_da_scattare("riscattare"))
 
 def foto_riscattare():
+  st.title("Riscattare")
+
   lista_da_riscattare = get_da_riscattare()
   
-  st.title("Riscattare")
-  
   sku_input = st.text_input("Inserisci SKU")
-  mostra_riscattare(sku_input)
+  
+  if sku_input:
+    mostra_riscattare(sku_input)
   
 
 def foto_import_ordini():
