@@ -156,6 +156,11 @@ with st.sidebar:
             )
             page = f"{main_page_name} - {sub_page}"
 
-if page == "Home":
-    #homepage()
+if page == "Homepage":
+    homepage()
+
+elif page == "Foto - Dashboard":
+    foto_dashboard()
+    
+elif page == "Foto - Import ordini stagione":
     foto_import_ordini()
