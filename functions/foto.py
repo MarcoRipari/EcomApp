@@ -29,3 +29,13 @@ def count_da_scattare(type="totale"):
 def get_da_riscattare():
   da_riscattare = df[df["RISCATTARE"] == True]
   return da_riscattare["SKU"]
+
+def aggiungi_da_riscattare(sku):
+  lista_da_riscattare = df[df["RISCATTARE"] == True]
+  lista_da_riscattare = lista_da_riscattare["SKU"]
+  
+  if sku in lista_da_riscattare:
+    st.error("SKU già da riscattare")
+  else:
+    st.write("Imposto SKU su riscattare in ghseet")
+  
