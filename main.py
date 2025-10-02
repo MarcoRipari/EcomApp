@@ -160,7 +160,7 @@ with st.sidebar:
             )
             page = f"{main_page_name} - {sub_page}"
 
-if page == "Homepage":
+if page == "Homepage" or !page:
     homepage()
 
 elif page == "Foto - Dashboard":
