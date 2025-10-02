@@ -22,6 +22,8 @@ def foto_dashboard():
   st.write(count_da_scattare("riscattare"))
 
 def foto_riscattare():
+  lista_da_riscattare = get_da_riscattare()
+  st.write(lista_da_riscattare)
   st.title("Riscattare")
   sku = st.text_input("Inserisci SKU")
 
