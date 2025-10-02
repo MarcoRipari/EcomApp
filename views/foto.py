@@ -17,6 +17,7 @@ map_cod_cli = {
 
 def foto_dashboard():
   st.title("Dashboard")
+  count_foto_mancanti()
 
 def foto_import_ordini():
   st.title("Importa ordini nuova stagione")
