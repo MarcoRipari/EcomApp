@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from streamlit_toggle import st_toggle_switch
 
 from .gsheet import get_sheet
 from .utils import normalize_bool
