@@ -57,6 +57,7 @@ def mostra_riscattare(sku_input):
       ristampa_checkbox = st.checkbox("🔁 Ristampa", value=st.session_state[f"ristampa_{row['SKU']}"], key=f"ristampa_{row['SKU']}")
       
       if ristampa_checkbox != st.session_state[f"ristampa_{row['SKU']}"]:
+        st.write(st.session_state[f"ristampa_{row['SKU']}"])
         if ristampa_checkbox:
           st.write("Aggiunta")
         else:
