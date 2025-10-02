@@ -28,4 +28,4 @@ def count_da_scattare(type="totale"):
 
 def get_da_riscattare():
   da_riscattare = df[df["RISCATTARE"] == True]
-  return df["SKU"]
+  return da_riscattare["SKU"]
