@@ -56,24 +56,12 @@ def mostra_riscattare(sku_input):
       st.markdown(f"**{row['DESCRIZIONE']}**")
       st.markdown(f"*Canale*: {row['CANALE']}  \n*Collezione*: {row['COLLEZIONE']}")
     with cols[2]:
-      toggle = tog.st_toggle_switch(
-        label="Ristampa",
-        key=f"ristampa_trigger_{row['SKU']}",
-        default_value=riscattare,
-        label_after=False,
-        inactive_color='#D3D3D3',
-        active_color="#11567f",
-        track_color="#29B5E8"
-      )
-      
-      if toggle:
-        if riscattare == False:
-          st.write("aggiungere")
-          riscattare = True
+      toggle_value = custom_toggle("Ristampa etichetta", default=riscattare, key="ristampa1")
+
+      if toggle_value:
+        st.success("✅ Attivo - eseguo l’azione!")
       else:
-        if riscattare == True:
-          st.write("togliere")
-          riscattare = False
+        st.warning("❌ Non attivo")
           
 
 def aggiungi_da_riscattare(sku_input):
