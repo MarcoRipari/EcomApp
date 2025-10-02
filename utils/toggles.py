@@ -42,7 +42,7 @@ def custom_toggle(label="Switch", default=False, key="custom_toggle"):
       <input type="checkbox" id="{toggle_id}" {"checked" if default else ""} 
              onchange="const val=this.checked;
                        const input=window.parent.document.querySelector('input#{toggle_id}_hidden');
-                       if(input) input.value=val; input.dispatchEvent(new Event('input',{bubbles:true}));">
+                       if(input) input.value=val; input.dispatchEvent(new Event('input',{{bubbles:true}}));">
       <span class="slider"></span>
     </label>
     <span style="margin-left:10px;">{label}</span>
