@@ -1,4 +1,6 @@
 import streamlit as st
+import pandas as pd
+
 from .gsheet import get_sheet
 
 sheet = get_sheet(st.secrets['FOTO_GSHEET_ID'], "LISTA")
