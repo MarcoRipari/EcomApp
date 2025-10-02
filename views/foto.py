@@ -24,8 +24,6 @@ def foto_dashboard():
 def foto_riscattare():
   lista_da_riscattare = get_da_riscattare()
   
-  st.write(df)
-  
   st.title("Riscattare")
   
   sku_input = st.text_input("Inserisci SKU")
