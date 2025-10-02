@@ -45,7 +45,7 @@ def mostra_riscattare(sku_input):
         st.image(image_url, width=100, caption=row["SKU"])
     with cols[1]:
         st.markdown(f"**{row['DESCRIZIONE']}**")
-        st.markdown(f"*Canale*: {row['CANALE']}  \n*Collezione*: {row['COLLEZIONE']}")
+        st.markdown(f"*Canale*: {row['CANALE']}  \n*Collezione*: {row['CLZ']}")
     with cols[2]:
         if row['SKU'] in selected_ristampe:
             ristampa_checkbox = st.checkbox("🔁 Ristampa", value=True, key=f"ristampa_{row['SKU']}")
