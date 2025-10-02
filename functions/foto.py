@@ -45,7 +45,7 @@ def mostra_riscattare(sku_input):
     if not riscattare:
       riscattare = False
     
-    image_url = f"https://repository.falc.biz/fal001{row['SKU'].lower()}-2.jpg"
+    image_url = f"https://repository.falc.biz/fal001{row['SKU'].lower()}-1.jpg"
     cols = st.columns([1, 3, 1])
     
     with cols[0]:
@@ -65,9 +65,11 @@ def mostra_riscattare(sku_input):
       )
       
       if toggle:
-        st.write("aggiungere")
+        if riscattare == False:
+          st.write("aggiungere")
       else:
-        st.write("togliere")
+        if riscattare == True:
+          st.write("togliere")
           
 
 def aggiungi_da_riscattare(sku_input):
