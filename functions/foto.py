@@ -52,7 +52,7 @@ def mostra_riscattare(sku_input):
       st.markdown(f"**{row['DESCRIZIONE']}**")
       st.markdown(f"*Canale*: {row['CANALE']}  \n*Collezione*: {row['COLLEZIONE']}")
     with cols[2]:
-      if f"ristampa_{row['SKU']}" not in st.session_state:
+      if not st.sessions_state[f"ristampa_{row['SKU']}"]:
         st.sessions_state[f"ristampa_{row['SKU']}"]
         
       ristampa_checkbox = st.checkbox("🔁 Ristampa", value=riscattare, key=f"ristampa_{row['SKU']}")
