@@ -43,6 +43,9 @@ def mostra_riscattare(sku_input):
     if not riscattare:
       riscattare = False
 
+    key = f"ristampa_{row['SKU']}"
+    st.session_state.setdefault(key, riscattare)
+    
     image_url = f"https://repository.falc.biz/fal001{row['SKU'].lower()}-1.jpg"
     cols = st.columns([1, 3, 1])
     
@@ -52,18 +55,20 @@ def mostra_riscattare(sku_input):
       st.markdown(f"**{row['DESCRIZIONE']}**")
       st.markdown(f"*Canale*: {row['CANALE']}  \n*Collezione*: {row['COLLEZIONE']}")
     with cols[2]:
-      st.session_state.setdefault(f"ristampa_{row['SKU']}", riscattare)
-      st.write(st.session_state[f"ristampa_{row['SKU']}"])
-      ristampa_checkbox = st.checkbox("🔁 Ristampa", value=riscattare, key=f"ristampa_{row['SKU']}")
+      ristampa_checkbox = st.checkbox(
+        "🔁 Ristampa",
+        value=st.session_state[key],
+        key=key
+      )
       
-      if ristampa_checkbox != st.session_state[f"ristampa_{row['SKU']}"]:
-        st.write(st.session_state[f"ristampa_{row['SKU']}"])
+      if ristampa_checkbox != st.session_state[key]:
+        st.session_state[key] = ristampa_checkbox  # aggiorno lo stato
+    
+        # Azioni da eseguire al cambio
         if ristampa_checkbox:
-          st.write("Aggiunta")
+          st.success(f"✅ SKU {row['SKU']} aggiunta per ristampa")
         else:
-          st.write("Rimossa")
-
-        st.session_state[f"ristampa_{row['SKU']}"] = ristampa_checkbox
+          st.warning(f"❌ SKU {row['SKU']} rimossa dalla ristampa")
           
 
 def aggiungi_da_riscattare(sku_input):
