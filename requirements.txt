@@ -1,5 +1,6 @@
 streamlit
 streamlit-option-menu
+streamlit_toggle
 google-auth
 gspread
 gspread-formatting
