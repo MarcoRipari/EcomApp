@@ -67,9 +67,11 @@ def mostra_riscattare(sku_input):
       if toggle:
         if riscattare == False:
           st.write("aggiungere")
+          riscattare = True
       else:
         if riscattare == True:
           st.write("togliere")
+          riscattare = False
           
 
 def aggiungi_da_riscattare(sku_input):
