@@ -21,6 +21,10 @@ def foto_dashboard():
   st.write(count_da_scattare("mancanti"))
   st.write(count_da_scattare("riscattare"))
 
+def foto_riscattare():
+  st.title("Riscattare")
+  sku = st.text_input("Inserisci SKU")
+
 def foto_import_ordini():
   st.title("Importa ordini nuova stagione")
 
