@@ -4,7 +4,7 @@ import pandas as pd
 import  streamlit_toggle as tog
 
 from .gsheet import get_sheet
-#from .utils import normalize_bool
+from .utils import normalize_bool
 from utils import *
 
 
