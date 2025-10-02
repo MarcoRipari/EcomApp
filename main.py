@@ -163,6 +163,9 @@ if page == "Homepage":
 
 elif page == "Foto - Dashboard":
     foto_dashboard()
+
+elif page == "Foto - Riscatta SKU":
+    foto_da_riscattare()
     
 elif page == "Foto - Import ordini stagione":
     foto_import_ordini()
