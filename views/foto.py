@@ -24,7 +24,9 @@ def foto_dashboard():
 
 def foto_riscattare():
   lista_da_riscattare = get_da_riscattare()
-  st.write(lista_da_riscattare)
+  
+  st.write(df)
+  
   st.title("Riscattare")
   
   sku_input = st.text_input("Inserisci SKU")
@@ -33,27 +35,6 @@ def foto_riscattare():
     sku_norm = sku_input.strip().upper()
     match = lista_da_riscattare[lista_da_riscattare["SKU"] == sku_norm]
   
-    if match.empty:
-        st.warning("❌ SKU non trovata o la foto non esiste ancora.")
-    else:
-        row = match.iloc[0]
-        image_url = f"https://repository.falc.biz/fal001{row['SKU'].lower()}-1.jpg"
-        cols = st.columns([1, 3, 1])
-        with cols[0]:
-            st.image(image_url, width=100, caption=row["SKU"])
-        with cols[1]:
-            st.markdown(f"**{row['DESCRIZIONE']}**")
-            st.markdown(f"*Canale*: {row['CANALE']}  \n*Collezione*: {row['COLLEZIONE']}")
-        with cols[2]:
-            if row['SKU'] in selected_ristampe:
-                ristampa_checkbox = st.checkbox("🔁 Ristampa", value=True, key=f"ristampa_{row['SKU']}")
-            else:
-                ristampa_checkbox = st.checkbox("🔁 Ristampa", value=False, key=f"ristampa_{row['SKU']}")
-                
-            if ristampa_checkbox:
-                selected_ristampe.add(row['SKU'])
-            else:
-                selected_ristampe.discard(row['SKU'])
 
 def foto_import_ordini():
   st.title("Importa ordini nuova stagione")
