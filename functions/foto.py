@@ -4,7 +4,9 @@ import pandas as pd
 import  streamlit_toggle as tog
 
 from .gsheet import get_sheet
-from .utils import normalize_bool
+#from .utils import normalize_bool
+from utils import *
+
 
 sheet = get_sheet(st.secrets['FOTO_GSHEET_ID'], "LISTA")
 values = sheet.get_all_values()
