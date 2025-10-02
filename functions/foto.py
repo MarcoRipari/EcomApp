@@ -10,4 +10,4 @@ def count_foto_mancanti():
   df = pd.DataFrame(values[1:], columns=values[0])
   scattare = len(df[df["SCATTARE"] == True])
   riscattare = len(df[df["RISCATTARE"] == True])
-  st.write("Da Scattare: " + scattare)
+  st.write(f"Da Scattare: {scattare}")
