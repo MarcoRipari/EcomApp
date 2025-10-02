@@ -16,7 +16,12 @@ df["DISP"] = normalize_bool(df["DISP"])
 df["DISP 027"] = normalize_bool(df["DISP 027"])
 df["DISP 028"] = normalize_bool(df["DISP 028"])
 
-def count_foto_mancanti():
+def count_da_scattare(type="totale"):
   scattare = len(df[df["SCATTARE"] == True])
   riscattare = len(df[df["RISCATTARE"] == True])
-  st.write(f"Da Scattare: {scattare}")
+  if type == "mancanti":
+    return scattare
+  elif type == "riscattare":
+    return riscattare
+  elif type == "totale":
+    return scattare + riscattare
