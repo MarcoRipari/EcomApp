@@ -30,6 +30,16 @@ def get_da_riscattare():
   da_riscattare = df[df["RISCATTARE"] == True]
   return da_riscattare["SKU"]
 
+def mostra_riscattare(sku):
+  sku_norm = sku_input.strip().upper()
+  match = df[(df["SKU"] == sku_norm) & (df["SCATTARE"] == False)]
+
+  if match.empty:
+    st.warning("❌ SKU non trovata o la foto non esiste ancora.")
+  else:
+    row = match.iloc[0]
+    st.write(row)
+
 def aggiungi_da_riscattare(sku):
   lista_da_riscattare = df[df["RISCATTARE"] == True]
   lista_da_riscattare = lista_da_riscattare["SKU"]
