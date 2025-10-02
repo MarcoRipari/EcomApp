@@ -30,7 +30,7 @@ def get_da_riscattare():
   da_riscattare = df[df["RISCATTARE"] == True]
   return da_riscattare["SKU"]
 
-def mostra_riscattare(sku):
+def mostra_riscattare(sku_input):
   sku_norm = sku_input.strip().upper()
   match = df[(df["SKU"] == sku_norm) & (df["SCATTARE"] == False)]
 
@@ -40,7 +40,7 @@ def mostra_riscattare(sku):
     row = match.iloc[0]
     st.write(row)
 
-def aggiungi_da_riscattare(sku):
+def aggiungi_da_riscattare(sku_input):
   lista_da_riscattare = df[df["RISCATTARE"] == True]
   lista_da_riscattare = lista_da_riscattare["SKU"]
   
