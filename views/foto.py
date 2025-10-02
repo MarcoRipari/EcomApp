@@ -18,7 +18,7 @@ map_cod_cli = {
 def foto_dashboard():
   st.title("Dashboard")
   st.write(count_da_scattare())
-  st.write(count_da_scattare("scattare"))
+  st.write(count_da_scattare("mancanti"))
   st.write(count_da_scattare("riscattare"))
 
 def foto_import_ordini():
