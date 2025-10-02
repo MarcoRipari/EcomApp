@@ -52,16 +52,17 @@ def mostra_riscattare(sku_input):
       st.markdown(f"**{row['DESCRIZIONE']}**")
       st.markdown(f"*Canale*: {row['CANALE']}  \n*Collezione*: {row['COLLEZIONE']}")
     with cols[2]:
-      if not st.session_state[f"ristampa_{row['SKU']}"]:
-        st.session_state[f"ristampa_{row['SKU']}"] = riscattare
+      st.session_state.setdefault(f"ristampa_{row['SKU']}", riscattare)
         
-      ristampa_checkbox = st.checkbox("🔁 Ristampa", value=riscattare, key=f"ristampa_{row['SKU']}")
-
+      ristampa_checkbox = st.checkbox("🔁 Ristampa", value=st.session_state[f"ristampa_{row['SKU']}"], key=f"ristampa_{row['SKU']}")
+      
       if ristampa_checkbox != st.session_state[f"ristampa_{row['SKU']}"]:
         if ristampa_checkbox:
           st.write("Aggiunta")
         else:
           st.write("Rimossa")
+          
+        st.session_state[f"ristampa_{row['SKU']}"] = ristampa_checkbox
 
 def aggiungi_da_riscattare(sku_input):
   lista_da_riscattare = df[df["RISCATTARE"] == True]
