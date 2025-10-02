@@ -56,8 +56,8 @@ def mostra_riscattare(sku_input):
     with cols[2]:
       toggle = tog.st_toggle_switch(
         label="Ristampa",
-        key="ristampa_trigger",
-        default_value=False,
+        key=f"ristampa_trigger_{row['SKU']}",
+        default_value=riscattare,
         label_after=False,
         inactive_color='#D3D3D3',
         active_color="#11567f",
