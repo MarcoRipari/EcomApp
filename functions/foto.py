@@ -60,7 +60,7 @@ def mostra_riscattare(sku_input):
 
       if toggle_value:
         if riscattare == False:
-          st.success("✅ Attivo - eseguo l’azione!")
+          st.success("✅ Attivo - eseguo l’azione")
           riscattare = True
       else:
         if riscattare == True:
