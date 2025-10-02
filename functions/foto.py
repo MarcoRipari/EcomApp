@@ -35,6 +35,12 @@ def get_da_riscattare():
   return da_riscattare["SKU"]
 
 def mostra_riscattare(sku_input):
+  def toggle_callback(riscattare):
+    if riscattare == True:
+      st.write("spento - togliere")
+    else:
+      st.write("acceso - aggiungere")
+    
   sku_norm = sku_input.strip().upper()
   match = df[(df["SKU"] == sku_norm) & (df["SCATTARE"] == False)]
   
@@ -56,16 +62,13 @@ def mostra_riscattare(sku_input):
       st.markdown(f"**{row['DESCRIZIONE']}**")
       st.markdown(f"*Canale*: {row['CANALE']}  \n*Collezione*: {row['COLLEZIONE']}")
     with cols[2]:
-      toggle_value = custom_toggle("Ristampa etichetta", default=riscattare, key="ristampa1")
-
-      if toggle_value:
-        if riscattare == False:
-          st.success("✅ Attivo - eseguo l’azione")
-          riscattare = True
-      else:
-        if riscattare == True:
-          st.warning("❌ Non attivo")
-          riscattare == False
+      st.toggle(
+        label=f"Ristampa {row['SKU']}",
+        value=riscattare,
+        key=f"ristampa_{row['SKU']}",
+        on_change=toggle_callback,
+        args=(riscattare,)  # parametri da passare alla callback
+    )
           
 
 def aggiungi_da_riscattare(sku_input):
