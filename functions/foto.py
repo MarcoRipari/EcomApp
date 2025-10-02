@@ -43,12 +43,6 @@ def mostra_riscattare(sku_input):
     
     if not riscattare:
       riscattare = False
-
-    key = f"ristampa_{row['SKU']}"
-    msg_key = f"{key}_msg"
-    
-    st.session_state.setdefault(key, riscattare)
-    st.session_state.setdefault(msg_key, "")
     
     image_url = f"https://repository.falc.biz/fal001{row['SKU'].lower()}-1.jpg"
     cols = st.columns([1, 3, 1])
@@ -59,27 +53,20 @@ def mostra_riscattare(sku_input):
       st.markdown(f"**{row['DESCRIZIONE']}**")
       st.markdown(f"*Canale*: {row['CANALE']}  \n*Collezione*: {row['COLLEZIONE']}")
     with cols[2]:
-      ristampa_checkbox = st.checkbox(
-        "🔁 Ristampa",
-        value=st.session_state[key],
-        key=key
+      toggle = st_toggle_switch(
+        label="Ristampa",
+        key="ristampa_trigger",
+        default_value=False,
+        label_after=False,
+        inactive_color='#D3D3D3',
+        active_color="#11567f",
+        track_color="#29B5E8"
       )
       
-      # Controllo se lo stato è cambiato
-      if ristampa_checkbox != st.session_state[key]:
-        st.session_state[key] = ristampa_checkbox  # aggiorno lo stato
-
-        # Imposto il messaggio da mostrare
-        if ristampa_checkbox:
-          st.session_state[msg_key] = f"✅ SKU {row['SKU']} aggiunta per ristampa"
-          # Qui puoi mettere codice per azione reale (GSheet, DB, ecc.)
-        else:
-          st.session_state[msg_key] = f"❌ SKU {row['SKU']} rimossa dalla ristampa"
-          # Qui puoi mettere codice per azione reale di rimozione
-
-      # Mostro il messaggio
-      if st.session_state[msg_key]:
-        st.info(st.session_state[msg_key])
+      if toggle:
+        st.write("aggiungere")
+      else:
+        st.write("togliere")
           
 
 def aggiungi_da_riscattare(sku_input):
