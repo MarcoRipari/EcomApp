@@ -59,9 +59,11 @@ def mostra_riscattare(sku_input):
       toggle_value = custom_toggle("Ristampa etichetta", default=riscattare, key="ristampa1")
 
       if toggle_value:
-        st.success("✅ Attivo - eseguo l’azione!")
+        if riscattare == False:
+          st.success("✅ Attivo - eseguo l’azione!")
       else:
-        st.warning("❌ Non attivo")
+        if riscattare == True:
+          st.warning("❌ Non attivo")
           
 
 def aggiungi_da_riscattare(sku_input):
