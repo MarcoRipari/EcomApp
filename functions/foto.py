@@ -36,12 +36,10 @@ def get_da_riscattare():
 
 def mostra_riscattare(sku_input):
   def toggle_callback(riscattare):
-    if st.session_state["riscattare"] == True:
-      st.write("spento - togliere")
-      st.session_state["riscattare"] = False
+    if riscattare == True:
+      st.write("true")
     else:
-      st.write("acceso - aggiungere")
-      st.session_state["riscattare"] = True
+      st.write("false")
     
   sku_norm = sku_input.strip().upper()
   match = df[(df["SKU"] == sku_norm) & (df["SCATTARE"] == False)]
@@ -64,12 +62,12 @@ def mostra_riscattare(sku_input):
       st.markdown(f"**{row['DESCRIZIONE']}**")
       st.markdown(f"*Canale*: {row['CANALE']}  \n*Collezione*: {row['COLLEZIONE']}")
     with cols[2]:
-      st.toggle(
+      test = st.toggle(
         label="Riscattare",
         value=st.session_state["riscattare"],
         key=f"ristampa_{row['SKU']}",
         on_change=toggle_callback,
-        args=(st.session_state["riscattare"],)
+        args=(test,)
     )
           
 
