@@ -36,7 +36,7 @@ def get_da_riscattare():
 
 def mostra_riscattare(sku_input):
   def toggle_callback(riscattare):
-    if riscattare == True:
+    if test == True:
       st.write("true")
     else:
       st.write("false")
@@ -67,7 +67,7 @@ def mostra_riscattare(sku_input):
         value=st.session_state["riscattare"],
         key=f"ristampa_{row['SKU']}",
         on_change=toggle_callback,
-        args=(test.value,)
+        args=(st.session_state["riscattare"])
     )
           
 
