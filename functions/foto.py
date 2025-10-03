@@ -36,12 +36,12 @@ def get_da_riscattare():
 
 def mostra_riscattare(sku_input):
   def toggle_callback(riscattare):
-    if riscattare == True:
+    if st.session_state["riscattare"] == True:
       st.write("spento - togliere")
-      riscattare = False
+      st.session_state["riscattare"] = False
     else:
       st.write("acceso - aggiungere")
-      riscattare = True
+      st.session_state["riscattare"] = True
     
   sku_norm = sku_input.strip().upper()
   match = df[(df["SKU"] == sku_norm) & (df["SCATTARE"] == False)]
@@ -50,10 +50,10 @@ def mostra_riscattare(sku_input):
     st.warning("❌ SKU non trovata o la foto non esiste ancora.")
   else:
     row = match.iloc[0]
-    riscattare = row['RISCATTARE']
+    st.session_state["riscattare"] = row['RISCATTARE']
     
-    if not riscattare:
-      riscattare = False
+    if not st.session_state["riscattare"]:
+      st.session_state["riscattare"] = False
     
     image_url = f"https://repository.falc.biz/fal001{row['SKU'].lower()}-1.jpg"
     cols = st.columns([1, 3, 1])
@@ -65,11 +65,11 @@ def mostra_riscattare(sku_input):
       st.markdown(f"*Canale*: {row['CANALE']}  \n*Collezione*: {row['COLLEZIONE']}")
     with cols[2]:
       st.toggle(
-        label=f"Ristampa {row['SKU']}",
-        value=riscattare,
+        label="",
+        value=st.session_state["riscattare"],
         key=f"ristampa_{row['SKU']}",
         on_change=toggle_callback,
-        args=(riscattare,)
+        args=(st.session_state["riscattare"])
     )
           
 
