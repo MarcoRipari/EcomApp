@@ -69,7 +69,7 @@ def mostra_riscattare(sku_input):
         value=st.session_state["riscattare"],
         key=f"ristampa_{row['SKU']}",
         on_change=toggle_callback,
-        args=(st.session_state["riscattare"])
+        args=(st.session_state["riscattare"],)
     )
           
 
