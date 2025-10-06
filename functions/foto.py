@@ -56,23 +56,28 @@ def mostra_riscattare(sku_input):
       st.markdown(f"**{row['DESCRIZIONE']}**")
       st.markdown(f"*Canale*: {row['CANALE']}  \n*Collezione*: {row['COLLEZIONE']}")
     with cols[2]:
-      test = st.toggle(
+      riscatta = st.toggle(
         label="",
         value=st.session_state["riscattare"],
         key=f"ristampa_{row['SKU']}",
         args=(st.session_state["riscattare"],)
       )
       nriga = df.index[df["SKU"] == row['SKU']].tolist()[0] + 2
-      if test:
-        val = ["True"]
-        sheet.update(f"L{nriga}", [val])
+      if test != row['RISCATTARE']:
+        val = [["True"]] if test else [["False"]]
+        sheet.update(f"L{nriga}", val)
         df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] == "True"
-        st.experimental_rerun()
-      else:
-        val = ["False"]
-        sheet.update(f"L{nriga}", [val])
-        df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] == "False"
-        st.experimental_rerun()
+      
+      #if test:
+      #  val = ["True"]
+      #  sheet.update(f"L{nriga}", [val])
+      #  df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] == "True"
+      #  st.experimental_rerun()
+      #else:
+      #  val = ["False"]
+      #  sheet.update(f"L{nriga}", [val])
+      #  df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] == "False"
+      #  st.experimental_rerun()
           
 
 def aggiungi_da_riscattare(sku_input):
