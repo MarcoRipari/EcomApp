@@ -24,6 +24,7 @@ def load_df():
   st.session_state.df_foto = df
 
 load_df()
+st.write(st.session_state.df_foto)
 
 def count_da_scattare(type="totale"):
   df = st.session_state.df_foto
