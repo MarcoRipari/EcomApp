@@ -63,8 +63,8 @@ def mostra_riscattare(sku_input):
         args=(st.session_state["riscattare"],)
       )
       nriga = df.index[df["SKU"] == row['SKU']].tolist()[0] + 2
-      if test != row['RISCATTARE']:
-        val = [["True"]] if test else [["False"]]
+      if riscatta != row['RISCATTARE']:
+        val = [["True"]] if riscatta else [["False"]]
         sheet.update(f"L{nriga}", val)
         df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] == "True"
       
