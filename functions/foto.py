@@ -66,11 +66,11 @@ def mostra_riscattare(sku_input):
       if test:
         val = ["True"]
         sheet.update(f"L{nriga}", [val])
-        df.loc[df["SKU"] == row['sku'], "RISCATTARE"] == "True"
+        df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] == "True"
       else:
         val = ["False"]
         sheet.update(f"L{nriga}", [val])
-        df.loc[df["SKU"] == row['sku'], "RISCATTARE"] == "False"
+        df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] == "False"
           
 
 def aggiungi_da_riscattare(sku_input):
