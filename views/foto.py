@@ -16,10 +16,16 @@ map_cod_cli = {
 }
 
 def foto_dashboard():
+  with st.spinner("Carico lista SKUs..."):
+    df = load_df_foto()
+    
   st.title("Dashboard")
   st.write(count_da_scattare())
   st.write(count_da_scattare("mancanti"))
   st.write(count_da_scattare("riscattare"))
+
+  st.write(df)
+  
 
 def foto_riscattare():
   st.title("Riscattare")
