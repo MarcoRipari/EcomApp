@@ -63,15 +63,15 @@ def mostra_riscattare(sku_input):
         args=(st.session_state["riscattare"],)
     )
       if test:
-        nriga = df.index[df["SKU"] == row['SKU']].tolist()[0]
+        nriga = df.index[df["SKU"] == row['SKU']].tolist()
         st.write(f"Attivare riga {nriga}!")
         val = [f"\'True"]
-        sheet.update(f"L{nriga + 1}", val)
+        sheet.update(f"L{nriga[0] + 1}", val)
       else:
-        nriga = df.index[df["SKU"] == row['SKU']].tolist()[0]
+        nriga = df.index[df["SKU"] == row['SKU']].tolist()
         st.write(f"Disattivare riga {nriga}!")
         val = [f"\'False"]
-        sheet.update(f"L{nriga + 1}", val)
+        sheet.update(f"L{nriga[0] + 1}", val)
           
 
 def aggiungi_da_riscattare(sku_input):
