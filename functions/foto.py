@@ -71,7 +71,7 @@ def mostra_riscattare(sku_input):
         else:
           df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] == "False"
 
-        st.write(df[df["SKU" == row['SKU'], "RISCATTARE"]])
+        st.write(df)
 
 
 def aggiungi_da_riscattare(sku_input):
