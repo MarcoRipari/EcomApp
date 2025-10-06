@@ -69,6 +69,7 @@ def mostra_riscattare(sku_input):
         on_change=toggle_callback,
         args=(st.session_state["riscattare"])
     )
+      st.write(test)
           
 
 def aggiungi_da_riscattare(sku_input):
