@@ -35,9 +35,6 @@ def get_da_riscattare():
   return da_riscattare["SKU"]
 
 def mostra_riscattare(sku_input):
-  def toggle_callback(a):
-    st.write(a)
-    
   sku_norm = sku_input.strip().upper()
   match = df[(df["SKU"] == sku_norm) & (df["SCATTARE"] == False)]
   
@@ -63,9 +60,12 @@ def mostra_riscattare(sku_input):
         label="Riscattare?",
         value=st.session_state["riscattare"],
         key=f"ristampa_{row['SKU']}",
-        on_change=toggle_callback,
         args=(st.session_state["riscattare"],)
     )
+      if test:
+        st.write("acceso")
+      else:
+        st.write("spento")
           
 
 def aggiungi_da_riscattare(sku_input):
