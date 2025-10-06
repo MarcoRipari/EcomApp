@@ -8,9 +8,12 @@ from .utils import normalize_bool
 from utils import *
 
 
-sheet = get_sheet(st.secrets['FOTO_GSHEET_ID'], "LISTA")
-values = sheet.get_all_values()
-df = pd.DataFrame(values[1:], columns=values[0])
+def load_sheet():
+  sheet = get_sheet(st.secrets['FOTO_GSHEET_ID'], "LISTA")
+  values = sheet.get_all_values()
+  df = pd.DataFrame(values[1:], columns=values[0])
+
+load_sheet()
 
 # Normalizzo i booleani (True / False)
 df["SCATTARE"] = normalize_bool(df["SCATTARE"])
