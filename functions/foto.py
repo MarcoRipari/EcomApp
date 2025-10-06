@@ -24,7 +24,6 @@ def load_df():
   df["DISP 028"] = normalize_bool(df["DISP 028"])
 
   st.session_state.df_foto = df
-  return df
 
 load_df()
 st.write(st.session_state.df_foto)
