@@ -38,11 +38,6 @@ def count_da_scattare(type="totale"):
   elif type == "totale":
     return scattare + riscattare
 
-def get_da_riscattare():
-  df = st.session_state.df_foto
-  da_riscattare = df[df["RISCATTARE"] == True]
-  return da_riscattare["SKU"]
-
 def mostra_riscattare(sku_input):
   df = st.session_state.df_foto
   sku_norm = sku_input.strip().upper()
