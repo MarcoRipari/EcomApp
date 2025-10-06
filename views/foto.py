@@ -21,9 +21,9 @@ def foto_dashboard():
     df = st.session_state.df_foto
     
   st.title("Dashboard")
-  st.write(count_da_scattare())
-  st.write(count_da_scattare("mancanti"))
-  st.write(count_da_scattare("riscattare"))
+  st.write(f"Da scattare: {count_da_scattare()}")
+  st.write(f"Mancanti: {count_da_scattare("mancanti")}")
+  st.write(f"Riscattare: {count_da_scattare("riscattare")}")
 
   st.write(df)
   
