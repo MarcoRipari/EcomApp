@@ -63,9 +63,11 @@ def mostra_riscattare(sku_input):
         args=(st.session_state["riscattare"],)
     )
       if test:
-        st.write("acceso")
+        nriga = df[df["SKU" == row['SKU']].tolist()
+        st.write(f"Attivare riga {nriga}")
       else:
-        st.write("spento")
+        nriga = df[df["SKU" == row['SKU']].tolist()
+        st.write(f"Disattivare riga {nriga}")
           
 
 def aggiungi_da_riscattare(sku_input):
