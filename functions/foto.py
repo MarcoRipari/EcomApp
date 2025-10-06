@@ -83,8 +83,6 @@ def mostra_riscattare(sku_input):
         else:
           df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] == "False"
 
-    st.write(st.session_state.df_foto)
-
 
 def aggiungi_da_riscattare(sku_input):
   df = st.session_state.df_foto
