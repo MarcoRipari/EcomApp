@@ -36,10 +36,7 @@ def get_da_riscattare():
 
 def mostra_riscattare(sku_input):
   def toggle_callback(riscattare):
-    if test == True:
-      st.write("true")
-    else:
-      st.write("false")
+    st.write(riscattare)
     
   sku_norm = sku_input.strip().upper()
   match = df[(df["SKU"] == sku_norm) & (df["SCATTARE"] == False)]
