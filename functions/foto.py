@@ -10,7 +10,7 @@ from utils import *
 sheet = get_sheet(st.secrets['FOTO_GSHEET_ID'], "LISTA")
 values = sheet.get_all_values()
 
-def load_df():
+def load_df_foto():
   sheet = get_sheet(st.secrets['FOTO_GSHEET_ID'], "LISTA")
   values = sheet.get_all_values()
   df = pd.DataFrame(values[1:], columns=values[0])
@@ -77,7 +77,7 @@ def mostra_riscattare(sku_input):
       if riscatta != row['RISCATTARE']:
         val = [["True"]] if riscatta else [["False"]]
         sheet.update(f"L{nriga}", val)
-        load_df()
+        load_df_foto()
         if riscatta:
           df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] == "True"
         else:
