@@ -68,7 +68,7 @@ def mostra_riscattare(sku_input):
       st.markdown(f"*Canale*: {row['CANALE']}  \n*Collezione*: {row['COLLEZIONE']}")
     with cols[2]:
       riscatta = st.toggle(
-        label="1",
+        label="Riscattare",
         value=st.session_state["riscattare"],
         key=f"ristampa_{row['SKU']}",
         args=(st.session_state["riscattare"],)
