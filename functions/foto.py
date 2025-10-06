@@ -11,6 +11,8 @@ sheet = get_sheet(st.secrets['FOTO_GSHEET_ID'], "LISTA")
 values = sheet.get_all_values()
 
 def load_df():
+  sheet = get_sheet(st.secrets['FOTO_GSHEET_ID'], "LISTA")
+  values = sheet.get_all_values()
   df = pd.DataFrame(values[1:], columns=values[0])
   
   # Normalizzo i booleani (True / False)
@@ -22,6 +24,7 @@ def load_df():
   df["DISP 028"] = normalize_bool(df["DISP 028"])
 
   st.session_state.df_foto = df
+  return df
 
 load_df()
 st.write(st.session_state.df_foto)
