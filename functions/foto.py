@@ -66,19 +66,11 @@ def mostra_riscattare(sku_input):
       if riscatta != row['RISCATTARE']:
         val = [["True"]] if riscatta else [["False"]]
         sheet.update(f"L{nriga}", val)
-        df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] == "True"
-      
-      #if test:
-      #  val = ["True"]
-      #  sheet.update(f"L{nriga}", [val])
-      #  df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] == "True"
-      #  st.experimental_rerun()
-      #else:
-      #  val = ["False"]
-      #  sheet.update(f"L{nriga}", [val])
-      #  df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] == "False"
-      #  st.experimental_rerun()
-          
+        if riscatta:
+          df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] == "True"
+        else:
+          df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] == "False"
+
 
 def aggiungi_da_riscattare(sku_input):
   lista_da_riscattare = df[df["RISCATTARE"] == True]
