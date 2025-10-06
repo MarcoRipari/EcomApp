@@ -18,7 +18,7 @@ map_cod_cli = {
 def foto_dashboard():
   with st.spinner("Carico lista SKUs..."):
     load_df_foto()
-    sf = st.session_state.df_foto
+    df = st.session_state.df_foto
     
   st.title("Dashboard")
   st.write(count_da_scattare())
