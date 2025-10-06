@@ -26,7 +26,6 @@ def load_df():
   st.session_state.df_foto = df
 
 load_df()
-st.write(st.session_state.df_foto)
 
 def count_da_scattare(type="totale"):
   df = st.session_state.df_foto
@@ -52,6 +51,7 @@ def mostra_riscattare(sku_input):
   if match.empty:
     st.warning("❌ SKU non trovata o la foto non esiste ancora.")
   else:
+    df = st.session_state.df_foto
     row = match.iloc[0]
     st.session_state["riscattare"] = row['RISCATTARE']
     
@@ -77,6 +77,7 @@ def mostra_riscattare(sku_input):
       if riscatta != row['RISCATTARE']:
         val = [["True"]] if riscatta else [["False"]]
         sheet.update(f"L{nriga}", val)
+        load_df()
         if riscatta:
           df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] == "True"
         else:
