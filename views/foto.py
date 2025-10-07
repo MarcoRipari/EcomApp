@@ -19,7 +19,28 @@ def foto_dashboard():
   with st.spinner("Carico lista SKUs..."):
     load_df_foto()
     df = st.session_state.df_foto
-    
+
+  filtro_foto = st.selectbox("📌 Filtro", ["Tutti", "Solo da scattare", "Solo già scattate", "Solo da riscattare", "Disponibili da prelevare", "Disponibili per Matias", "Disponibili per Matteo"])
+  if df.empty:
+    st.warning("Nessuna SKU disponibile.")
+  else:
+    # 🔍 Applica filtro
+    if filtro_foto == "Solo da scattare":
+      df = df[df["SCATTARE"] == True]
+    elif filtro_foto == "Solo già scattate":
+      df = df[df["SCATTARE"] == False]
+    elif filtro_foto == "Solo da riscattare":
+      df = df[df["RISCATTARE"] == True]
+    elif filtro_foto == "Disponibili da prelevare":
+      df = df[df["DISP"] == True]
+    elif filtro_foto == "Disponibili per Matias":
+      df = df[df["FOTOGRAFO"] == "MATIAS"]
+    elif filtro_foto == "Disponibili per Matteo":
+      df = df[df["FOTOGRAFO"] == "MATTEO"]
+
+  df = df[["CANALE", "SKU", "COLLEZIONE", "DESCRIZIONE", "SCATTARE", "RISCATTARE", "FOTOGRAFO", "DISP", "DISP 027", "DISP 028"]]
+
+  
   st.title("Dashboard")
   st.write(f"Da scattare: {count_da_scattare()}")
   st.write(f"Dal fotograto: {count_da_scattare("consegnate")}")
