@@ -8,7 +8,7 @@ def bordered_box(title, value, emoji="✅", border_color="#ccc", bg_color="#f9f9
             border-radius: 10px;
             width: 80%;
             padding: 10px;
-            margin: 0 auto 5px 5px;
+            margin: 0 auto;
             background-color: {bg_color};
             text-align: center;
             box-shadow: 2px 2px 8px rgba(0,0,0,0.05);
