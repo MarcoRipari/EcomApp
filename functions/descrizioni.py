@@ -46,7 +46,7 @@ def check_openai_key():
         msg = str(e).lower()
         return False
 
-  @st.cache_resource
+@st.cache_resource
 def load_model():
     model = SentenceTransformer("all-MiniLM-L6-v2", use_auth_token=st.secrets["HF_TOKEN"])
     return model.to("cpu")
