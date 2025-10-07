@@ -1,3 +1,5 @@
+import streamlit as st
+
 def bordered_box(title, value, emoji="✅", border_color="#ccc", bg_color="#f9f9f9"):
     st.markdown(
         f"""
