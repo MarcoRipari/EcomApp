@@ -300,32 +300,29 @@ def genera_descrizioni():
     
             if st.button("💬 Mostra Prompt di Anteprima"):
                 with st.spinner("Generazione..."):
-                    try:
-                        if desc_sheet_id:
-                            tab_storico = f"STORICO_{marchio}"
-                            data_sheet = get_sheet(desc_sheet_id, tab_storico)
-                            df_storico = pd.DataFrame(data_sheet.get_all_records()).tail(500)
-                            if "faiss_index" not in st.session_state:
-                                index, index_df = build_faiss_index(df_storico, st.session_state.col_weights)
-                                st.session_state["faiss_index"] = (index, index_df)
-                            else:
-                                index, index_df = st.session_state["faiss_index"]
-                            simili = (
-                                retrieve_similar(test_row, index_df, index, k=k_simili, col_weights=st.session_state.col_weights)
-                                if k_simili > 0 else pd.DataFrame([])
-                            )
+                    if desc_sheet_id:
+                        tab_storico = f"STORICO_{marchio}"
+                        data_sheet = get_sheet(desc_sheet_id, tab_storico)
+                        df_storico = pd.DataFrame(data_sheet.get_all_records()).tail(500)
+                        if "faiss_index" not in st.session_state:
+                            index, index_df = build_faiss_index(df_storico, st.session_state.col_weights)
+                            st.session_state["faiss_index"] = (index, index_df)
                         else:
-                            simili = pd.DataFrame([])
-    
-                        image_url = test_row.get("Image 1", "")
-                        if use_image:
-                            caption = get_blip_caption(image_url) if image_url else None
-                        else:
-                            caption = None
-                        prompt_preview = build_unified_prompt(test_row, st.session_state.col_display_names, selected_langs, image_caption=caption, simili=simili)
-                        st.expander("📄 Prompt generato").code(prompt_preview, language="markdown")
-                    except Exception as e:
-                        st.error(f"Errore: {str(e)}")
+                            index, index_df = st.session_state["faiss_index"]
+                        simili = (
+                            retrieve_similar(test_row, index_df, index, k=k_simili, col_weights=st.session_state.col_weights)
+                            if k_simili > 0 else pd.DataFrame([])
+                        )
+                    else:
+                        simili = pd.DataFrame([])
+
+                    image_url = test_row.get("Image 1", "")
+                    if use_image:
+                        caption = get_blip_caption(image_url) if image_url else None
+                    else:
+                        caption = None
+                    prompt_preview = build_unified_prompt(test_row, st.session_state.col_display_names, selected_langs, image_caption=caption, simili=simili)
+                    st.expander("📄 Prompt generato").code(prompt_preview, language="markdown")
     
             if st.button("🧪 Esegui Benchmark FAISS"):
                 with st.spinner("In corso..."):
