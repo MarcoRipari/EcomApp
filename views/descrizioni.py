@@ -10,6 +10,7 @@ LANG_NAMES = {
 }
 LANG_LABELS = {v.capitalize(): k for k, v in LANG_NAMES.items()}
 
+desc_sheet_id = st.secrets["DESC_GSHEET_ID"]
 
 def genera_descrizioni():
     st.header("📥 Caricamento CSV dei prodotti")
