@@ -31,12 +31,15 @@ def count_da_scattare(type="totale"):
   df = st.session_state.df_foto
   scattare = len(df[df["SCATTARE"] == True])
   riscattare = len(df[df["RISCATTARE"] == True])
+  consegnate = len(df[df["CONSEGNATA"] == True])
   if type == "mancanti":
     return scattare
   elif type == "riscattare":
     return riscattare
   elif type == "totale":
     return scattare + riscattare
+  elif type == "consegnate":
+    return consegnate
 
 def mostra_riscattare(sku_input):
   df = st.session_state.df_foto
