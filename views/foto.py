@@ -25,11 +25,11 @@ def foto_dashboard():
   with col1:
       bordered_box("Da scattare", count_da_scattare(), "📸")
   with col2:
-      st.metric("🧑‍🎨 Dal fotografo", count_da_scattare("consegnate"))
+      bordered_box("Dal fotografo", count_da_scattare("consegnate"), "🧑‍🎨")
   with col3:
-      st.metric("⏳ Mancanti", count_da_scattare("mancanti"))
+      bordered_box("Mancanti", count_da_scattare("mancanti"), "⏳")
   with col4:
-      st.metric("🔁 Riscattare", count_da_scattare("riscattare"))
+      bordered_box("Riscattare", count_da_scattare("riscattare"), "🔁")
 
   if st.button("Aggiorna"):
     load_df_foto()
