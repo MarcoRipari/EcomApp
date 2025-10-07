@@ -1,7 +1,5 @@
 import streamlit as st
 
-import chardet
-
 from utils import *
 
 def genera_descrizioni():
