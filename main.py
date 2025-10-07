@@ -161,7 +161,7 @@ if page == "Homepage":
     homepage()
 
 elif page == "Catalogo - Genera descrizioni":
-    genera_descrizioni()
+    catalogo_genera_descrizioni()
 
 elif page == "Catalogo - Aggiungi ordini stagione":
     catalogo_import_ordini()
