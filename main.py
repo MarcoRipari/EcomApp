@@ -57,7 +57,6 @@ with st.sidebar:
         menu_item_list = [{"name":"Homepage", "icon":"house", "role":["guest","logistica","customer care","admin"]},
                           {"name":"Catalogo", "icon":"list", "role":["logistica","customer care","admin"]},
                           {"name":"Ordini", "icon":"truck", "role":["logistica","customer care","admin"]},
-                          {"name":"Descrizioni", "icon":"list", "role":["customer care","admin"]},
                           {"name":"Foto", "icon":"camera", "role":["logistica","customer care","admin"]},
                           {"name":"Giacenze", "icon":"box", "role":["logistica","customer care","admin"]},
                           {"name":"Ferie", "icon":"palm", "role":["admin"]},
@@ -66,8 +65,9 @@ with st.sidebar:
                           {"name":"Logout", "icon":"key", "role":["guest","logistica","customer care","admin"]}
                          ]
         
-        submenu_item_list = [{"main":"Catalogo", "name":"Trova articolo", "icon":"search", "role":["logistica","customer care","admin"]},
-                             {"main":"Catalogo", "name":"Aggiungi ordini stagione", "icon":"plus", "role":["logistica","customer care","admin"]},
+        submenu_item_list = [{"main":"Catalogo", "name":"Aggiungi ordini stagione", "icon":"plus", "role":["logistica","customer care","admin"]},
+                             {"main":"Catalogo", "name":"Genera descrizioni", "icon":"list", "role":["customer care","admin"]},
+                             {"main":"Catalogo", "name":"Trova articolo", "icon":"search", "role":["logistica","customer care","admin"]},
                              {"main":"Ordini", "name":"Dashboard", "icon":"bar-chart", "role":["admin"]},
                              {"main":"Ordini", "name":"Importa", "icon":"plus", "role":["admin"]},
                              {"main":"Foto", "name":"Dashboard", "icon":"gear", "role":["guest","logistica","customer care","admin"]},
