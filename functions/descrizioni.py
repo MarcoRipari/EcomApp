@@ -182,7 +182,7 @@ def get_blip_caption(image_url: str) -> str:
 # ---------------------------
 # 🧠 Prompting e Generazione
 # ---------------------------
-def build_unified_prompt(row, col_display_names, selected_langs, image_caption=None, simili=None):
+def build_unified_prompt(row, col_display_names, selected_langs, selected_tones, image_caption=None, simili=None):
     # Costruzione scheda tecnica
     fields = []
     for col in col_display_names:
