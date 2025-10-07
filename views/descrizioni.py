@@ -2,6 +2,15 @@ import streamlit as st
 
 from utils import *
 
+LANG_NAMES = {
+    "IT": "italiano",
+    "EN": "inglese",
+    "FR": "francese",
+    "DE": "tedesco"
+}
+LANG_LABELS = {v.capitalize(): k for k, v in LANG_NAMES.items()}
+
+
 def genera_descrizioni():
     st.header("📥 Caricamento CSV dei prodotti")
     
