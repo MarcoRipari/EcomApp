@@ -2,7 +2,7 @@ import streamlit as st
 
 from utils import *
 
-load_funcitons_from("functions", global())
+load_functions_from("functions", global())
 
 LANG_NAMES = {
     "IT": "italiano",
