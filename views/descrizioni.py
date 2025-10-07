@@ -214,7 +214,7 @@ def genera_descrizioni():
                         for _, row in df_input_to_generate.iterrows():
                             simili = retrieve_similar(row, index_df, index, k=k_simili, col_weights=st.session_state.col_weights) if k_simili > 0 else pd.DataFrame([])
                             caption = get_blip_caption(row.get("Image 1", "")) if use_image and row.get("Image 1", "") else None
-                            prompt = build_unified_prompt(row, st.session_state.col_display_names, selected_langs, selected_tones, image_caption=caption, simili=simili)
+                            prompt = build_unified_prompt(row, st.session_state.col_display_names, selected_langs, selected_tones, desc_lunga_length, desc_breve_length, image_caption=caption, simili=simili)
                             all_prompts.append(prompt)
             
                     with st.spinner("🚀 Generazione asincrona in corso..."):
@@ -324,7 +324,7 @@ def genera_descrizioni():
                             caption = get_blip_caption(image_url) if image_url else None
                         else:
                             caption = None
-                        prompt_preview = build_unified_prompt(test_row, st.session_state.col_display_names, selected_langs, selected_tones, image_caption=caption, simili=simili)
+                        prompt_preview = build_unified_prompt(test_row, st.session_state.col_display_names, selected_langs, selected_tones, desc_lunga_length, desc_breve_length, image_caption=caption, simili=simili)
                         st.expander("📄 Prompt generato").code(prompt_preview, language="markdown")
                     except Exception as e:
                         st.error(f"Errore: {str(e)}")
