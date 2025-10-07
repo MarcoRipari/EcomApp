@@ -19,6 +19,8 @@ def foto_dashboard():
   with st.spinner("Carico lista SKUs..."):
     load_df_foto()
     df = st.session_state.df_foto
+
+  st.session_state.df_foto_filtro = "Tutti"
   
   st.title("Dashboard")
   col1, col2, col3, col4 = st.columns(4)
@@ -34,23 +36,29 @@ def foto_dashboard():
   if st.button("Aggiorna"):
     load_df_foto()
       
-  filtro_foto = st.selectbox("📌 Filtro", ["Tutti", "Solo da scattare", "Solo già scattate", "Solo da riscattare", "Disponibili da prelevare", "Disponibili per Matias", "Disponibili per Matteo"])
+  filtro_foto = st.selectbox("📌 Filtro", ["Tutti", "Solo da scattare", "Solo già scattate", "Solo da riscattare", "Disponibili da prelevare", "Disponibili per Matias", "Disponibili per Matteo"], key=st.session_state.df_foto_filtro)
   if df.empty:
     st.warning("Nessuna SKU disponibile.")
   else:
     # 🔍 Applica filtro
     if filtro_foto == "Solo da scattare":
       df = df[df["SCATTARE"] == True]
+      st.session_state.df_foto_filtro =  "Solo da scattare"
     elif filtro_foto == "Solo già scattate":
       df = df[df["SCATTARE"] == False]
+      st.session_state.df_foto_filtro = "Solo già scattate"
     elif filtro_foto == "Solo da riscattare":
       df = df[df["RISCATTARE"] == True]
+      st.session_state.df_foto_filtro = "Solo da riscattare"
     elif filtro_foto == "Disponibili da prelevare":
       df = df[df["DISP"] == True]
+      st.session_state.df_foto_filtro = "Disponibili da prelevare"
     elif filtro_foto == "Disponibili per Matias":
       df = df[df["FOTOGRAFO"] == "MATIAS"]
+      st.session_state.df_foto_filtro = "Disponibili per Matias"
     elif filtro_foto == "Disponibili per Matteo":
       df = df[df["FOTOGRAFO"] == "MATTEO"]
+      st.session_state.df_foto_filtro = "Disponibili per Matteo"
 
   df = df[["CANALE", "SKU", "COLLEZIONE", "DESCRIZIONE", "SCATTARE", "RISCATTARE", "FOTOGRAFO", "DISP", "DISP 027", "DISP 028"]]
   st.write(df)
