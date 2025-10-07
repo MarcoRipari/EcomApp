@@ -300,7 +300,7 @@ def genera_descrizioni():
             if st.button("💬 Mostra Prompt di Anteprima"):
                 with st.spinner("Generazione..."):
                     try:
-                        if sheet_id:
+                        if desc_sheet_id:
                             tab_storico = f"STORICO_{marchio}"
                             data_sheet = get_sheet(desc_sheet_id, tab_storico)
                             df_storico = pd.DataFrame(data_sheet.get_all_records()).tail(500)
