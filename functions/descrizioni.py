@@ -31,23 +31,6 @@ LANG_LABELS = {v.capitalize(): k for k, v in LANG_NAMES.items()}
 
 desc_sheet_id = st.secrets['DESC_GSHEET_ID']
 
-# ---------------------------
-# 🔐 Setup API keys and credentials
-# ---------------------------
-openai.api_key = st.secrets["OPENAI_API_KEY"]
-
-def check_openai_key():
-    try:
-        openai.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": "test"}],
-            max_tokens=1
-        )
-        return True
-    except Exception as e:  
-        msg = str(e).lower()
-        return False
-
 @st.cache_resource
 def load_model():
     model = SentenceTransformer("all-MiniLM-L6-v2", use_auth_token=st.secrets["HF_TOKEN"])
