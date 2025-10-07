@@ -26,6 +26,9 @@ def foto_dashboard():
   st.write(f"Riscattare: {count_da_scattare("riscattare")}")
 
   st.write(df)
+
+  if st.button("Reload"):
+    load_df_foto()
   
 
 def foto_riscattare():
