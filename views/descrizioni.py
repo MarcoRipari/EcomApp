@@ -6,7 +6,7 @@ def genera_descrizioni():
     uploaded = st.file_uploader("Carica un file CSV", type="csv")
     
     if uploaded:
-        df_input = read_csv_auto_encoding(uploaded)
+        df_input = read_csv(uploaded)
         st.session_state["df_input"] = df_input
          # ✅ Inizializza variabili di stato se non esistono
         if "col_weights" not in st.session_state:
