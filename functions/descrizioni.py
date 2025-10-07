@@ -19,6 +19,8 @@ import faiss
 from sentence_transformers import SentenceTransformer
 from transformers import BlipProcessor, BlipForConditionalGeneration
 
+from utils import *
+
 LANG_NAMES = {
     "IT": "italiano",
     "EN": "inglese",
