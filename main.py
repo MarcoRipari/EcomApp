@@ -71,7 +71,6 @@ with st.sidebar:
                              {"main":"Ordini", "name":"Dashboard", "icon":"bar-chart", "role":["admin"]},
                              {"main":"Ordini", "name":"Importa", "icon":"plus", "role":["admin"]},
                              {"main":"Foto", "name":"Dashboard", "icon":"gear", "role":["guest","logistica","customer care","admin"]},
-                             {"main":"Foto", "name":"Import ordini stagione", "icon":"gear", "role":["guest","logistica","customer care","admin"]},
                              {"main":"Foto", "name":"Riscatta SKU", "icon":"repeat", "role":["guest","logistica","customer care","admin"]},
                              {"main":"Foto", "name":"Aggiungi SKUs", "icon":"plus", "role":["guest","logistica","customer care","admin"]},
                              {"main":"Foto", "name":"Storico", "icon":"book", "role":["guest","logistica","customer care","admin"]},
@@ -161,11 +160,11 @@ with st.sidebar:
 if page == "Homepage":
     homepage()
 
+elif page == "Catalogo - Aggiungi ordini stagione":
+    catalogo_import_ordini()
+    
 elif page == "Foto - Dashboard":
     foto_dashboard()
 
 elif page == "Foto - Riscatta SKU":
     foto_riscattare()
-    
-elif page == "Foto - Import ordini stagione":
-    foto_import_ordini()
