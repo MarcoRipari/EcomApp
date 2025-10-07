@@ -19,7 +19,21 @@ def foto_dashboard():
   with st.spinner("Carico lista SKUs..."):
     load_df_foto()
     df = st.session_state.df_foto
+  
+  st.title("Dashboard")
+  col1, col2, col3, col4 = st.columns(4)
+  with col1:
+      st.metric("📸 Da scattare", count_da_scattare())
+  with col2:
+      st.metric("🧑‍🎨 Dal fotografo", count_da_scattare("consegnate"))
+  with col3:
+      st.metric("⏳ Mancanti", count_da_scattare("mancanti"))
+  with col4:
+      st.metric("🔁 Riscattare", count_da_scattare("riscattare"))
 
+  if st.button("Aggiorna"):
+    load_df_foto()
+      
   filtro_foto = st.selectbox("📌 Filtro", ["Tutti", "Solo da scattare", "Solo già scattate", "Solo da riscattare", "Disponibili da prelevare", "Disponibili per Matias", "Disponibili per Matteo"])
   if df.empty:
     st.warning("Nessuna SKU disponibile.")
@@ -39,18 +53,7 @@ def foto_dashboard():
       df = df[df["FOTOGRAFO"] == "MATTEO"]
 
   df = df[["CANALE", "SKU", "COLLEZIONE", "DESCRIZIONE", "SCATTARE", "RISCATTARE", "FOTOGRAFO", "DISP", "DISP 027", "DISP 028"]]
-
-  
-  st.title("Dashboard")
-  st.write(f"Da scattare: {count_da_scattare()}")
-  st.write(f"Dal fotograto: {count_da_scattare("consegnate")}")
-  st.write(f"Mancanti: {count_da_scattare("mancanti")}")
-  st.write(f"Riscattare: {count_da_scattare("riscattare")}")
-
   st.write(df)
-
-  if st.button("Aggiorna"):
-    load_df_foto()
   
 
 def foto_riscattare():
