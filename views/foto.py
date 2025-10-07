@@ -23,7 +23,7 @@ def foto_dashboard():
   st.title("Dashboard")
   col1, col2, col3, col4 = st.columns(4)
   with col1:
-      bordered_box("📸 Da scattare", count_da_scattare())
+      bordered_box("Da scattare", count_da_scattare(), "📸")
   with col2:
       st.metric("🧑‍🎨 Dal fotografo", count_da_scattare("consegnate"))
   with col3:
