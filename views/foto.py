@@ -28,7 +28,7 @@ def foto_dashboard():
 
   st.write(df)
 
-  if st.button("Reload"):
+  if st.button("Aggiorna"):
     load_df_foto()
   
 
