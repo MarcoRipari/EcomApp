@@ -22,6 +22,7 @@ def foto_dashboard():
     
   st.title("Dashboard")
   st.write(f"Da scattare: {count_da_scattare()}")
+  st.write(f"Dal fotograto: {count_da_scattare("consegnate")}")
   st.write(f"Mancanti: {count_da_scattare("mancanti")}")
   st.write(f"Riscattare: {count_da_scattare("riscattare")}")
 
