@@ -6,6 +6,7 @@ def bordered_box(title, value, emoji="✅", border_color="#ccc", bg_color="#f9f9
         <div style="
             border: 2px solid {border_color};
             border-radius: 10px;
+            width: auto;
             padding: 10px;
             background-color: {bg_color};
             text-align: center;
