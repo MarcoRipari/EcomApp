@@ -1,4 +1,5 @@
 import streamlit as st
+import pandas as pd
 import chardet
 
 def read_csv(uploaded_file, separatore=None):
