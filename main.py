@@ -160,11 +160,11 @@ with st.sidebar:
 if page == "Homepage":
     homepage()
 
-elif page == "Catalogo - Genera descrizioni":
-    genera_descrizioni()
-
 elif page == "Catalogo - Aggiungi ordini stagione":
     catalogo_import_ordini()
+    
+elif page == "Catalogo - Genera descrizioni":
+    genera_descrizioni()
     
 elif page == "Foto - Dashboard":
     foto_dashboard()
