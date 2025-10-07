@@ -9,7 +9,7 @@ def bordered_box(title, value, emoji="✅", border_color="#ccc", bg_color="#f9f9
             width: 80%;
             padding: 10px;
             margin: 0 auto;
-            margin-bottom: 5px;
+            margin-bottom: 15px;
             background-color: {bg_color};
             text-align: center;
             box-shadow: 2px 2px 8px rgba(0,0,0,0.05);
