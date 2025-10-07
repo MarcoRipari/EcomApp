@@ -1,5 +1,7 @@
 import streamlit as st
 
+from utils import *
+
 def genera_descrizioni():
     st.header("📥 Caricamento CSV dei prodotti")
     
