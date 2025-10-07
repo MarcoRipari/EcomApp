@@ -6,7 +6,7 @@ from utils import *
 
 load_functions_from("functions", globals())
 
-foto_sheet_id = "1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4"
+foto_sheet_id = st.secrets["FOTO_GSHEET_ID"]
 sheet_ordini = get_sheet(foto_sheet_id, "ORDINI")
 
 map_cod_cli = {
