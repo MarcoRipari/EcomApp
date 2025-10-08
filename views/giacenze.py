@@ -116,7 +116,7 @@ def giacenze_importa():
 
     df_input = st.session_state.df_input
 
-    default_sheet_id = foto_sheet_id
+    default_sheet_id = giacenze_sheet_id
     selected_sheet_id = st.text_input("Inserisci ID del Google Sheet", value=giacenze_sheet_id)
 
     col1, col2, col3, col4 = st.columns(4)
