@@ -3,7 +3,7 @@ from streamlit_option_menu import option_menu
 
 from utils import *
 
-
+load_functions_from("functions", globals())
 
 anagrafica_sheet_id = st.secrets["ANAGRAFICA_GSHEET_ID"]
 giacenze_sheet_id = st.secrets["GIACENZE_GSHEET_ID"]
