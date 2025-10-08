@@ -57,8 +57,8 @@ with st.sidebar:
         menu_item_list = [{"name":"Homepage", "icon":"house", "role":["guest","logistica","customer care","admin"]},
                           {"name":"Catalogo", "icon":"list", "role":["logistica","customer care","admin"]},
                           {"name":"Ordini", "icon":"truck", "role":["logistica","customer care","admin"]},
-                          {"name":"Foto", "icon":"camera", "role":["logistica","customer care","admin"]},
                           {"name":"Giacenze", "icon":"box", "role":["logistica","customer care","admin"]},
+                          {"name":"Foto", "icon":"camera", "role":["logistica","customer care","admin"]},
                           {"name":"Ferie", "icon":"palm", "role":["admin"]},
                           {"name":"Admin", "icon":"gear", "role":["admin"]},
                           {"name":"Test", "icon":"gear", "role":["admin"]},
@@ -70,16 +70,15 @@ with st.sidebar:
                              {"main":"Catalogo", "name":"Trova articolo", "icon":"search", "role":["logistica","customer care","admin"]},
                              {"main":"Ordini", "name":"Dashboard", "icon":"bar-chart", "role":["admin"]},
                              {"main":"Ordini", "name":"Importa", "icon":"plus", "role":["admin"]},
+                             {"main":"Giacenze", "name":"Importa", "icon":"download", "role":["guest","logistica","customer care","admin"]},
+                             {"main":"Giacenze", "name":"Per corridoio", "icon":"1-circle", "role":["guest","logistica","admin"]},
+                             {"main":"Giacenze", "name":"Per corridoio/marchio", "icon":"2-circle", "role":["guest","logistica","admin"]},
+                             {"main":"Giacenze", "name":"Aggiorna anagrafica", "icon":"refresh", "role":["guest","logistica","customer care","admin"]},
                              {"main":"Foto", "name":"Dashboard", "icon":"gear", "role":["guest","logistica","customer care","admin"]},
                              {"main":"Foto", "name":"Riscatta SKU", "icon":"repeat", "role":["guest","logistica","customer care","admin"]},
                              {"main":"Foto", "name":"Aggiungi SKUs", "icon":"plus", "role":["guest","logistica","customer care","admin"]},
                              {"main":"Foto", "name":"Storico", "icon":"book", "role":["guest","logistica","customer care","admin"]},
                              {"main":"Foto", "name":"Aggiungi prelevate", "icon":"hand-index", "role":["guest","logistica","customer care","admin"]},
-                             {"main":"Giacenze", "name":"Importa", "icon":"download", "role":["guest","logistica","customer care","admin"]},
-                             {"main":"Giacenze", "name":"Per corridoio", "icon":"1-circle", "role":["guest","logistica","admin"]},
-                             {"main":"Giacenze", "name":"Per corridoio/marchio", "icon":"2-circle", "role":["guest","logistica","admin"]},
-                             {"main":"Giacenze", "name":"Aggiorna anagrafica", "icon":"refresh", "role":["guest","logistica","customer care","admin"]},
-                             {"main":"Giacenze", "name":"Old import", "icon":"download", "role":["admin"]},
                              {"main":"Ferie", "name":"Report", "icon":"list", "role":["admin"]},
                              {"main":"Ferie", "name":"Aggiungi ferie", "icon":"plus", "role":["admin"]},
                              {"main":"Admin", "name":"Aggiungi utente", "icon":"plus", "role":["admin"]}
@@ -165,6 +164,9 @@ elif page == "Catalogo - Aggiungi ordini stagione":
     
 elif page == "Catalogo - Genera descrizioni":
     genera_descrizioni()
+
+elif page == "Giacenze - Importa":
+    giacenze_importa()
     
 elif page == "Foto - Dashboard":
     foto_dashboard()
