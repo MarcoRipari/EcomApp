@@ -157,7 +157,7 @@ def giacenze_importa():
         # --- Destinazione GSheet ---       
         with col2:
             if st.button("Importa Giacenze"):
-                sheet_upload_giacenze = get_sheet(selected_sheet_id, "GIACENZE")
+                sheet_upload_giacenze = get_sheet(selected_sheet_id, "UBIC")
                 sheet_upload_pim = get_sheet(selected_sheet_id, "PIM")
                 
                 with st.spinner("Aggiorno giacenze su GSheet..."):
@@ -191,7 +191,7 @@ def giacenze_importa():
                         
         with col3:
             if st.button("Importa Giacenze & Anagrafica"):
-                sheet_upload_giacenze = get_sheet(selected_sheet_id, "GIACENZE")
+                sheet_upload_giacenze = get_sheet(selected_sheet_id, "UBIC")
                 sheet_upload_pim = get_sheet(selected_sheet_id, "PIM")
                 sheet_upload_anagrafica = get_sheet(selected_sheet_id, "ANAGRAFICA")
                 sheet_anagrafica = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
