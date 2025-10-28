@@ -21,7 +21,7 @@ def load_df_foto():
   df["RISCATTARE"] = normalize_bool(df["RISCATTARE"])
   df["DISP"] = normalize_bool(df["DISP"])
   df["DISP 027"] = normalize_bool(df["DISP 027"])
-  df["DISP 028"] = normalize_bool(df["DISP 028"])
+  df["DISP 012"] = normalize_bool(df["DISP 012"])
 
   st.session_state.df_foto = df
 
