@@ -60,7 +60,7 @@ def foto_dashboard():
       df = df[df["FOTOGRAFO"] == "MATTEO"]
       st.session_state.df_foto_filtro = "Disponibili per Matteo"
 
-  df = df[["CANALE", "SKU", "COLLEZIONE", "DESCRIZIONE", "SCATTARE", "RISCATTARE", "FOTOGRAFO", "DISP", "DISP 027", "DISP 028"]]
+  df = df[["CANALE", "SKU", "COLLEZIONE", "DESCRIZIONE", "SCATTARE", "RISCATTARE", "FOTOGRAFO", "DISP", "DISP 027", "DISP 012"]]
   st.write(df)
   
 
