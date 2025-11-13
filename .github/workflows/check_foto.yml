@@ -11,7 +11,7 @@ jobs:
 
     steps:
       - name: ⬇️ Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: 🐍 Setup Python
         uses: actions/setup-python@v4
@@ -44,4 +44,10 @@ jobs:
           DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
           DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
           DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
-        run: python scripts/workflow_check_foto.py
+        run: python scripts/workflow_check_foto.py > output.txt
+
+      - name: Salva output come artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: log-output
+          path: output.txt
