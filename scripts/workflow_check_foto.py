@@ -12,6 +12,8 @@ from typing import List, Dict
 from google.oauth2.service_account import Credentials
 import dropbox
 from dropbox.files import WriteMode
+from skimage.metrics import structural_similarity as ssim
+import numpy as np
 
 # -------------------------------
 # CONFIG
@@ -59,6 +61,23 @@ def images_are_equal(img1: Image.Image, img2: Image.Image, threshold: int = 0) -
     hash2 = imagehash.phash(img2)
     return hash1 - hash2 <= threshold  # soglia 0 = identiche, 1-2 = molto simili
 
+def hashdiff(img1: Image.Image, img2: Image.Image):
+    hash1 = imagehash.phash(img1)
+    hash2 = imagehash.phash(img2)
+    return hash1 - hash2
+
+def ssim_similarity(img1, img2):
+    img1 = np.array(img1.resize((256, 256)).convert("L"))
+    img2 = np.array(img2.resize((256, 256)).convert("L"))
+    score, _ = ssim(img1, img2, full=True)
+    return score
+
+def mse(img1, img2):
+    """Mean Squared Error tra due immagini."""
+    arr1 = np.array(img1.resize((256, 256)).convert("L"))
+    arr2 = np.array(img2.resize((256, 256)).convert("L"))
+    return np.mean((arr1 - arr2) ** 2)
+
 def get_dropbox_latest_image(sku: str) -> (str, Image.Image):
     folder_path = f"/repository/{sku}"
     try:
@@ -73,9 +92,9 @@ def get_dropbox_latest_image(sku: str) -> (str, Image.Image):
         latest = jpgs[0]
         _, resp = dbx.files_download(latest.path_display)
         img = Image.open(io.BytesIO(resp.content)).convert("RGB")
-        return latest.name, img
+        return latest.name, latest.client_modified.strftime("%d%m%Y"), img
     except dropbox.exceptions.ApiError:
-        return None, None
+        return None, None, None
 
 def save_image_to_dropbox(sku: str, filename: str, image: Image.Image):
     folder_path = f"/repository/{sku}"
@@ -92,7 +111,7 @@ def save_image_to_dropbox(sku: str, filename: str, image: Image.Image):
 
     dbx.files_upload(img_bytes.read(), file_path, mode=WriteMode("overwrite"))
 
-async def check_photo(sku: str, riscattare: bool, sem: asyncio.Semaphore, session: aiohttp.ClientSession) -> (str, bool, bool):
+async def check_photo(sku: str, riscattare: str, sem: asyncio.Semaphore, session: aiohttp.ClientSession) -> (str, bool, bool):
     url = f"https://repository.falc.biz/fal001{sku.lower()}-1.jpg"
     async with sem:
         try:
@@ -101,14 +120,26 @@ async def check_photo(sku: str, riscattare: bool, sem: asyncio.Semaphore, sessio
                     img_bytes = await get_resp.read()
                     new_img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
                     foto_salvata = False
+                    
+                    if riscattare == "true" or riscattare == "check":
+                        old_name, old_date, old_img = get_dropbox_latest_image(sku)
+                        if old_img:
+                            hash_score = hashdiff(new_img, old_img)
+                            ssim_score = ssim_similarity(new_img, old_img)
+                            mse_score = mse(new_img, old_img)
+                            print(f"{sku} - HASHDIFF score: {hash_score} - SSIM score: {ssim_score} - MSE score: {mse_score}")
+                        else:
+                            hash_score = 5
+                            ssim_score = 0
+                            mse_score = 100
+                            print(f"{sku} - Foto sku non trovata in repository")
 
-                    if riscattare:
-                        old_name, old_img = get_dropbox_latest_image(sku)
-                        if not old_img or not images_are_equal(new_img, old_img):
+                        #if not old_img or not images_are_equal(new_img, old_img) and score < 0.98:
+                        if not old_img or hash_score >= 0 and ssim_score < 0.998 and mse_score > 1.5:
                             if old_name:
-                                date_suffix = datetime.now().strftime("%d%m%Y")
+                                #date_suffix = datetime.now().strftime("%d%m%Y")
                                 ext = old_name.split(".")[-1]
-                                new_old_name = f"{sku}_{date_suffix}.{ext}"
+                                new_old_name = f"{sku}_{old_date}.{ext}"
                                 try:
                                     dbx.files_move_v2(
                                         from_path=f"/repository/{sku}/{old_name}",
@@ -137,7 +168,7 @@ async def process_skus(data_rows: List[List[str]], sku_idx: int, riscattare_idx:
         for i, row in enumerate(data_rows):
             if len(row) > max(sku_idx, riscattare_idx):
                 sku = row[sku_idx].strip()
-                riscattare = row[riscattare_idx].strip().lower() == "true"
+                riscattare = row[riscattare_idx].strip().lower()
                 if sku:
                     tasks[sku] = asyncio.create_task(check_photo(sku, riscattare, sem, session))
         for sku, task in tasks.items():
@@ -180,6 +211,7 @@ async def main():
     try:
         sku_idx = header.index("SKU")
         riscattare_idx = header.index("RISCATTARE")
+        consegnata_idx = header.index("CONSEGNATA")
     except ValueError as e:
         print(f"❌ Colonna mancante: {e}")
         return
@@ -197,10 +229,24 @@ async def main():
         output_col_k.append([str(mancante)])
     
         # Imposta RISCATTARE = FALSE solo se l'immagine è stata salvata effettivamente
-        if salvata and len(row) > riscattare_idx and row[riscattare_idx].strip().lower() == "true":
-            output_col_l.append(["FALSE"])
+        if salvata and len(row) > riscattare_idx:
+            if row[riscattare_idx].strip().lower() == "true":
+                if row[consegnata_idx].strip().lower() == "true":
+                    output_col_l.append(["Check"])
+                else:
+                    output_col_l.append(["True"])
+            elif row[riscattare_idx].strip().lower() == "check":
+                output_col_l.append([""])
         else:
-            output_col_l.append([""])
+            if row[riscattare_idx].strip().lower() == "true":
+                if row[consegnata_idx].strip().lower() == "true":
+                    output_col_l.append(["Check"])
+                else:
+                    output_col_l.append(["True"])
+            elif row[riscattare_idx].strip().lower() == "check":
+                output_col_l.append(["Check"])
+            else:
+                output_col_l.append([""])
     
     # Aggiorna le due colonne nel foglio
     sheet.batch_update([
