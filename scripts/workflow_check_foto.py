@@ -14,6 +14,7 @@ import dropbox
 from dropbox.files import WriteMode
 from skimage.metrics import structural_similarity as ssim
 import numpy as np
+import time
 
 # -------------------------------
 # CONFIG
@@ -195,14 +196,28 @@ async def retry_until_complete(data_rows, sku_idx, riscattare_idx) -> (Dict[str,
         retries += 1
     return checked, foto_salvate_totali
 
+def load_sheet_with_retry(sheet_id, tab_name, min_rows=10, max_retries=5, delay=15):
+    """Carica il foglio, aspettando che IMPORTRANGE finisca di aggiornarsi."""
+    for attempt in range(max_retries):
+        sheet = get_sheet(sheet_id, tab_name)
+        all_data = sheet.get_all_values()
+        num_rows = len(all_data)
+        #print(f"📄 Tentativo {attempt+1}: trovate {num_rows} righe")
+        if num_rows >= min_rows:
+            return all_data
+        #print(f"⚠️ IMPORTRANGE non completo, aspetto {delay}s...")
+        time.sleep(delay)
+    #print("❌ Dati non completi dopo vari tentativi.")
+    return all_data
+    
 # -------------------------------
 # MAIN
 # -------------------------------
 async def main():
     sheet = get_sheet(SHEET_ID, FOGLIO)
-    all_data = sheet.get_all_values()
+    all_data = load_sheet_with_retry(SHEET_ID, FOGLIO, min_rows=3, max_retries=6, delay=20)
     if len(all_data) < 3:
-        print("❌ Foglio vuoto.")
+        print("❌ Foglio non caricato completamente anche dopo il retry.")
         return
 
     header = all_data[0]
