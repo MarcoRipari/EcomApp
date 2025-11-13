@@ -7,3 +7,5 @@ google-api-python-client
 pillow
 dropbox
 imagehash
+scikit-image
+numpy
