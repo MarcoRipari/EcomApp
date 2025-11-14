@@ -23,19 +23,32 @@ def bordered_box(title, value, emoji="✅", border_color="#ccc", bg_color="#f9f9
 
 import streamlit as st
 
-def bordered_box_fotografi(title, data_dict, emoji="📥"):
-    box = st.container()
-    with box:
-        st.markdown(f"<div class='bordered-box'>", unsafe_allow_html=True)
+# CSS per il box
+st.markdown("""
+<style>
+.box-style {
+    border: 2px solid #ccc;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    background-color: #f9f9f9;
+    box-shadow: 2px 2px 8px rgba(0,0,0,0.05);
+}
+</style>
+""", unsafe_allow_html=True)
 
-        # TITOLO
+def bordered_box_fotografi(title, data_dict, emoji="📥"):
+    with st.container():
+        st.markdown(f"<div class='box-style'>", unsafe_allow_html=True)
+
+        # Titolo
         st.markdown(
             f"<div style='text-align:center; font-size:1.4rem; font-weight:700;'>{emoji} {title}</div>",
             unsafe_allow_html=True
         )
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # COLONNE
+        # Colonne
         labels = list(data_dict.keys())
         dfs = list(data_dict.values())
         cols = st.columns(len(labels))
@@ -55,4 +68,3 @@ def bordered_box_fotografi(title, data_dict, emoji="📥"):
                 )
 
         st.markdown("</div>", unsafe_allow_html=True)
-
