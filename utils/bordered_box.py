@@ -1,4 +1,7 @@
 import streamlit as st
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
 
 def bordered_box(title, value, emoji="✅", border_color="#ccc", bg_color="#f9f9f9"):
     st.markdown(
