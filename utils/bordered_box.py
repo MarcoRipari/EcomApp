@@ -51,13 +51,16 @@ f'</div>'
 
 
 
-def load_css():
+
+
+def bordered_box_fotografi(title, data_dict, genera_pdf_fn, emoji="📥"):
+    # CSS per il bordo del container
     st.markdown("""
     <style>
-    .border-box {
+    .stBorderedContainer {
         border: 2px solid #ccc;
         border-radius: 12px;
-        padding: 20px 20px 10px 20px;
+        padding: 20px;
         background-color: #f9f9f9;
         box-shadow: 2px 2px 8px rgba(0,0,0,0.05);
         margin-bottom: 20px;
@@ -65,45 +68,30 @@ def load_css():
     </style>
     """, unsafe_allow_html=True)
 
-
-def bordered_box_fotografi(title, data_dict, genera_pdf_fn, emoji="📥"):
-
+    # container Streamlit
     container = st.container()
-    with container:
+    container.markdown('<div class="stBorderedContainer">', unsafe_allow_html=True)
 
-        # --- TITOLO + BORDO (HTML) ---
-        st.markdown(f"""
-        <div class="border-box">
-            <div style='text-align:center; font-size:1.4rem; font-weight:700; margin-bottom:15px;'>
-                {emoji} {title}
-            </div>
-        """, unsafe_allow_html=True)
+    # titolo
+    st.markdown(f"<h3 style='text-align:center'>{emoji} {title}</h3>", unsafe_allow_html=True)
 
-        # --- COLONNE ---
-        labels = list(data_dict.keys())
-        dfs = list(data_dict.values())
-        cols = st.columns(len(labels))
+    # colonne
+    labels = list(data_dict.keys())
+    dfs = list(data_dict.values())
+    cols = st.columns(len(labels))
 
-        for col, label, df in zip(cols, labels, dfs):
-            with col:
-                st.markdown(f"### {label}")
-                st.markdown(
-                    f"<div style='font-size:2rem; font-weight:bold; text-align:center;'>{df.shape[0]}</div>",
-                    unsafe_allow_html=True
-                )
+    for col, label, df in zip(cols, labels, dfs):
+        with col:
+            st.markdown(f"### {label}")
+            st.markdown(f"<div style='font-size:2rem; font-weight:bold; text-align:center'>{df.shape[0]}</div>", unsafe_allow_html=True)
+            st.download_button(
+                label="📥",
+                data=genera_pdf_fn(df),
+                file_name=f"lista_{title}_{label}.pdf",
+                mime="application/pdf",
+                disabled=df.empty,
+                key=f"{title}_{label}"
+            )
 
-                st.download_button(
-                    label="📥",
-                    data=genera_pdf_fn(df),
-                    file_name=f"lista_{title}_{label}.pdf",
-                    mime="application/pdf",
-                    disabled=df.empty,
-                    key=f"{title}_{label}"
-                )
+    container.markdown('</div>', unsafe_allow_html=True)
 
-        # --- CHIUSURA DEL DIV ---
-        st.markdown("</div>", unsafe_allow_html=True)
-
-
-        # Chiude il box (HTML)
-        st.markdown("</div>", unsafe_allow_html=True)
