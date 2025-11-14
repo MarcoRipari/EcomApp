@@ -35,7 +35,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-def bordered_box_multi(title, data_dict, emoji="📥"):
+def bordered_box_fotografi(title, data_dict, emoji="📥"):
     box = st.container()
     with box:
         st.markdown(f"<div class='bordered-box'>", unsafe_allow_html=True)
