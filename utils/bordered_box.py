@@ -24,7 +24,6 @@ def bordered_box(title, value, emoji="✅", border_color="#ccc", bg_color="#f9f9
 
 def bordered_box_fotografi(title, data_dict, emoji="📥", border_color="#ccc", bg_color="#f9f9f9"):
 
-    # Genero le colonne HTML
     cols_html = ""
     for label, df in data_dict.items():
         cols_html += f"""
@@ -34,27 +33,20 @@ def bordered_box_fotografi(title, data_dict, emoji="📥", border_color="#ccc", 
 </div>
 """
 
-    # HTML del box SENZA indentazione
-    html = f"""
-<div style="
-    border:2px solid {border_color};
-    border-radius:10px;
-    width:80%;
-    padding:10px;
-    margin:0 auto 15px;
-    background-color:{bg_color};
-    text-align:center;
-    box-shadow:2px 2px 8px rgba(0,0,0,0.05);
-">
-    <div style="font-size:1.3rem; font-weight:700; margin-bottom:10px;">
-        {emoji} {title}
-    </div>
-
-    <div style="display:flex; justify-content:space-around;">
-        {cols_html}
-    </div>
-</div>
-"""
+    html = (
+f'<div style="border:2px solid {border_color};'
+f'border-radius:10px;'
+f'width:80%;'
+f'padding:10px;'
+f'margin:0 auto 15px;'
+f'background-color:{bg_color};'
+f'text-align:center;'
+f'box-shadow:2px 2px 8px rgba(0,0,0,0.05);">'
+f'<div style="font-size:1.3rem; font-weight:700; margin-bottom:10px;">{emoji} {title}</div>'
+f'<div style="display:flex; justify-content:space-around;">{cols_html}</div>'
+f'</div>'
+    )
 
     st.markdown(html, unsafe_allow_html=True)
+
 
