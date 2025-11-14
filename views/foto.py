@@ -19,7 +19,7 @@ def foto_dashboard():
   with st.spinner("Carico lista SKUs..."):
     load_df_foto()
     df = st.session_state.df_foto
-
+    
   st.session_state.df_foto_filtro = "Tutti"
   
   st.title("Dashboard")
