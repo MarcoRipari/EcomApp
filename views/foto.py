@@ -33,7 +33,18 @@ def foto_dashboard():
   with col4:
       bordered_box("Riscattare", count_da_scattare("riscattare"), "🔁")
 
-  bordered_box("MATIAS", "1", "📥")
+  disp = df[df["DISP"] == True]
+  disp_027 = df[df["DISP 027"] == True]
+  disp_012 = df[df["DISP 012"] == True]
+  download_col1,download_col2 = st.columns(2)
+  with download_col1:
+    disp_matias = disp[disp["FOTOGRAFO"] == "MATIAS"]
+    disp_matias = disp_matias[["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
+    bordered_box("MATIAS", disp_matias.shape[0], "📥")
+  with download_col2:
+    disp_matias = df[(df["DISP"] == True) & (df["FOTOGRAFO"] == "MATTEO")]
+    bordered_box("MATTEO", "1", "📥")
+      
   
   if st.button("Aggiorna"):
     load_df_foto()
