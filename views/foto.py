@@ -42,7 +42,7 @@ def foto_dashboard():
     disp_matias_027 = disp_027[disp_027["FOTOGRAFO"] == "MATIAS"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
     disp_matias_012 = disp_012[disp_012["FOTOGRAFO"] == "MATIAS"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
     bordered_box_fotografi(
-        "MATIAS2",
+        "MATIAS",
         {
             "060": disp_matias,
             "027": disp_matias_027,
@@ -56,7 +56,7 @@ def foto_dashboard():
     disp_matteo_027 = disp_027[disp_027["FOTOGRAFO"] == "MATTEO"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
     disp_matteo_012 = disp_012[disp_012["FOTOGRAFO"] == "MATTEO"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
     bordered_box_fotografi_old(
-        "MATTEO2",
+        "MATTEO",
         {
             "060": disp_matteo,
             "027": disp_matteo_027,
