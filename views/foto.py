@@ -40,10 +40,19 @@ def foto_dashboard():
   with download_col1:
     disp_matias = disp[disp["FOTOGRAFO"] == "MATIAS"]
     disp_matias = disp_matias[["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
+    disp_matias_027 = disp_027[disp["FOTOGRAFO"] == "MATIAS"]
+    disp_matias_027 = disp_matias_027[["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
+    disp_matias_012 = disp_012[disp["FOTOGRAFO"] == "MATIAS"]
+    disp_matias_012 = disp_matias_012[["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
     bordered_box("MATIAS", disp_matias.shape[0], "📥")
   with download_col2:
-    disp_matias = df[(df["DISP"] == True) & (df["FOTOGRAFO"] == "MATTEO")]
-    bordered_box("MATTEO", "1", "📥")
+    disp_matteo = disp[disp["FOTOGRAFO"] == "MATTEO"]
+    disp_matteo = disp_matteo[["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
+    disp_matteo_027 = disp_027[disp["FOTOGRAFO"] == "MATIAS"]
+    disp_matteo_027 = disp_matteo_027[["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
+    disp_matteo_012 = disp_012[disp["FOTOGRAFO"] == "MATIAS"]
+    disp_matteo_012 = disp_matteo_012[["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
+    bordered_box("MATTEO", disp_matteo.shape[0], "📥")
       
   
   if st.button("Aggiorna"):
