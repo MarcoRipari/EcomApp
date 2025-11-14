@@ -53,36 +53,26 @@ f'</div>'
 
 
 
-def bordered_box_fotografi(title, data_dict, genera_pdf_fn, emoji="📥"):
-    container = st.container()
-    # Titolo
-    container.markdown(f"### {emoji} {title}", unsafe_allow_html=True)
-    
-    # Colonne
-    labels = list(data_dict.keys())
-    dfs = list(data_dict.values())
-    cols = container.columns(len(labels))
+def borederd_box_fotografi(title, data_dict, genera_pdf_fn, emoji="📥"):
+    st.markdown(f"### {emoji} {title}")
 
-    for col, label, df in zip(cols, labels, dfs):
+    cols = st.columns(len(data_dict))
+    for col, (label, df) in zip(cols, data_dict.items()):
         with col:
-            # Box integrato numero + pulsante
             st.markdown(f"""
                 <div style="
-                    border:2px solid #ccc; 
-                    border-radius:10px; 
-                    padding:15px; 
-                    text-align:center; 
+                    border:2px solid #ccc;
+                    border-radius:10px;
+                    padding:15px;
+                    text-align:center;
                     background-color:#f9f9f9;
                     box-shadow:2px 2px 6px rgba(0,0,0,0.05);
-                    display:flex; 
-                    flex-direction:column;
-                    justify-content:center;
-                    align-items:center;">
-                    <div style="font-weight:bold; font-size:1.2rem; margin-bottom:8px">{label}</div>
-                    <div style="font-size:2rem; font-weight:bold; margin-bottom:10px">{df.shape[0]}</div>
+                    margin-bottom:5px;">
+                    <strong>{label}</strong><br>
+                    <span style="font-size:2rem">{df.shape[0]}</span>
                 </div>
             """, unsafe_allow_html=True)
-            
+            # Pulsante subito sotto
             st.download_button(
                 label="📥 Download",
                 data=genera_pdf_fn(df),
