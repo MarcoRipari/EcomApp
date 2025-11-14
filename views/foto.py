@@ -46,7 +46,7 @@ def foto_dashboard():
     disp_matteo = disp[disp["FOTOGRAFO"] == "MATTEO"][["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
     disp_matteo_027 = disp_027[disp["FOTOGRAFO"] == "MATTEO"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
     disp_matteo_012 = disp_012[disp["FOTOGRAFO"] == "MATTEO"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
-    bordered_box("MATTEO", disp_matteo.shape[0], "📥")
+    bordered_box("MATTEO2", disp_matteo.shape[0], "📥")
       
   
   if st.button("Aggiorna"):
