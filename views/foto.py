@@ -33,6 +33,8 @@ def foto_dashboard():
   with col4:
       bordered_box("Riscattare", count_da_scattare("riscattare"), "🔁")
 
+  bordered_box("MATIAS", "1", "📥")
+  
   if st.button("Aggiorna"):
     load_df_foto()
       
