@@ -54,35 +54,34 @@ f'</div>'
 
 
 def bordered_box_fotografi(title, data_dict, genera_pdf_fn, emoji="📥"):
-    # CSS per il bordo del container
-    st.markdown("""
-    <style>
-    .stContainer > .css-1lcbmhc {
-        border: 2px solid #ccc;
-        border-radius: 12px;
-        padding: 20px;
-        background-color: #f9f9f9;
-        box-shadow: 2px 2px 8px rgba(0,0,0,0.05);
-        margin-bottom: 20px;
-    }
-    </style>
-    """, unsafe_allow_html=True)
-
-    # container Streamlit
+    # container principale
     container = st.container()
 
-    # titolo
-    container.markdown(f"<h3 style='text-align:center'>{emoji} {title}</h3>", unsafe_allow_html=True)
+    # Titolo
+    container.markdown(f"### {emoji} {title}", unsafe_allow_html=True)
 
-    # colonne
+    # Colonne
     labels = list(data_dict.keys())
     dfs = list(data_dict.values())
     cols = container.columns(len(labels))
 
     for col, label, df in zip(cols, labels, dfs):
         with col:
-            st.markdown(f"### {label}")
-            st.markdown(f"<div style='font-size:2rem; font-weight:bold; text-align:center'>{df.shape[0]}</div>", unsafe_allow_html=True)
+            # piccolo "riquadretto" solo per ciascuna colonna
+            st.markdown(f"""
+                <div style="
+                    border:2px solid #ccc; 
+                    border-radius:10px; 
+                    padding:10px; 
+                    text-align:center; 
+                    background-color:#f9f9f9;
+                    box-shadow: 2px 2px 8px rgba(0,0,0,0.05);
+                    margin-bottom:10px;">
+                    <strong>{label}</strong><br>
+                    <span style="font-size:2rem">{df.shape[0]}</span>
+                </div>
+            """, unsafe_allow_html=True)
+
             st.download_button(
                 label="📥",
                 data=genera_pdf_fn(df),
@@ -91,4 +90,3 @@ def bordered_box_fotografi(title, data_dict, genera_pdf_fn, emoji="📥"):
                 disabled=df.empty,
                 key=f"{title}_{label}"
             )
-
