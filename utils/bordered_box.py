@@ -50,42 +50,36 @@ f'</div>'
     st.markdown(html, unsafe_allow_html=True)
 
 
-st.markdown("""
-<style>
-.bordered-container {
-    border: 2px solid #ccc;
-    border-radius: 12px;
-    padding: 20px;
-    background-color: #f9f9f9;
-    box-shadow: 2px 2px 8px rgba(0,0,0,0.05);
-    margin-bottom: 20px;
-}
-.bordered-title {
-    text-align: center;
-    font-size: 1.4rem;
-    font-weight: 700;
-    margin-bottom: 15px;
-}
-</style>
-""", unsafe_allow_html=True)
+
+def load_css():
+    st.markdown("""
+    <style>
+    .border-box {
+        border: 2px solid #ccc;
+        border-radius: 12px;
+        padding: 20px 20px 10px 20px;
+        background-color: #f9f9f9;
+        box-shadow: 2px 2px 8px rgba(0,0,0,0.05);
+        margin-bottom: 20px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
 
 def bordered_box_fotografi(title, data_dict, genera_pdf_fn, emoji="📥"):
 
-    # Inizia container con bordo
     container = st.container()
     with container:
-        
-        # Applica classe CSS al container
-        st.markdown('<div class="bordered-container">', unsafe_allow_html=True)
 
-        # --- TITOLO ---
-        st.markdown(
-            f'<div class="bordered-title">{emoji} {title}</div>',
-            unsafe_allow_html=True
-        )
+        # --- TITOLO + BORDO (HTML) ---
+        st.markdown(f"""
+        <div class="border-box">
+            <div style='text-align:center; font-size:1.4rem; font-weight:700; margin-bottom:15px;'>
+                {emoji} {title}
+            </div>
+        """, unsafe_allow_html=True)
 
-        # --- COLONNE STREAMLIT ---
+        # --- COLONNE ---
         labels = list(data_dict.keys())
         dfs = list(data_dict.values())
         cols = st.columns(len(labels))
@@ -94,7 +88,7 @@ def bordered_box_fotografi(title, data_dict, genera_pdf_fn, emoji="📥"):
             with col:
                 st.markdown(f"### {label}")
                 st.markdown(
-                    f"<div style='font-size:2rem;font-weight:bold;text-align:center'>{df.shape[0]}</div>",
+                    f"<div style='font-size:2rem; font-weight:bold; text-align:center;'>{df.shape[0]}</div>",
                     unsafe_allow_html=True
                 )
 
@@ -106,6 +100,10 @@ def bordered_box_fotografi(title, data_dict, genera_pdf_fn, emoji="📥"):
                     disabled=df.empty,
                     key=f"{title}_{label}"
                 )
+
+        # --- CHIUSURA DEL DIV ---
+        st.markdown("</div>", unsafe_allow_html=True)
+
 
         # Chiude il box (HTML)
         st.markdown("</div>", unsafe_allow_html=True)
