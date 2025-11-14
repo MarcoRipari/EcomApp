@@ -57,7 +57,7 @@ def bordered_box_fotografi(title, data_dict, genera_pdf_fn, emoji="📥"):
     # CSS per il bordo del container
     st.markdown("""
     <style>
-    .stBorderedContainer {
+    .stContainer > .css-1lcbmhc {
         border: 2px solid #ccc;
         border-radius: 12px;
         padding: 20px;
@@ -70,15 +70,14 @@ def bordered_box_fotografi(title, data_dict, genera_pdf_fn, emoji="📥"):
 
     # container Streamlit
     container = st.container()
-    container.markdown('<div class="stBorderedContainer">', unsafe_allow_html=True)
 
     # titolo
-    st.markdown(f"<h3 style='text-align:center'>{emoji} {title}</h3>", unsafe_allow_html=True)
+    container.markdown(f"<h3 style='text-align:center'>{emoji} {title}</h3>", unsafe_allow_html=True)
 
     # colonne
     labels = list(data_dict.keys())
     dfs = list(data_dict.values())
-    cols = st.columns(len(labels))
+    cols = container.columns(len(labels))
 
     for col, label, df in zip(cols, labels, dfs):
         with col:
@@ -92,6 +91,4 @@ def bordered_box_fotografi(title, data_dict, genera_pdf_fn, emoji="📥"):
                 disabled=df.empty,
                 key=f"{title}_{label}"
             )
-
-    container.markdown('</div>', unsafe_allow_html=True)
 
