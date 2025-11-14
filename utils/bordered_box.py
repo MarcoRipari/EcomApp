@@ -22,7 +22,7 @@ def bordered_box(title, value, emoji="✅", border_color="#ccc", bg_color="#f9f9
     )
 
 
-def bordered_box_fotografi(title, data_dict, emoji="📥", border_color="#ccc", bg_color="#f9f9f9"):
+def bordered_box_fotografi_old(title, data_dict, emoji="📥", border_color="#ccc", bg_color="#f9f9f9"):
 
     cols_html = ""
     for label, df in data_dict.items():
@@ -49,4 +49,47 @@ f'</div>'
 
     st.markdown(html, unsafe_allow_html=True)
 
+def bordered_box_fotografi(title, data_dict, genera_pdf_fn, emoji="📥"):
+    
+    # Creo il box contenitore
+    with st.container():
+        # Inizio box HTML + CSS
+        st.markdown("<div class='bordered-box'>", unsafe_allow_html=True)
+
+        # -- TITOLO BOX --
+        st.markdown(
+            f"<div style='text-align:center; font-size:1.4rem; font-weight:700;'>{emoji} {title}</div>",
+            unsafe_allow_html=True
+        )
+        st.markdown("<br>", unsafe_allow_html=True)
+
+        # -- COLONNE STREAMLIT --
+        labels = list(data_dict.keys())
+        dfs = list(data_dict.values())
+        cols = st.columns(len(labels))
+
+        for i, (col, label, df) in enumerate(zip(cols, labels, dfs)):
+            with col:
+                # Label
+                st.markdown(f"### {label}")
+
+                # Numero
+                st.markdown(
+                    f"<div style='font-size:2rem;font-weight:bold;text-align:center'>{df.shape[0]}</div>",
+                    unsafe_allow_html=True
+                )
+
+                # Pulsante download (PDF)
+                disabled = df.empty
+                st.download_button(
+                    label="📥",
+                    data=genera_pdf_fn(df),
+                    file_name=f"lista_{title}_{label}.pdf",
+                    mime="application/pdf",
+                    disabled=disabled,
+                    key=f"{title}_{label}"
+                )
+
+        # Chiudo il box HTML
+        st.markdown("</div>", unsafe_allow_html=True)
 
