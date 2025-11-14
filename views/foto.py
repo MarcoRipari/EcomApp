@@ -47,7 +47,8 @@ def foto_dashboard():
             "060": disp_matias,
             "027": disp_matias_027,
             "012": disp_matias_012
-        }
+        },
+        genera_pdf_fn=genera_pdf
     )
   with download_col2:
     disp_matteo = disp[disp["FOTOGRAFO"] == "MATTEO"][["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
