@@ -41,11 +41,7 @@ def foto_dashboard():
     disp_matias = disp[disp["FOTOGRAFO"] == "MATIAS"][["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
     disp_matias_027 = disp_027[disp_027["FOTOGRAFO"] == "MATIAS"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
     disp_matias_012 = disp_012[disp_012["FOTOGRAFO"] == "MATIAS"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
-    out_matias = st.markdown(
-      f"### 060<br><div style='font-size:2rem;font-weight:bold;text-align:center'>{disp_matias.shape[0]}</div><br>Download",
-      unsafe_allow_html=True
-    )
-    bordered_box("MATIAS", out_matias, "📥")
+    bordered_box("MATIAS", st.markdown(f"### 060<br><div style='font-size:2rem;font-weight:bold;text-align:center'>{disp_matias.shape[0]}</div><br>Download", unsafe_allow_html=True), "📥")
   with download_col2:
     disp_matteo = disp[disp["FOTOGRAFO"] == "MATTEO"][["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
     disp_matteo_027 = disp_027[disp_027["FOTOGRAFO"] == "MATTEO"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
