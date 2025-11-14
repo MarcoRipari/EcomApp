@@ -53,7 +53,7 @@ f'</div>'
 
 
 
-def borederd_box_fotografi(title, data_dict, genera_pdf_fn, emoji="📥"):
+def bordered_box_fotografi(title, data_dict, genera_pdf_fn, emoji="📥"):
     st.markdown(f"### {emoji} {title}")
 
     cols = st.columns(len(data_dict))
