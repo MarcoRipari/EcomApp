@@ -49,47 +49,63 @@ f'</div>'
 
     st.markdown(html, unsafe_allow_html=True)
 
-def bordered_box_fotografi(title, data_dict, genera_pdf_fn, emoji="📥"):
-    
-    # Creo il box contenitore
-    with st.container():
-        # Inizio box HTML + CSS
-        st.markdown("<div class='bordered-box'>", unsafe_allow_html=True)
 
-        # -- TITOLO BOX --
+st.markdown("""
+<style>
+.bordered-container {
+    border: 2px solid #ccc;
+    border-radius: 12px;
+    padding: 20px;
+    background-color: #f9f9f9;
+    box-shadow: 2px 2px 8px rgba(0,0,0,0.05);
+    margin-bottom: 20px;
+}
+.bordered-title {
+    text-align: center;
+    font-size: 1.4rem;
+    font-weight: 700;
+    margin-bottom: 15px;
+}
+</style>
+""", unsafe_allow_html=True)
+
+
+def bordered_box_fotografi(title, data_dict, genera_pdf_fn, emoji="📥"):
+
+    # Inizia container con bordo
+    container = st.container()
+    with container:
+        
+        # Applica classe CSS al container
+        st.markdown('<div class="bordered-container">', unsafe_allow_html=True)
+
+        # --- TITOLO ---
         st.markdown(
-            f"<div style='text-align:center; font-size:1.4rem; font-weight:700;'>{emoji} {title}</div>",
+            f'<div class="bordered-title">{emoji} {title}</div>',
             unsafe_allow_html=True
         )
-        st.markdown("<br>", unsafe_allow_html=True)
 
-        # -- COLONNE STREAMLIT --
+        # --- COLONNE STREAMLIT ---
         labels = list(data_dict.keys())
         dfs = list(data_dict.values())
         cols = st.columns(len(labels))
 
-        for i, (col, label, df) in enumerate(zip(cols, labels, dfs)):
+        for col, label, df in zip(cols, labels, dfs):
             with col:
-                # Label
                 st.markdown(f"### {label}")
-
-                # Numero
                 st.markdown(
                     f"<div style='font-size:2rem;font-weight:bold;text-align:center'>{df.shape[0]}</div>",
                     unsafe_allow_html=True
                 )
 
-                # Pulsante download (PDF)
-                disabled = df.empty
                 st.download_button(
                     label="📥",
                     data=genera_pdf_fn(df),
                     file_name=f"lista_{title}_{label}.pdf",
                     mime="application/pdf",
-                    disabled=disabled,
+                    disabled=df.empty,
                     key=f"{title}_{label}"
                 )
 
-        # Chiudo il box HTML
+        # Chiude il box (HTML)
         st.markdown("</div>", unsafe_allow_html=True)
-
