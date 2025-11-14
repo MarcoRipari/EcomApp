@@ -54,12 +54,10 @@ f'</div>'
 
 
 def bordered_box_fotografi(title, data_dict, genera_pdf_fn, emoji="📥"):
-    # container principale
     container = st.container()
-
     # Titolo
     container.markdown(f"### {emoji} {title}", unsafe_allow_html=True)
-
+    
     # Colonne
     labels = list(data_dict.keys())
     dfs = list(data_dict.values())
@@ -67,25 +65,28 @@ def bordered_box_fotografi(title, data_dict, genera_pdf_fn, emoji="📥"):
 
     for col, label, df in zip(cols, labels, dfs):
         with col:
-            # piccolo "riquadretto" solo per ciascuna colonna
+            # Box integrato numero + pulsante
             st.markdown(f"""
                 <div style="
                     border:2px solid #ccc; 
                     border-radius:10px; 
-                    padding:10px; 
+                    padding:15px; 
                     text-align:center; 
                     background-color:#f9f9f9;
-                    box-shadow: 2px 2px 8px rgba(0,0,0,0.05);
-                    margin-bottom:10px;">
-                    <strong>{label}</strong><br>
-                    <span style="font-size:2rem">{df.shape[0]}</span>
+                    box-shadow:2px 2px 6px rgba(0,0,0,0.05);
+                    display:flex; 
+                    flex-direction:column;
+                    justify-content:center;
+                    align-items:center;">
+                    <div style="font-weight:bold; font-size:1.2rem; margin-bottom:8px">{label}</div>
+                    <div style="font-size:2rem; font-weight:bold; margin-bottom:10px">{df.shape[0]}</div>
                 </div>
             """, unsafe_allow_html=True)
-
+            
             st.download_button(
-                label="📥",
+                label="📥 Download",
                 data=genera_pdf_fn(df),
-                file_name=f"lista_{title}_{label}.pdf",
+                file_name=f"{title}_{label}.pdf",
                 mime="application/pdf",
                 disabled=df.empty,
                 key=f"{title}_{label}"
