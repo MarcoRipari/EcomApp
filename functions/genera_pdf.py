@@ -2,6 +2,7 @@ import streamlit as st
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
+from io import BytesIO
 
 def genera_pdf(df_disp, **param):
     # --- Parametri ---
