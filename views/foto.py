@@ -38,20 +38,14 @@ def foto_dashboard():
   disp_012 = df[df["DISP 012"] == True]
   download_col1,download_col2 = st.columns(2)
   with download_col1:
-    disp_matias = disp[disp["FOTOGRAFO"] == "MATIAS"]
-    disp_matias = disp_matias[["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
-    disp_matias_027 = disp_027[disp["FOTOGRAFO"] == "MATIAS"]
-    disp_matias_027 = disp_matias_027[["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
-    disp_matias_012 = disp_012[disp["FOTOGRAFO"] == "MATIAS"]
-    disp_matias_012 = disp_matias_012[["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
+    disp_matias = disp[disp["FOTOGRAFO"] == "MATIAS"][["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
+    disp_matias_027 = disp_027[disp["FOTOGRAFO"] == "MATIAS"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
+    disp_matias_012 = disp_012[disp["FOTOGRAFO"] == "MATIAS"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
     bordered_box("MATIAS", disp_matias.shape[0], "📥")
   with download_col2:
-    disp_matteo = disp[disp["FOTOGRAFO"] == "MATTEO"]
-    disp_matteo = disp_matteo[["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
-    disp_matteo_027 = disp_027[disp["FOTOGRAFO"] == "MATIAS"]
-    disp_matteo_027 = disp_matteo_027[["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
-    disp_matteo_012 = disp_012[disp["FOTOGRAFO"] == "MATIAS"]
-    disp_matteo_012 = disp_matteo_012[["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
+    disp_matteo = disp[disp["FOTOGRAFO"] == "MATTEO"][["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
+    disp_matteo_027 = disp_027[disp["FOTOGRAFO"] == "MATTEO"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
+    disp_matteo_012 = disp_012[disp["FOTOGRAFO"] == "MATTEO"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
     bordered_box("MATTEO", disp_matteo.shape[0], "📥")
       
   
