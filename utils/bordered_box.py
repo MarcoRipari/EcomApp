@@ -22,23 +22,6 @@ def bordered_box(title, value, emoji="✅", border_color="#ccc", bg_color="#f9f9
     )
 
 
-# CSS per il box
-st.markdown("""
-<style>
-.box-style {
-    border: 2px solid #ccc;
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 20px;
-    background-color: #f9f9f9;
-    box-shadow: 2px 2px 8px rgba(0,0,0,0.05);
-}
-</style>
-""", unsafe_allow_html=True)
-
-
-
-
 def bordered_box_fotografi(title, data_dict, emoji="📥", border_color="#ccc", bg_color="#f9f9f9"):
     
     # Genero le colonne in HTML
