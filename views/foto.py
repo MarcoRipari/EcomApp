@@ -41,35 +41,26 @@ def foto_dashboard():
     disp_matias = disp[disp["FOTOGRAFO"] == "MATIAS"][["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
     disp_matias_027 = disp_027[disp_027["FOTOGRAFO"] == "MATIAS"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
     disp_matias_012 = disp_012[disp_012["FOTOGRAFO"] == "MATIAS"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
-    out_matias = value_html = f"""
-      <div style="display: flex; justify-content: space-around; width: 100%;">
-      
-          <div style='width: 30%; text-align:center;'>
-              <div style='font-size:1.2rem;font-weight:600;'>060</div>
-              <div style='font-size:2rem;font-weight:bold;'>{disp_matias.shape[0]}</div>
-              <div>Download</div>
-          </div>
-      
-          <div style='width: 30%; text-align:center;'>
-              <div style='font-size:1.2rem;font-weight:600;'>027</div>
-              <div style='font-size:2rem;font-weight:bold;'>{disp_matias_027.shape[0]}</div>
-              <div>Download</div>
-          </div>
-      
-          <div style='width: 30%; text-align:center;'>
-              <div style='font-size:1.2rem;font-weight:600;'>012</div>
-              <div style='font-size:2rem;font-weight:bold;'>{disp_matias_012.shape[0]}</div>
-              <div>Download</div>
-          </div>
-      
-      </div>
-      """
-    bordered_box("MATIAS", out_matias, "📥")
+    bordered_box_fotografi(
+        "MATIAS",
+        {
+            "060": disp_matias,
+            "027": disp_matias_027,
+            "012": disp_matias_012
+        }
+    )
   with download_col2:
     disp_matteo = disp[disp["FOTOGRAFO"] == "MATTEO"][["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
     disp_matteo_027 = disp_027[disp_027["FOTOGRAFO"] == "MATTEO"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
     disp_matteo_012 = disp_012[disp_012["FOTOGRAFO"] == "MATTEO"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
-    bordered_box("MATTEO2", disp_matteo.shape[0], "📥")
+    bordered_box_fotografi(
+        "MATTEO",
+        {
+            "060": disp_matteo,
+            "027": disp_matteo_027,
+            "012": disp_matteo_012
+        }
+    )
       
   
   if st.button("Aggiorna"):
