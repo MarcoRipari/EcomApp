@@ -89,7 +89,7 @@ def giacenze_importa():
                 
             csv_import = uploaded_file
             file_bytes_for_upload = st.session_state.uploaded_file_bytes
-            manual_nome_file = uploaded_file.name.upper()
+            manual_nome_file = "GIACENZE.csv"
 
     # --- UBIC / PIM ---
     else:
@@ -113,12 +113,13 @@ def giacenze_importa():
     # --- Carico CSV solo se df_input è None ---
     if csv_import and st.session_state.df_input is None:
         with st.spinner("Carico il CSV..."):
-            st.session_state.df_input = read_csv_auto_encoding(csv_import, "\t")
+            st.session_state.df_input = read_csv_auto_encoding(csv_import, ";")
 
     df_input = st.session_state.df_input
 
     default_sheet_id = giacenze_sheet_id
     selected_sheet_id = st.text_input("Inserisci ID del Google Sheet", value=giacenze_sheet_id)
+    nome_sheet_tab = st.text_input("Inserisci nome del TAB", value="GIACENZE")
 
     col1, col2, col3, col4 = st.columns(4)
     
@@ -157,23 +158,11 @@ def giacenze_importa():
         # --- Destinazione GSheet ---       
         with col2:
             if st.button("Importa Giacenze"):
-                sheet_upload_giacenze = get_sheet(selected_sheet_id, "UBIC")
-                sheet_upload_pim = get_sheet(selected_sheet_id, "PIM")
+                sheet_upload_tab = get_sheet(selected_sheet_id, nome_sheet_tab)
                 
                 with st.spinner("Aggiorno giacenze su GSheet..."):
-                    if nome_file == "UBIC":
-                        sheet_upload_giacenze.clear()
-                        sheet_upload_giacenze.update("A1", data_to_write)
-                    elif nome_file == "PIM":
-                        sheet_upload_pim.clear()
-                        sheet_upload_pim.update("A1", data_to_write)
-                    elif nome_file == "Manuale":
-                        if manual_nome_file == "UBIC.CSV":
-                            sheet_upload_giacenze.clear()
-                            sheet_upload_giacenze.update("A1", data_to_write)
-                        elif manual_nome_file == "PIM.CSV":
-                            sheet_upload_pim.clear()
-                            sheet_upload_pim.update("A1", data_to_write)
+                    sheet_upload_tab.clear()
+                    sheet_upload_tab.update("A1", data_to_write)
                             
                     last_row = len(df_input) + 1
     
@@ -182,7 +171,7 @@ def giacenze_importa():
                             CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=pattern)))
                         for col_letter, pattern in numeric_cols_info.items()
                     ]
-                    format_cell_ranges(sheet_upload_giacenze, ranges_to_format)
+                    format_cell_ranges(sheet_upload_tab, ranges_to_format)
                     st.success("✅ Giacenze importate con successo!")
 
                 if nome_file == "Manuale" and file_bytes_for_upload:
@@ -191,25 +180,13 @@ def giacenze_importa():
                         
         with col3:
             if st.button("Importa Giacenze & Anagrafica"):
-                sheet_upload_giacenze = get_sheet(selected_sheet_id, "UBIC")
-                sheet_upload_pim = get_sheet(selected_sheet_id, "PIM")
+                sheet_upload_tab = get_sheet(selected_sheet_id, nome_sheet_tab)
                 sheet_upload_anagrafica = get_sheet(selected_sheet_id, "ANAGRAFICA")
                 sheet_anagrafica = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
                 
                 with st.spinner("Aggiorno giacenze e anagrafica su GSheet..."):
-                    if nome_file == "UBIC":
-                        sheet_upload_giacenze.clear()
-                        sheet_upload_giacenze.update("A1", data_to_write)
-                    elif nome_file == "PIM":
-                        sheet_upload_pim.clear()
-                        sheet_upload_pim.update("A1", data_to_write)
-                    elif nome_file == "Manuale":
-                        if manual_nome_file == "UBIC.CSV":
-                            sheet_upload_giacenze.clear()
-                            sheet_upload_giacenze.update("A1", data_to_write)
-                        elif manual_nome_file == "PIM.CSV":
-                            sheet_upload_pim.clear()
-                            sheet_upload_pim.update("A1", data_to_write)
+                    sheet_upload_tab.clear()
+                    sheet_upload_tab.update("A1", data_to_write)
                             
                     last_row = len(df_input) + 1
     
@@ -218,7 +195,7 @@ def giacenze_importa():
                             CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=pattern)))
                         for col_letter, pattern in numeric_cols_info.items()
                     ]
-                    format_cell_ranges(sheet_upload_giacenze, ranges_to_format)
+                    format_cell_ranges(sheet_upload_tab, ranges_to_format)
 
                     sheet_upload_anagrafica.clear()
                     sheet_upload_anagrafica.update("A1", sheet_anagrafica.get_all_values())
