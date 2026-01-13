@@ -10,7 +10,7 @@ anagrafica_sheet_id = st.secrets["ANAGRAFICA_GSHEET_ID"]
 giacenze_sheet_id = st.secrets["GIACENZE_GSHEET_ID"]
 
 def giacenze_importa():
-    st.header("Importa giacenze3")
+    st.header("Importa giacenze")
 
     options = ["Manuale", "UBIC", "PIM"]
     
