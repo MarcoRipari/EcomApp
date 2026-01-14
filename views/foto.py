@@ -61,7 +61,8 @@ def foto_dashboard():
             "060": disp_matteo,
             "027": disp_matteo_027,
             "012": disp_matteo_012
-        }
+        },
+        genera_pdf_fn=genera_pdf
     )
       
   
