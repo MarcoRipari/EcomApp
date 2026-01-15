@@ -89,37 +89,48 @@ def ferie():
   
   st.divider()
 
-  st.subheader("📊 Riepilogo Disponibilità")
-  
-  # Creiamo una griglia di card (3 colonne per riga)
-  cols = st.columns(3)
-  
-  for i, row in report.iterrows():
-      # Selezioniamo la colonna della griglia (cicla tra 0, 1, 2)
-      with cols[i % 3]:
-          # Calcolo percentuale per la barra di progresso
-          percentuale = min(row['GIORNI LAVORATIVI'] / FERIE_TOTALI_ANNUE, 1.0)
-          
-          # Colore dinamico in base al residuo
-          colore_testo = "red" if row['Giorni Residui'] < 5 else "gray"
-          
-          # HTML/Markdown per creare una card personalizzata
-          st.markdown(f"""
-              <div style="
-                  border: 1px solid #e6e9ef; 
-                  padding: 20px; 
-                  border-radius: 10px; 
-                  background-color: #f9f9f9;
-                  margin-bottom: 10px;
-                  height: 180px">
-                  <h3 style="margin-top:0; color:#31333F;">{row['NOME']}</h3>
-                  <p style="margin-bottom:5px; font-size:14px;">Ferie Godute: <b>{row['GIORNI LAVORATIVI']}</b></p>
-                  <p style="color:{colore_testo}; font-size:14px;">Residuo: <b>{row['Giorni Residui']} gg</b></p>
-              </div>
-          """, unsafe_allow_html=True)
-          
-          # Aggiungiamo una barra di progresso sotto ogni card per un feedback visivo immediato
-          st.progress(percentuale)
+st.subheader("📊 Riepilogo Disponibilità")
+
+# Creiamo una griglia di card (3 colonne per riga)
+cols = st.columns(3)
+
+# Cicliamo sulla lista anagrafica completa
+for i, nome_dipendente in enumerate(dipendenti):
+    # Cerchiamo i dati del dipendente nel report calcolato precedentemente
+    # Se il dipendente non ha ancora preso ferie, impostiamo i valori a zero
+    dati_report = report[report['Dipendente'] == nome_dipendente]
+    
+    if not dati_report.empty:
+        giorni_goduti = dati_report.iloc[0]['Giorni Goduti']
+        giorni_residui = dati_report.iloc[0]['Residuo']
+    else:
+        # Caso per dipendente che non ha ancora registrato ferie
+        giorni_goduti = 0
+        giorni_residui = FERIE_TOTALI_ANNUE
+
+    # Calcolo logica visuale
+    percentuale = min(giorni_goduti / FERIE_TOTALI_ANNUE, 1.0)
+    colore_testo = "red" if giorni_residui < 5 else "#31333F"
+    
+    with cols[i % 3]:
+        # HTML Card
+        st.markdown(f"""
+            <div style="
+                border: 1px solid #e6e9ef; 
+                padding: 20px; 
+                border-radius: 10px; 
+                background-color: #f9f9f9;
+                margin-bottom: 10px;
+                height: 160px;
+                box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
+                <h3 style="margin-top:0; color:#1E88E5; font-size: 18px;">{nome_dipendente}</h3>
+                <p style="margin-bottom:5px; font-size:14px; color: #555;">Godute: <b>{giorni_goduti} gg</b></p>
+                <p style="color:{colore_testo}; font-size:16px;">Residuo: <b>{giorni_residui} gg</b></p>
+            </div>
+        """, unsafe_allow_html=True)
+        
+        # Barra di progresso
+        st.progress(percentuale)
 
   # 6. Widget per visualizzare il dettaglio di un singolo dipendente
   st.divider()
