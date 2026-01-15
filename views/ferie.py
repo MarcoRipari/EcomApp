@@ -101,8 +101,8 @@ def ferie():
       dati_report = report[report['NOME'] == nome_dipendente]
       
       if not dati_report.empty:
-          giorni_goduti = dati_report.iloc[0]['Giorni Goduti']
-          giorni_residui = dati_report.iloc[0]['Residuo']
+          giorni_goduti = dati_report.iloc[0]['GIORNI LAVORATIVI']
+          giorni_residui = dati_report.iloc[0]['Giorni Residui']
       else:
           # Caso per dipendente che non ha ancora registrato ferie
           giorni_goduti = 0
