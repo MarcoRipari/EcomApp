@@ -65,3 +65,36 @@ def process_csv_and_update(sheet, uploaded_file, batch_size=100):
 
     st.text(f"✅ Nuove righe da aggiungere: {len(new_rows)}")
     st.text(f"✅ Aggiornamenti da effettuare: {len(updates)}")
+
+
+    # =======================
+    # Aggiornamenti batch
+    # =======================
+    st.text("4️⃣ Aggiorno righe esistenti in batch...")
+    for start in range(0, len(updates), batch_size):
+        batch = updates[start:start+batch_size]
+        ranges = [f"A{idx}:U{idx}" for idx, _ in batch]
+        values = [row for _, row in batch]
+        body = [{"range": r, "values": [v]} for r, v in zip(ranges, values)]
+        if body:
+            sheet.batch_update(body)
+
+    # =======================
+    # Aggiunta nuove righe
+    # =======================
+    st.text("5️⃣ Aggiungo nuove righe in fondo...")
+    if new_rows:
+        # pulizia valori
+        new_rows_clean = [[str(cell) if cell is not None else "" for cell in row] for row in new_rows]
+    
+        start_row = len(existing_df) + 2  # +2 per header e base 1
+        end_row = start_row + len(new_rows_clean) - 1
+        missing_rows = end_row - sheet.row_count
+        if missing_rows > 0:
+            sheet.add_rows(missing_rows)
+        cell_range = f"A{start_row}:U{end_row}"
+    
+        sheet.update(cell_range, new_rows_clean, value_input_option="RAW")
+
+    st.text("✅ Operazione completata!")
+    return len(new_rows), len(updates)
