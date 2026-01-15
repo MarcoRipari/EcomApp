@@ -41,10 +41,7 @@ def ferie():
   
   # Creiamo una copia per la visualizzazione con solo le colonne desiderate
   # Rinominiamo solo Nome, Giorni Goduti e Residuo
-  report_view = report[['NOME', 'GIORNI LAVORATIVI', 'Giorni Residui']].copy()
-  report_view.columns = ['Dipendente', 'Giorni Goduti', 'Residuo']
-
-  report.columns = ['Dipendente', 'Giorni Goduti', 'Budget Iniziale', 'Residuo']
+  report_view.columns = ['Dipendente', 'Giorni Goduti', 'Budget Iniziale', 'Residuo']
   
   # --- 5. Visualizzazione Grafica ---
   st.subheader("Situazione Attuale")
