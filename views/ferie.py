@@ -180,7 +180,7 @@ def aggiungi_ferie():
       else:
         nuova_riga = [nome, data_inizio.strftime('%d-%m-%Y'), data_fine.strftime('%d-%m-%Y'), tipo]
         upload = add_ferie(nuova_riga)
-        if upload:
+        if upload is True:
           st.success("Ferie inserite con successo!")
         else:
-          st.error(f"Errore tecnico: {upload}")
+          st.error(f"{upload}")
