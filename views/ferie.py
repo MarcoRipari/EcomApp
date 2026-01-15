@@ -34,10 +34,53 @@ def ferie():
   # (Se vuoi sommare tutto, usa direttamente df)
   
   report = df.groupby('NOME')['GIORNI LAVORATIVI'].sum().reset_index()
+
   
   # --- 4. Calcolo (manteniamo la logica precedente) ---
   report['Giorni Residui'] = FERIE_TOTALI_ANNUE - report['GIORNI LAVORATIVI']
+
+  st.subheader("📅 In ferie questa settimana")
   
+  # 1. Calcoliamo l'inizio (Lunedì) e la fine (Domenica) della settimana corrente
+  oggi = datetime.now().date()
+  inizio_settimana = oggi - timedelta(days=oggi.weekday())
+  fine_settimana = inizio_settimana + timedelta(days=6)
+  
+  st.info(f"Settimana dal **{inizio_settimana.strftime('%d/%m')}** al **{fine_settimana.strftime('%d/%m')}**")
+
+  # 2. Filtriamo i dati
+  chi_e_in_ferie = []
+  
+  for _, riga in df.iterrows():
+    # Convertiamo le stringhe del foglio in oggetti data
+    try:
+      inizio_f = datetime.strptime(riga['INIZIO'], '%d-%m-%Y').date()
+      fine_f = datetime.strptime(riga['FINE'], '%d-%m-%Y').date()
+          
+      # Logica di sovrapposizione: 
+      # (InizioFerie <= FineSettimana) AND (FineFerie >= InizioSettimana)
+      if inizio_f <= fine_settimana and fine_f >= inizio_settimana:
+        chi_e_in_ferie.append({
+          "Dipendente": riga['NOME'],
+          "Dal": inizio_f.strftime('%d/%m'),
+          "Al": fine_f.strftime('%d/%m'),
+          "Tipo": riga['TIPO']
+        })
+    except:
+      continue
+
+  # 3. Visualizzazione
+  if chi_e_in_ferie:
+    # Creiamo delle piccole "pillole" o una lista pulita
+    cols = st.columns(len(chi_e_in_ferie) if len(chi_e_in_ferie) < 4 else 4)
+    for i, assenza in enumerate(chi_e_in_ferie):
+      with cols[i % 4]:
+        st.warning(f"**{assenza['Dipendente']}**\n\n{assenza['Dal']} ➡️ {assenza['Al']}")
+  else:
+    st.write("✅ Nessuno è in ferie questa settimana.")
+  
+  st.divider()
+
   st.subheader("📊 Riepilogo Disponibilità")
   
   # Creiamo una griglia di card (3 colonne per riga)
