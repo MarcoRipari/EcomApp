@@ -60,11 +60,13 @@ def ferie():
       # Logica di sovrapposizione: 
       # (InizioFerie <= FineSettimana) AND (FineFerie >= InizioSettimana)
       if inizio_f <= fine_settimana and fine_f >= inizio_settimana:
+        assente_oggi = inizio_f <= oggi <= fine_f
         chi_e_in_ferie.append({
           "Dipendente": riga['NOME'],
           "Dal": inizio_f.strftime('%d/%m'),
           "Al": fine_f.strftime('%d/%m'),
-          "Tipo": riga['TIPO']
+          "Tipo": riga['TIPO'],
+          "Oggi": assente_oggi
         })
     except:
       continue
@@ -75,10 +77,12 @@ def ferie():
     cols = st.columns(len(chi_e_in_ferie) if len(chi_e_in_ferie) < 4 else 4)
     for i, assenza in enumerate(chi_e_in_ferie):
       with cols[i % 4]:
-        if inizio_f <= oggi <= fine_f:
-          # Aggiungi un'icona speciale o un colore diverso
-          label = f"🚀 **{assenza['Dipendente']}** (Oggi Assente)"
-        st.warning(f"**{assenza['Dipendente']}**\n\n{assenza['Dal']} ➡️ {assenza['Al']}")
+        if assenza['Oggi']:
+          # Stile per chi è assente proprio ora (Rosso/Arancio)
+          st.error(f"🔴 **{assenza['Dipendente']}**\n\nAssente oggi\n\n{assenza['Dal']} ➡️ {assenza['Al']}")
+        else:
+          # Stile per chi sarà assente più avanti nella settimana (Giallo)
+          st.warning(f"🟡 **{assenza['Dipendente']}**\n\n{assenza['Dal']} ➡️ {assenza['Al']}")
   else:
     st.write("✅ Nessuno è in ferie questa settimana.")
   
