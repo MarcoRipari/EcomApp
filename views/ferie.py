@@ -38,50 +38,52 @@ def ferie():
   # 4. Calcolo dei giorni residui
   report['Ferie Totali'] = FERIE_TOTALI_ANNUE
   report['Giorni Residui'] = report['Ferie Totali'] - report['GIORNI LAVORATIVI']
-  report.columns = ['Dipendente', 'Giorni Goduti', 'Budget Iniziale', 'Residuo']
+
+  report_view = report[['NOME', 'GIORNI LAVORATIVI', 'Giorni Residui']].copy()
+  report_view.columns = ['Dipendente', 'Giorni Goduti', 'Residuo']
 
   # 5. Visualizzazione Grafica
   st.subheader("Situazione Attuale")
   
   # Formattazione per rendere la tabella più bella
   st.dataframe(
-    report.style.apply(lambda x: ['color: red' if x.Residuo < 5 else '' for i in x], axis=1),
+    report_view.style.apply(lambda x: ['color: red' if x.Residuo < 5 else '' for i in x], axis=1),
     use_container_width=True,
     hide_index=True
   )
 
   # 6. Widget per visualizzare il dettaglio di un singolo dipendente
-        st.divider()
-        
-        # Recuperiamo i nomi unici e aggiungiamo un'opzione vuota all'inizio
-        nomi_dipendenti = report['Dipendente'].unique().tolist()
-        opzioni = ["-- Seleziona un dipendente --"] + nomi_dipendenti
+  st.divider()
+  
+  # Recuperiamo i nomi unici e aggiungiamo un'opzione vuota all'inizio
+  nomi_dipendenti = report['Dipendente'].unique().tolist()
+  opzioni = ["-- Seleziona un dipendente --"] + nomi_dipendenti
 
-        dipendente_scelto = st.selectbox(
-            "Visualizza il dettaglio storico per:", 
-            options=opzioni,
-            index=0  # Forza la selezione sul primo elemento ("-- Seleziona...")
-        )
-        
-        # Mostriamo il dettaglio solo se l'utente ha scelto un nome reale
-        if dipendente_scelto != "-- Seleziona un dipendente --":
-            dettaglio_utente = df[df['NOME'] == dipendente_scelto]
-            st.subheader(f"Dettaglio assenze: {dipendente_scelto}")
-            
-            # Mostriamo la tabella con i dettagli delle singole richieste
-            st.dataframe(
-                dettaglio_utente[['DATA INIZIO', 'DATA FINE', 'TIPO', 'GIORNI LAVORATIVI']],
-                use_container_width=True,
-                hide_index=True
-            )
-            
-            # Un piccolo riassunto grafico per l'utente selezionato
-            giorni_presi = report.loc[report['Dipendente'] == dipendente_scelto, 'Giorni Goduti'].values[0]
-            giorni_restanti = report.loc[report['Dipendente'] == dipendente_scelto, 'Residuo'].values[0]
-            
-            st.info(f"Riepilogo rapido: {giorni_presi} giorni goduti, {giorni_restanti} ancora disponibili.")
-        else:
-            st.info("Seleziona un nome dal menu a tendina per vedere l'elenco dettagliato delle date.")
+  dipendente_scelto = st.selectbox(
+    "Visualizza il dettaglio storico per:", 
+    options=opzioni,
+    index=0  # Forza la selezione sul primo elemento ("-- Seleziona...")
+  )
+  
+  # Mostriamo il dettaglio solo se l'utente ha scelto un nome reale
+  if dipendente_scelto != "-- Seleziona un dipendente --":
+    dettaglio_utente = df[df['NOME'] == dipendente_scelto]
+    st.subheader(f"Dettaglio assenze: {dipendente_scelto}")
+    
+    # Mostriamo la tabella con i dettagli delle singole richieste
+    st.dataframe(
+      dettaglio_utente[['DATA INIZIO', 'DATA FINE', 'TIPO', 'GIORNI LAVORATIVI']],
+      use_container_width=True,
+      hide_index=True
+    )
+    
+    # Un piccolo riassunto grafico per l'utente selezionato
+    giorni_presi = report.loc[report['Dipendente'] == dipendente_scelto, 'Giorni Goduti'].values[0]
+    giorni_restanti = report.loc[report['Dipendente'] == dipendente_scelto, 'Residuo'].values[0]
+      
+    st.info(f"Riepilogo rapido: {giorni_presi} giorni goduti, {giorni_restanti} ancora disponibili.")
+  else:
+    st.info("Seleziona un nome dal menu a tendina per vedere l'elenco dettagliato delle date.")
 
 def aggiungi_ferie():
   st.header("Aggiungi ferie")
