@@ -56,7 +56,7 @@ def ferie():
   
   dettaglio_utente = df[df['NOME'] == dipendente_scelto]
   st.write(f"Dettaglio assenze per **{dipendente_scelto}**:")
-  st.table(dettaglio_utente[['INIZIO', 'FINE', 'TIPO', 'GIORNI LAVORATIVI']])
+  st.table(dettaglio_utente[['DATA INIZIO', 'DATA FINE', 'TIPO', 'GIORNI LAVORATIVI']])
 
 def aggiungi_ferie():
   st.header("Aggiungi ferie")
