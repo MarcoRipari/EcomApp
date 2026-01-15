@@ -164,7 +164,7 @@ def ferie():
           ),
           "DATA FINE": st.column_config.DateColumn(
               "FINE",
-              format="DD/MMM YYYY",  # Oppure "D MMM YYYY" per 1 Gen 2026
+              format="D MMM YYYY",  # Oppure "D MMM YYYY" per 1 Gen 2026
           )
       }
     )
