@@ -7,7 +7,7 @@ from utils import *
 load_functions_from("functions", globals())
 
 def ferie():
-  FERIE_TOTALI_ANNUE = 30
+  FERIE_TOTALI_ANNUE = 33
   
   st.header("Ferie")
 
