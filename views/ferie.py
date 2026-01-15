@@ -33,7 +33,7 @@ def aggiungi_ferie():
         st.error("Errore: la data di fine non può essere precedente alla data di inizio.")
       else:
         nuova_riga = [nome, str(data_inizio), str(data_fine), tipo]
-        upload = aggiungi_ferie(nuova_riga)
+        upload = add_ferie(nuova_riga)
         if upload:
           st.success("Ferie inserite con successo!")
         else:
