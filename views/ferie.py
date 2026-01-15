@@ -54,8 +54,8 @@ def ferie():
   for _, riga in df.iterrows():
     # Convertiamo le stringhe del foglio in oggetti data
     try:
-      inizio_f = datetime.strptime(riga['INIZIO'], '%d-%m-%Y').date()
-      fine_f = datetime.strptime(riga['FINE'], '%d-%m-%Y').date()
+      inizio_f = datetime.strptime(riga['DATA INIZIO'], '%d-%m-%Y').date()
+      fine_f = datetime.strptime(riga['DATA FINE'], '%d-%m-%Y').date()
           
       # Logica di sovrapposizione: 
       # (InizioFerie <= FineSettimana) AND (FineFerie >= InizioSettimana)
