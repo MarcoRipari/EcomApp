@@ -38,7 +38,7 @@ def ferie():
   # 4. Calcolo dei giorni residui
   report['Ferie Totali'] = FERIE_TOTALI_ANNUE
   report['Giorni Residui'] = report['Ferie Totali'] - report['GIORNI LAVORATIVI']
-  report.columns = ['Dipendente', 'Giorni Goduti', 'Residuo']
+  report.columns = ['Dipendente', 'Giorni Goduti', 'Budget Iniziale', 'Residuo']
 
   # 5. Visualizzazione Grafica
   st.subheader("Situazione Attuale")
