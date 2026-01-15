@@ -150,6 +150,9 @@ def ferie():
   if dipendente_scelto != "-- Seleziona un dipendente --":
     dettaglio_utente = df[df['NOME'] == dipendente_scelto]
     st.subheader(f"Dettaglio assenze: {dipendente_scelto}")
+    dettagli_utente['DATA INIZIO'] = dettagli_utente['DATA INIZIO'].strftime('%-d %B %Y')
+    dettagli_utente['DATA FINE'] = dettagli_utente['DATA FINE'].strftime('%-d %B %Y)
+                                                                             
     
     # Mostriamo la tabella con i dettagli delle singole richieste
     st.dataframe(
