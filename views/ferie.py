@@ -45,7 +45,7 @@ def ferie():
   
   # Formattazione per rendere la tabella più bella
   st.dataframe(
-    report.style.apply(lambda x: ['color: red' if x.Residuo < 5 else '' for i in x], axis=1),
+    report.style.apply(lambda x: ['color: red' if x.Residuo < 30 else '' for i in x], axis=1),
     use_container_width=True,
     hide_index=True
   )
