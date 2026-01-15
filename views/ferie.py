@@ -72,9 +72,10 @@ def ferie():
 
   # 6. Widget per visualizzare il dettaglio di un singolo dipendente
   st.divider()
+  report.columns = ['Dipendente', 'Giorni Goduti', 'Residuo']
   
   # Recuperiamo i nomi unici e aggiungiamo un'opzione vuota all'inizio
-  nomi_dipendenti = report_view['Dipendente'].unique().tolist()
+  nomi_dipendenti = report['Dipendente'].unique().tolist()
   opzioni = ["-- Seleziona un dipendente --"] + nomi_dipendenti
 
   dipendente_scelto = st.selectbox(
