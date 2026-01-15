@@ -127,7 +127,7 @@ def ferie():
   
   # Recuperiamo i nomi unici e aggiungiamo un'opzione vuota all'inizio
   #nomi_dipendenti = report['Dipendente'].unique().tolist()
-  opzioni = ["-- Seleziona un dipendente --"] + nomi_dipendenti
+  opzioni = ["-- Seleziona un dipendente --"] + dipendenti
 
   dipendente_scelto = st.selectbox(
     "Visualizza il dettaglio storico per:", 
