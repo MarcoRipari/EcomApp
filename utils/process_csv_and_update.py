@@ -1,3 +1,6 @@
+import streamlit as st
+import pandas as pd
+
 def process_csv_and_update(sheet, uploaded_file, batch_size=100):
     st.text("1️⃣ Leggo CSV...")
     df = read_csv_auto_encoding(uploaded_file)
