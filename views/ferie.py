@@ -43,13 +43,15 @@ def ferie():
   # Rinominiamo solo Nome, Giorni Goduti e Residuo
   report_view = report[['NOME', 'GIORNI LAVORATIVI', 'Giorni Residui']].copy()
   report_view.columns = ['Dipendente', 'Giorni Goduti', 'Residuo']
+
+  report.columns = ['Dipendente', 'Giorni Goduti', 'Budget Iniziale', 'Residuo']
   
   # --- 5. Visualizzazione Grafica ---
   st.subheader("Situazione Attuale")
   
   # Applichiamo lo stile alla tabella "report_view" (che non ha il budget iniziale)
   st.dataframe(
-      report_view.style.apply(lambda x: ['color: red' if x.Residuo < 5 else '' for i in x], axis=1),
+      report.style.apply(lambda x: ['color: red' if x.Residuo < 5 else '' for i in x], axis=1),
       use_container_width=True,
       hide_index=True
   )
