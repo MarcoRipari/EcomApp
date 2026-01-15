@@ -1,4 +1,5 @@
 import strealit as st
+import gspread
 
 def ferie():
   st.header("Ferie")
