@@ -45,7 +45,7 @@ def ferie():
   
   # Formattazione per rendere la tabella più bella
   st.dataframe(
-    report.style.apply(lambda x: ['color: red' if x.Residuo < 30 else '' for i in x], axis=1),
+    report.style.apply(lambda x: ['color: red' if x.Residuo < 5 else '' for i in x], axis=1),
     use_container_width=True,
     hide_index=True
   )
@@ -56,7 +56,7 @@ def ferie():
   
   dettaglio_utente = df[df['NOME'] == dipendente_scelto]
   st.write(f"Dettaglio assenze per **{dipendente_scelto}**:")
-  st.table(dettaglio_utente[['INIZIO', 'FINE', 'TIPO', 'GIORNI LAVORATIVI']])
+  st.table(dettaglio_utente[['DATA INIZIO', 'DATA FINE', 'TIPO', 'GIORNI LAVORATIVI']])
 
 def aggiungi_ferie():
   st.header("Aggiungi ferie")
