@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from .read_csv import *
+from read_csv import *
 
 def process_csv_and_update(sheet, uploaded_file, batch_size=100):
     st.text("1️⃣ Leggo CSV...")
