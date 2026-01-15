@@ -154,7 +154,7 @@ def ferie():
     dettaglio_utente['DATA INIZIO'] = pd.to_datetime(dettaglio_utente['DATA INIZIO'], dayfirst=True, errors='coerce')
     dettaglio_utente['DATA FINE'] = pd.to_datetime(dettaglio_utente['DATA FINE'], dayfirst=True, errors='coerce')
     
-    dettaglio_utente = dettaglio_utente.sort_values(by='DATA INIZIO', ascending=False)
+    dettaglio_utente = dettaglio_utente.sort_values(by='DATA INIZIO', ascending=True)
     
     MESI_ITA = {
         1: "Gennaio", 2: "Febbraio", 3: "Marzo", 4: "Aprile", 5: "Maggio", 6: "Giugno",
