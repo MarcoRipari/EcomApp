@@ -5,10 +5,6 @@ from utils import *
 
 load_functions_from("functions", globals())
 
-ferie_sheet_id = st.secrets["FERIE_GSHEET_ID"]
-sheet_ferie = get_sheet(ferie_sheet_id,"FERIE")
-
-
 def ferie():
   st.header("Ferie")
 
@@ -36,7 +32,7 @@ def aggiungi_ferie():
       elif data_fine < data_inizio:
         st.error("Errore: la data di fine non può essere precedente alla data di inizio.")
       else:
-        upload = aggiungi_ferie(sheet, nuova_riga)
+        upload = aggiungi_ferie(nuova_riga)
         if upload:
           st.success("Ferie inserite con successo!")
         else:
