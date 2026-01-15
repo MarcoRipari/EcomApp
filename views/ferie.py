@@ -35,12 +35,40 @@ def ferie():
   
   report = df.groupby('NOME')['GIORNI LAVORATIVI'].sum().reset_index()
   
-  # 4. Calcolo dei giorni residui
-  report['Ferie Totali'] = FERIE_TOTALI_ANNUE
-  report['Giorni Residui'] = report['Ferie Totali'] - report['GIORNI LAVORATIVI']
-
-  report_view = report[['NOME', 'GIORNI LAVORATIVI', 'Giorni Residui']].copy()
-  report_view.columns = ['Dipendente', 'Giorni Goduti', 'Residuo']
+  # --- 4. Calcolo (manteniamo la logica precedente) ---
+  report['Giorni Residui'] = FERIE_TOTALI_ANNUE - report['GIORNI LAVORATIVI']
+  
+  st.subheader("📊 Riepilogo Disponibilità")
+  
+  # Creiamo una griglia di card (3 colonne per riga)
+  cols = st.columns(3)
+  
+  for i, row in report.iterrows():
+      # Selezioniamo la colonna della griglia (cicla tra 0, 1, 2)
+      with cols[i % 3]:
+          # Calcolo percentuale per la barra di progresso
+          percentuale = min(row['GIORNI LAVORATIVI'] / FERIE_TOTALI_ANNUE, 1.0)
+          
+          # Colore dinamico in base al residuo
+          colore_testo = "red" if row['Giorni Residui'] < 5 else "gray"
+          
+          # HTML/Markdown per creare una card personalizzata
+          st.markdown(f"""
+              <div style="
+                  border: 1px solid #e6e9ef; 
+                  padding: 20px; 
+                  border-radius: 10px; 
+                  background-color: #f9f9f9;
+                  margin-bottom: 10px;
+                  height: 180px">
+                  <h3 style="margin-top:0; color:#31333F;">{row['NOME']}</h3>
+                  <p style="margin-bottom:5px; font-size:14px;">Ferie Godute: <b>{row['GIORNI LAVORATIVI']}</b></p>
+                  <p style="color:{colore_testo}; font-size:14px;">Residuo: <b>{row['Giorni Residui']} gg</b></p>
+              </div>
+          """, unsafe_allow_html=True)
+          
+          # Aggiungiamo una barra di progresso sotto ogni card per un feedback visivo immediato
+          st.progress(percentuale)
 
   # 5. Visualizzazione Grafica
   st.subheader("Situazione Attuale")
