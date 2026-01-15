@@ -35,10 +35,6 @@ def add_ferie(riga):
     
     try:
         esistenti = sheet.get_all_records()
-        
-        # DEBUG: Vediamo se il foglio è vuoto o meno
-        if not esistenti:
-            st.write("DEBUG: Il foglio sembra vuoto o non leggibile")
 
         for record in esistenti:
             # Pulizia chiavi del record (toglie spazi e rende maiuscolo)
