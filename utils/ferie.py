@@ -1,8 +1,10 @@
 import streamlit as st
 import gspread
 
-def aggiungi_ferie(sheet, riga):
-  sheet = get_sheet(sheet)
+ferie_sheet_id = st.secrets["FERIE_GSHEET_ID"]
+
+def aggiungi_ferie(riga):
+  sheet = get_sheet(ferie_sheet_id,"FERIE")
   try:
     sheet.append_row(riga)
     return true
