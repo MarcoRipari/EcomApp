@@ -154,53 +154,33 @@ def ferie():
   else:
     st.info("Seleziona un nome dal menu a tendina per vedere l'elenco dettagliato delle date.")
 
-def add_ferie(riga):
-    # Estraiamo i dati dalla nuova richiesta
-    nome_nuovo = riga[0]
-    # Assicuriamoci che siano oggetti date per il confronto
-    inizio_nuovo = datetime.strptime(riga[1], '%d-%m-%Y').date() if isinstance(riga[1], str) else riga[1]
-    fine_nuovo = datetime.strptime(riga[2], '%d-%m-%Y').date() if isinstance(riga[2], str) else riga[2]
-    
-    sheet = get_sheet(ferie_sheet_id, "FERIE")
-    
-    try:
-        # Recuperiamo tutti i dati
-        esistenti = sheet.get_all_records()
-        
-        for record in esistenti:
-            # 1. Filtriamo per nome (attenzione alle maiuscole/minuscole e spazi)
-            if str(record.get('NOME', '')).strip().lower() == str(nome_nuovo).strip().lower():
-                
-                # 2. Convertiamo le date del foglio da stringa a oggetto date
-                try:
-                    inizio_es = datetime.strptime(record['DATA INIZIO'], '%d-%m-%Y').date()
-                    fine_es = datetime.strptime(record['DATA FINE'], '%d-%m-%Y').date()
-                    
-                    # 3. Logica di sovrapposizione (OVERLAP)
-                    # (Inizio1 <= Fine2) AND (Inizio2 <= Fine1)
-                    if inizio_nuovo <= fine_es and inizio_es <= fine_nuovo:
-                        return f"❌ Errore: {nome_nuovo} è già assente dal {record['DATA INIZIO']} al {record['DATA FINE']}"
-                
-                except (ValueError, KeyError):
-                    continue # Salta righe vuote o con formato data errato
-                    
-    except Exception as e:
-        return f"⚠️ Errore durante il controllo del foglio: {e}"
+def aggiungi_ferie():
+  st.header("Aggiungi ferie")
 
-    # --- Se arriviamo qui, non ci sono sovrapposizioni ---
-    totale_giorni = calcola_giorni_lavorativi_esatti(inizio_nuovo, fine_nuovo)
+  with st.form("form_ferie", clear_on_submit=True):
+    nome = st.text_input("Nome Dipendente")
     
-    # Prepariamo la riga finale con le date formattate come stringhe per Google Sheets
-    riga_da_salvare = [
-        nome_nuovo, 
-        inizio_nuovo.strftime('%d-%m-%Y'), 
-        fine_nuovo.strftime('%d-%m-%Y'), 
-        riga[3], # Tipo
-        totale_giorni
-    ]
+    col1, col2 = st.columns(2)
+    with col1:
+        data_inizio = st.date_input("Data inizio", format="DD/MM/YYYY")
+    with col2:
+        data_fine = st.date_input("Data fine", format="DD/MM/YYYY")
+        
+    tipo = st.selectbox("Tipo di assenza", ["Ferie", "Malattia", "Permesso", "Altro"])
     
-    try:
-        sheet.append_row(riga_da_salvare)
-        return True
-    except Exception as e:
-        return f"🚨 Errore nell'invio dei dati: {e}"
+    submit = st.form_submit_button("Inserisci")
+    
+    if submit:
+      if not nome:
+        st.error("Il campo 'Nome' è obbligatorio.")
+      elif tipo == "":
+        st.error("Seleziona un 'Tipo' di assenza.")
+      elif data_fine < data_inizio:
+        st.error("Errore: la data di fine non può essere precedente alla data di inizio.")
+      else:
+        nuova_riga = [nome, data_inizio.strftime('%d-%m-%Y'), data_fine.strftime('%d-%m-%Y'), tipo]
+        upload = add_ferie(nuova_riga)
+        if upload:
+          st.success("Ferie inserite con successo!")
+        else:
+          st.error(f"Errore tecnico: {upload}")
