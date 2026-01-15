@@ -26,52 +26,58 @@ def calcola_giorni_lavorativi_esatti(inizio, fine):
   return giorni_lavorativi
 
 def add_ferie(riga):
-    # Estraiamo i dati dalla nuova richiesta
-    nome_nuovo = riga[0]
-    # Assicuriamoci che siano oggetti date per il confronto
-    inizio_nuovo = datetime.strptime(riga[1], '%d-%m-%Y').date() if isinstance(riga[1], str) else riga[1]
-    fine_nuovo = datetime.strptime(riga[2], '%d-%m-%Y').date() if isinstance(riga[2], str) else riga[2]
+  nome_nuovo = riga[0]
+  inizio_nuovo = datetime.strptime(riga[1], '%d-%m-%Y').date() if isinstance(riga[1], str) else riga[1]
+  fine_nuovo = datetime.strptime(riga[2], '%d-%m-%Y').date() if isinstance(riga[2], str) else riga[2]
+  
+  sheet = get_sheet(ferie_sheet_id, "FERIE")
+  
+  try:
+    esistenti = sheet.get_all_records()
     
-    sheet = get_sheet(ferie_sheet_id, "FERIE")
-    
-    try:
-        # Recuperiamo tutti i dati
-        esistenti = sheet.get_all_records()
-        
-        for record in esistenti:
-            # 1. Filtriamo per nome (attenzione alle maiuscole/minuscole e spazi)
-            if str(record.get('NOME', '')).strip().lower() == str(nome_nuovo).strip().lower():
-                
-                # 2. Convertiamo le date del foglio da stringa a oggetto date
-                try:
-                    inizio_es = datetime.strptime(record['DATA INIZIO'], '%d-%m-%Y').date()
-                    fine_es = datetime.strptime(record['DATA FINE'], '%d-%m-%Y').date()
-                    
-                    # 3. Logica di sovrapposizione (OVERLAP)
-                    # (Inizio1 <= Fine2) AND (Inizio2 <= Fine1)
-                    if inizio_nuovo <= fine_es and inizio_es <= fine_nuovo:
-                        return f"❌ Errore: {nome_nuovo} è già assente dal {record['DATA INIZIO']} al {record['DATA FINE']}"
-                
-                except (ValueError, KeyError):
-                    continue # Salta righe vuote o con formato data errato
-                    
-    except Exception as e:
-        return f"⚠️ Errore durante il controllo del foglio: {e}"
+    # DEBUG: Decommenta la riga sotto se vuoi vedere cosa legge Python dal foglio
+    # st.write(esistenti[0].keys()) 
 
-    # --- Se arriviamo qui, non ci sono sovrapposizioni ---
-    totale_giorni = calcola_giorni_lavorativi_esatti(inizio_nuovo, fine_nuovo)
-    
-    # Prepariamo la riga finale con le date formattate come stringhe per Google Sheets
-    riga_da_salvare = [
-        nome_nuovo, 
-        inizio_nuovo.strftime('%d-%m-%Y'), 
-        fine_nuovo.strftime('%d-%m-%Y'), 
-        riga[3], # Tipo
-        totale_giorni
-    ]
-    
-    try:
-        sheet.append_row(riga_da_salvare)
-        return True
-    except Exception as e:
-        return f"🚨 Errore nell'invio dei dati: {e}"
+    for record in esistenti:
+      # Pulizia chiavi: trasformiamo tutto in maiuscolo e togliamo spazi extra per sicurezza
+      record_clean = {str(k).strip().upper(): v for k, v in record.items()}
+      
+      # Confronto Nome
+      if str(record_clean.get('NOME', '')).strip().lower() == str(nome_nuovo).strip().lower():
+        try:
+          # Cerchiamo le colonne indipendentemente da piccoli errori di digitazione
+          data_inizio_str = record_clean.get('DATA INIZIO') or record_clean.get('INIZIO')
+          data_fine_str = record_clean.get('DATA FINE') or record_clean.get('FINE')
+
+          if data_inizio_str and data_fine_str:
+            inizio_es = datetime.strptime(str(data_inizio_str), '%d-%m-%Y').date()
+            fine_es = datetime.strptime(str(data_fine_str), '%d-%m-%Y').date()
+            
+            # LOGICA OVERLAP
+            if inizio_nuovo <= fine_es and inizio_es <= fine_nuovo:
+              return f"❌ Errore: {nome_nuovo} è già assente dal {data_inizio_str} al {data_fine_str}"
+          
+        except Exception as e:
+          # Se c'è un errore qui, vogliamo saperlo, non solo 'continue'
+          # st.error(f"Errore parsing riga: {e}") 
+          continue 
+                  
+  except Exception as e:
+    return f"⚠️ Errore durante il controllo del foglio: {e}"
+
+  # --- PROCEDI AL SALVATAGGIO ---
+  totale_giorni = calcola_giorni_lavorativi_esatti(inizio_nuovo, fine_nuovo)
+  
+  riga_da_salvare = [
+    nome_nuovo, 
+    inizio_nuovo.strftime('%d-%m-%Y'), 
+    fine_nuovo.strftime('%d-%m-%Y'), 
+    riga[3], 
+    totale_giorni
+  ]
+  
+  try:
+    sheet.append_row(riga_da_salvare)
+    return True
+  except Exception as e:
+    return f"🚨 Errore nell'invio dei dati: {e}"
