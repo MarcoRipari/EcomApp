@@ -26,7 +26,9 @@ def calcola_giorni_lavorativi_esatti(inizio, fine):
   return giorni_lavorativi
 
 def add_ferie(riga):
-  totale_giorni = calcola_giorni_lavorativi_esatti(riga[1], riga[2])
+  inizio = datetime.strptime(riga[1], '%d-%m-%Y').date()
+  fine = datetime.strptime(riga[2], '%d-%m-%Y').date()
+  totale_giorni = calcola_giorni_lavorativi_esatti(inizio, fine)
   #riga.append(totale_giorni)
   sheet = get_sheet(ferie_sheet_id,"FERIE")
   try:
