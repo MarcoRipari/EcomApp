@@ -26,13 +26,44 @@ def calcola_giorni_lavorativi_esatti(inizio, fine):
   return giorni_lavorativi
 
 def add_ferie(riga):
-  inizio = datetime.strptime(riga[1], '%d-%m-%Y').date()
-  fine = datetime.strptime(riga[2], '%d-%m-%Y').date()
-  totale_giorni = calcola_giorni_lavorativi_esatti(inizio, fine)
-  riga.append(totale_giorni)
-  sheet = get_sheet(ferie_sheet_id,"FERIE")
+  nome_nuovo = riga[0]
+  inizio_nuovo = datetime.strptime(riga[1], '%d-%m-%Y').date()
+  fine_nuovo = datetime.strptime(riga[2], '%d-%m-%Y').date()
+  
+  sheet = get_sheet(ferie_sheet_id, "FERIE")
+  
+  # --- 1. CONTROLLO SOVRAPPOSIZIONI ---
+  try:
+    # Recuperiamo tutti i dati esistenti
+    esitenti = sheet.get_all_records()
+    
+    for record in esitenti:
+      # Controlliamo solo i record dello stesso dipendente
+      if record['NOME'] == nome_nuovo:
+        try:
+          inizio_es = datetime.strptime(record['INIZIO'], '%d-%m-%Y').date()
+          fine_es = datetime.strptime(record['FINE'], '%d-%m-%Y').date()
+          
+          # Logica di sovrapposizione:
+          # Se l'inizio della nuova è prima della fine della vecchia
+          # E la fine della nuova è dopo l'inizio della vecchia
+          if inizio_nuovo <= fine_es and fine_nuovo >= inizio_es:
+            return f"Errore: {nome_nuovo} ha già un'assenza registrata in questo periodo ({record['INIZIO']} - {record['FINE']})"
+        except ValueError:
+          continue # Salta righe con date malformate nel foglio
+                  
+  except Exception as e:
+    return f"Errore durante il controllo disponibilità: {e}"
+
+  # --- 2. INSERIMENTO (Se il controllo è passato) ---
+  totale_giorni = calcola_giorni_lavorativi_esatti(inizio_nuovo, fine_nuovo)
+  
+  # Se 'riga' ha già i 4 elementi (Nome, Inizio, Fine, Tipo), aggiungiamo il totale
+  if len(riga) == 4:
+    riga.append(totale_giorni)
+  
   try:
     sheet.append_row(riga)
-    return true
+    return True # In Python 'True' è maiuscolo
   except Exception as e:
-    return e
+    return f"Errore nel salvataggio: {e}"
