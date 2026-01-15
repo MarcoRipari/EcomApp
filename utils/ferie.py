@@ -45,13 +45,13 @@ def add_ferie(riga):
                 
                 # 2. Convertiamo le date del foglio da stringa a oggetto date
                 try:
-                    inizio_es = datetime.strptime(record['INIZIO'], '%d-%m-%Y').date()
-                    fine_es = datetime.strptime(record['FINE'], '%d-%m-%Y').date()
+                    inizio_es = datetime.strptime(record['DATA INIZIO'], '%d-%m-%Y').date()
+                    fine_es = datetime.strptime(record['DATA FINE'], '%d-%m-%Y').date()
                     
                     # 3. Logica di sovrapposizione (OVERLAP)
                     # (Inizio1 <= Fine2) AND (Inizio2 <= Fine1)
                     if inizio_nuovo <= fine_es and inizio_es <= fine_nuovo:
-                        return f"❌ Errore: {nome_nuovo} è già assente dal {record['INIZIO']} al {record['FINE']}"
+                        return f"❌ Errore: {nome_nuovo} è già assente dal {record['DATA INIZIO']} al {record['DATA FINE']}"
                 
                 except (ValueError, KeyError):
                     continue # Salta righe vuote o con formato data errato
