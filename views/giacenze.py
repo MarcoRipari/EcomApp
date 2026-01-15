@@ -220,3 +220,16 @@ def giacenze_importa():
                 sheet_upload_anagrafica.clear()
                 sheet_upload_anagrafica.update("A1", sheet_anagrafica.get_all_values())
                 st.success("✅ Anagrafica importata con successo!")
+
+
+def aggiorna_anagrafica():
+    st.header("Aggiorna anagrafica da CSV")
+
+    sheet = get_sheet(anagrafica_sheet_id, "DATA")
+    
+    uploaded_file = st.file_uploader("Carica CSV", type=["csv"])
+
+    if uploaded_file:
+        if st.button("Carica su GSheet"):
+            added, updated = process_csv_and_update(sheet, uploaded_file)
+            st.success(f"✅ Aggiunte {added} nuove SKU, aggiornate {updated} SKU già presenti.")
