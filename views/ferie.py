@@ -3,6 +3,8 @@ import gspread
 
 from utils import *
 
+load_functions_from("functions", globals())
+
 ferie_sheet_id = st.secrets["FERIE_GSHEET_ID"]
 sheet_ferie = get_sheet(ferie_sheet_id,"FERIE")
 
