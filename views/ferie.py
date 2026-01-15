@@ -70,16 +70,6 @@ def ferie():
           # Aggiungiamo una barra di progresso sotto ogni card per un feedback visivo immediato
           st.progress(percentuale)
 
-  # 5. Visualizzazione Grafica
-  st.subheader("Situazione Attuale")
-  
-  # Formattazione per rendere la tabella più bella
-  st.dataframe(
-    report_view.style.apply(lambda x: ['color: red' if x.Residuo < 5 else '' for i in x], axis=1),
-    use_container_width=True,
-    hide_index=True
-  )
-
   # 6. Widget per visualizzare il dettaglio di un singolo dipendente
   st.divider()
   
