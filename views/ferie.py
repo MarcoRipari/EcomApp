@@ -8,6 +8,7 @@ load_functions_from("functions", globals())
 
 def ferie():
   FERIE_TOTALI_ANNUE = 33
+  dipendenti = get_dipendenti()
   
   st.header("Ferie")
 
@@ -125,7 +126,7 @@ def ferie():
   report.columns = ['Dipendente', 'Giorni Goduti', 'Residuo']
   
   # Recuperiamo i nomi unici e aggiungiamo un'opzione vuota all'inizio
-  nomi_dipendenti = report['Dipendente'].unique().tolist()
+  #nomi_dipendenti = report['Dipendente'].unique().tolist()
   opzioni = ["-- Seleziona un dipendente --"] + nomi_dipendenti
 
   dipendente_scelto = st.selectbox(
