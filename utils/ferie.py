@@ -3,7 +3,7 @@ import gspread
 
 ferie_sheet_id = st.secrets["FERIE_GSHEET_ID"]
 
-def aggiungi_ferie(riga):
+def add_ferie(riga):
   sheet = get_sheet(ferie_sheet_id,"FERIE")
   try:
     sheet.append_row(riga)
