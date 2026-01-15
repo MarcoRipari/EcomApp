@@ -8,6 +8,11 @@ load_functions_from("functions", globals())
 
 ferie_sheet_id = st.secrets["FERIE_GSHEET_ID"]
 
+def get_dipendenti():
+  sheet = get_sheet(ferie_sheet_id, "DIPENDENTI")
+  dipendenti = pd.DataFrame(sheet_dip.get_all_records())['NOME'].tolist()
+  return dipendenti
+  
 def calcola_giorni_lavorativi_esatti(inizio, fine):
   # Inizializza le festività italiane per l'anno corrente e il successivo
   it_holidays = holidays.Italy(years=[inizio.year, fine.year])
