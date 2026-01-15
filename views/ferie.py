@@ -38,6 +38,7 @@ def ferie():
   # 4. Calcolo dei giorni residui
   report['Ferie Totali'] = FERIE_TOTALI_ANNUE
   report['Giorni Residui'] = report['Ferie Totali'] - report['GIORNI LAVORATIVI']
+  report_view = report[['NOME', 'GIORNI LAVORATIVI', 'Giorni Residui']].copy()
   report.columns = ['Dipendente', 'Giorni Goduti', 'Residuo']
 
   # 5. Visualizzazione Grafica
@@ -45,7 +46,7 @@ def ferie():
   
   # Formattazione per rendere la tabella più bella
   st.dataframe(
-    report.style.apply(lambda x: ['color: red' if x.Residuo < 5 else '' for i in x], axis=1),
+    report_view.style.apply(lambda x: ['color: red' if x.Residuo < 5 else '' for i in x], axis=1),
     use_container_width=True,
     hide_index=True
   )
