@@ -39,7 +39,7 @@ def ferie():
   report['Ferie Totali'] = FERIE_TOTALI_ANNUE
   report['Giorni Residui'] = report['Ferie Totali'] - report['GIORNI LAVORATIVI']
   report_view = report[['NOME', 'GIORNI LAVORATIVI', 'Giorni Residui']].copy()
-  report.columns = ['Dipendente', 'Giorni Goduti', 'Residuo']
+  report_view.columns = ['Dipendente', 'Giorni Goduti', 'Residuo']
 
   # 5. Visualizzazione Grafica
   st.subheader("Situazione Attuale")
