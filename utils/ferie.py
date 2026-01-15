@@ -64,6 +64,7 @@ def add_ferie(riga):
                     if inizio_es and fine_es:
                         # CONTROLLO MATEMATICO OVERLAP
                         if inizio_nuovo <= fine_es and inizio_es <= fine_nuovo:
+                            st.write("Ferie già inserite")
                             return f"❌ Errore: {riga[0]} ha già ferie dal {raw_inizio} al {raw_fine}"
                 except Exception as e:
                     st.write(f"DEBUG: Errore conversione date riga {nome_es}: {e}")
