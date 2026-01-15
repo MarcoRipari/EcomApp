@@ -35,22 +35,19 @@ def ferie():
   
   report = df.groupby('NOME')['GIORNI LAVORATIVI'].sum().reset_index()
   
-  # --- 4. Calcolo dei giorni residui ---
+  # 4. Calcolo dei giorni residui
   report['Ferie Totali'] = FERIE_TOTALI_ANNUE
   report['Giorni Residui'] = report['Ferie Totali'] - report['GIORNI LAVORATIVI']
-  
-  # Creiamo una copia per la visualizzazione con solo le colonne desiderate
-  # Rinominiamo solo Nome, Giorni Goduti e Residuo
-  report_view.columns = ['Dipendente', 'Giorni Goduti', 'Budget Iniziale', 'Residuo']
-  
-  # --- 5. Visualizzazione Grafica ---
+  report.columns = ['Dipendente', 'Giorni Goduti', 'Budget Iniziale', 'Residuo']
+
+  # 5. Visualizzazione Grafica
   st.subheader("Situazione Attuale")
   
-  # Applichiamo lo stile alla tabella "report_view" (che non ha il budget iniziale)
+  # Formattazione per rendere la tabella più bella
   st.dataframe(
-      report.style.apply(lambda x: ['color: red' if x.Residuo < 5 else '' for i in x], axis=1),
-      use_container_width=True,
-      hide_index=True
+    report.style.apply(lambda x: ['color: red' if x.Residuo < 5 else '' for i in x], axis=1),
+    use_container_width=True,
+    hide_index=True
   )
 
   # 6. Widget per visualizzare il dettaglio di un singolo dipendente
