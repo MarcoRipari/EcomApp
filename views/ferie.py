@@ -1,6 +1,10 @@
 import streamlit as st
 import gspread
 
+ferie_sheet_id = st.secrets["FERIE_GSHEET_ID"]
+sheet_ferie = get_sheet(ferie_sheet_id,"FERIE")
+
+
 def ferie():
   st.header("Ferie")
 
@@ -26,13 +30,10 @@ def aggiungi_ferie():
       elif tipo == "":
         st.error("Seleziona un 'Tipo' di assenza.")
       elif data_fine < data_inizio:
-          st.error("Errore: la data di fine non può essere precedente alla data di inizio.")
+        st.error("Errore: la data di fine non può essere precedente alla data di inizio.")
       else:
-          # Se tutti i controlli passano, procediamo al salvataggio
-          try:
-            sheet = connect_to_sheet()
-            nuova_riga = [nome, str(data_inizio), str(data_fine), tipo]
-            sheet.append_row(nuova_riga)
-            st.success(f"Richiesta registrata con successo per **{nome}**!")
-          except Exception as e:
-            st.error(f"Errore tecnico: {e}")
+        upload = aggiungi_ferie(sheet, nuova_riga)
+        if upload:
+          st.success("Ferie inserite con successo!")
+        else:
+          st.error(f"Errore tecnico: {upload}")
