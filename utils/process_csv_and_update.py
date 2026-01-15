@@ -1,10 +1,10 @@
 import streamlit as st
 import pandas as pd
-from . import read_csv
+
 
 def process_csv_and_update(sheet, uploaded_file, batch_size=100):
     st.text("1️⃣ Leggo CSV...")
-    df = read_csv_auto_encoding(uploaded_file)
+    df = read_csv(uploaded_file)
 
     expected_cols = [
         "Anno","Stag.","Clz.","Descr.","Serie","Descriz1","Annullato",
