@@ -16,9 +16,9 @@ def aggiungi_ferie():
     
     col1, col2 = st.columns(2)
     with col1:
-        data_inizio = st.date_input("Data inizio")
+        data_inizio = st.date_input("Data inizio", format="DD/MM/YYYY")
     with col2:
-        data_fine = st.date_input("Data fine")
+        data_fine = st.date_input("Data fine", format="DD/MM/YYYY")
         
     tipo = st.selectbox("Tipo di assenza", ["Ferie", "Malattia", "Permesso", "Altro"])
     
@@ -32,7 +32,7 @@ def aggiungi_ferie():
       elif data_fine < data_inizio:
         st.error("Errore: la data di fine non può essere precedente alla data di inizio.")
       else:
-        nuova_riga = [nome, str(data_inizio), str(data_fine), tipo]
+        nuova_riga = [nome, data_inizio.strftime('%d-%m-%Y'), data_fine.strftime('%d-%m-%Y'), tipo]
         upload = add_ferie(nuova_riga)
         if upload:
           st.success("Ferie inserite con successo!")
