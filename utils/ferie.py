@@ -38,6 +38,7 @@ def add_ferie(riga):
         # Recuperiamo tutti i dati
         esistenti = sheet.get_all_records()
         
+        st.write(esistenti) # Questo ti mostrerà in Streamlit cosa legge dal foglio
         for record in esistenti:
             # 1. Filtriamo per nome (attenzione alle maiuscole/minuscole e spazi)
             if str(record.get('NOME', '')).strip().lower() == str(nome_nuovo).strip().lower():
