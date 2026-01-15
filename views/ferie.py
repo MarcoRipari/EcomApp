@@ -98,7 +98,7 @@ def ferie():
   for i, nome_dipendente in enumerate(dipendenti):
       # Cerchiamo i dati del dipendente nel report calcolato precedentemente
       # Se il dipendente non ha ancora preso ferie, impostiamo i valori a zero
-      dati_report = report[report['Dipendente'] == nome_dipendente]
+      dati_report = report[report['NOME'] == nome_dipendente]
       
       if not dati_report.empty:
           giorni_goduti = dati_report.iloc[0]['Giorni Goduti']
