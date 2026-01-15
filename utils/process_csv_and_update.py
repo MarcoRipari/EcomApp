@@ -33,8 +33,19 @@ def process_csv_and_update(sheet, uploaded_file, batch_size=100):
         existing_df = pd.DataFrame(columns=header)
     else:
         header = existing_values[0]
-        data = existing_values[1:]
-        existing_df = pd.DataFrame(data, columns=header)
+        num_cols = len(header) # Questo sarà 21
+        raw_data = existing_values[1:]
+        
+        # --- SOLUZIONE: Normalizziamo ogni riga ---
+        normalized_data = []
+        for row in raw_data:
+            # Se la riga è più corta di 21, aggiungiamo stringhe vuote
+            padding = num_cols - len(row)
+            normalized_row = row + ([""] * padding)
+            normalized_data.append(normalized_row)
+        
+        # Ora data ha sempre lo stesso numero di colonne dell'header
+        existing_df = pd.DataFrame(normalized_data, columns=header)
 
     existing_df = existing_df.fillna("").astype(str)
     existing_dict = {row["SKU"]: row for _, row in existing_df.iterrows()}
