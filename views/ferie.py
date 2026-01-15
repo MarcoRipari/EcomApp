@@ -81,7 +81,7 @@ def ferie():
     giorni_presi = report_view.loc[report_view['Dipendente'] == dipendente_scelto, 'Giorni Goduti'].values[0]
     giorni_restanti = report_view.loc[report_view['Dipendente'] == dipendente_scelto, 'Residuo'].values[0]
       
-    st.info(f"Riepilogo rapido: {giorni_presi} giorni goduti, {giorni_restanti} ancora disponibili.")
+    st.info(f"Riepilogo: {giorni_presi} giorni goduti, {giorni_restanti} ancora disponibili.")
   else:
     st.info("Seleziona un nome dal menu a tendina per vedere l'elenco dettagliato delle date.")
 
