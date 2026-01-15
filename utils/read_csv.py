@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import chardet
+import csv
 
 def read_csv(uploaded_file, separatore=None):
     raw_data = uploaded_file.read()
