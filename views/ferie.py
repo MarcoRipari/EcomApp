@@ -151,7 +151,7 @@ def ferie():
     dettaglio_utente = df[df['NOME'] == dipendente_scelto]
     st.subheader(f"Dettaglio assenze: {dipendente_scelto}")
     dettaglio_utente['DATA INIZIO'] = dettaglio_utente['DATA INIZIO'].strftime('%-d %B %Y')
-    dettaglio_utente['DATA FINE'] = dettaglio_utente['DATA FINE'].strftime('%-d %B %Y)
+    dettaglio_utente['DATA FINE'] = dettaglio_utente['DATA FINE'].strftime('%-d %B %Y')
                                                                              
     
     # Mostriamo la tabella con i dettagli delle singole richieste
