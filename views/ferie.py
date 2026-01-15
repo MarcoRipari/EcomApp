@@ -75,6 +75,9 @@ def ferie():
     cols = st.columns(len(chi_e_in_ferie) if len(chi_e_in_ferie) < 4 else 4)
     for i, assenza in enumerate(chi_e_in_ferie):
       with cols[i % 4]:
+        if inizio_f <= oggi <= fine_f:
+          # Aggiungi un'icona speciale o un colore diverso
+          label = f"🚀 **{assenza['Dipendente']}** (Oggi Assente)"
         st.warning(f"**{assenza['Dipendente']}**\n\n{assenza['Dal']} ➡️ {assenza['Al']}")
   else:
     st.write("✅ Nessuno è in ferie questa settimana.")
