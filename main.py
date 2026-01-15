@@ -168,7 +168,7 @@ elif page == "Catalogo - Genera descrizioni":
 elif page == "Giacenze - Importa":
     giacenze_importa()
 
-elif page == "Giacenze - Aggiorna Anagrafica":
+elif page == "Giacenze - Aggiorna anagrafica":
     aggiorna_anagrafica()
     
 elif page == "Foto - Dashboard":
