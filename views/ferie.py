@@ -1,6 +1,8 @@
 import streamlit as st
 import gspread
 
+from utils import *
+
 ferie_sheet_id = st.secrets["FERIE_GSHEET_ID"]
 sheet_ferie = get_sheet(ferie_sheet_id,"FERIE")
 
