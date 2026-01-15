@@ -26,58 +26,58 @@ def calcola_giorni_lavorativi_esatti(inizio, fine):
   return giorni_lavorativi
 
 def add_ferie(riga):
-  nome_nuovo = riga[0]
-  inizio_nuovo = datetime.strptime(riga[1], '%d-%m-%Y').date() if isinstance(riga[1], str) else riga[1]
-  fine_nuovo = datetime.strptime(riga[2], '%d-%m-%Y').date() if isinstance(riga[2], str) else riga[2]
-  
-  sheet = get_sheet(ferie_sheet_id, "FERIE")
-  
-  try:
-    esistenti = sheet.get_all_records()
+    nome_nuovo = str(riga[0]).strip().lower()
+    # Gestione flessibile input data
+    inizio_nuovo = datetime.strptime(riga[1], '%d-%m-%Y').date() if isinstance(riga[1], str) else riga[1]
+    fine_nuovo = datetime.strptime(riga[2], '%d-%m-%Y').date() if isinstance(riga[2], str) else riga[2]
     
-    # DEBUG: Decommenta la riga sotto se vuoi vedere cosa legge Python dal foglio
-    # st.write(esistenti[0].keys()) 
+    sheet = get_sheet(ferie_sheet_id, "FERIE")
+    
+    try:
+        esistenti = sheet.get_all_records()
+        
+        # DEBUG: Vediamo se il foglio è vuoto o meno
+        if not esistenti:
+            st.write("DEBUG: Il foglio sembra vuoto o non leggibile")
 
-    for record in esistenti:
-      # Pulizia chiavi: trasformiamo tutto in maiuscolo e togliamo spazi extra per sicurezza
-      record_clean = {str(k).strip().upper(): v for k, v in record.items()}
-      
-      # Confronto Nome
-      if str(record_clean.get('NOME', '')).strip().lower() == str(nome_nuovo).strip().lower():
-        try:
-          # Cerchiamo le colonne indipendentemente da piccoli errori di digitazione
-          data_inizio_str = record_clean.get('DATA INIZIO') or record_clean.get('INIZIO')
-          data_fine_str = record_clean.get('DATA FINE') or record_clean.get('FINE')
-
-          if data_inizio_str and data_fine_str:
-            inizio_es = datetime.strptime(str(data_inizio_str), '%d-%m-%Y').date()
-            fine_es = datetime.strptime(str(data_fine_str), '%d-%m-%Y').date()
+        for record in esistenti:
+            # Pulizia chiavi del record (toglie spazi e rende maiuscolo)
+            rec = {str(k).strip().upper(): v for k, v in record.items()}
             
-            # LOGICA OVERLAP
-            if inizio_nuovo <= fine_es and inizio_es <= fine_nuovo:
-              return f"❌ Errore: {nome_nuovo} è già assente dal {data_inizio_str} al {data_fine_str}"
-          
-        except Exception as e:
-          # Se c'è un errore qui, vogliamo saperlo, non solo 'continue'
-          # st.error(f"Errore parsing riga: {e}") 
-          continue 
-                  
-  except Exception as e:
-    return f"⚠️ Errore durante il controllo del foglio: {e}"
+            nome_es = str(rec.get('NOME', '')).strip().lower()
+            
+            if nome_es == nome_nuovo:
+                # Se arriviamo qui, il nome è giusto. Ora controlliamo le date.
+                raw_inizio = str(rec.get('DATA INIZIO', rec.get('INIZIO', '')))
+                raw_fine = str(rec.get('DATA FINE', rec.get('FINE', '')))
+                
+                # Tentiamo la conversione supportando sia '-' che '/'
+                try:
+                    inizio_es = None
+                    for fmt in ('%d-%m-%Y', '%d/%m/%Y'):
+                        try:
+                            inizio_es = datetime.strptime(raw_inizio, fmt).date()
+                            fine_es = datetime.strptime(raw_fine, fmt).date()
+                            break
+                        except: continue
+                    
+                    if inizio_es and fine_es:
+                        # CONTROLLO MATEMATICO OVERLAP
+                        if inizio_nuovo <= fine_es and inizio_es <= fine_nuovo:
+                            return f"❌ Errore: {riga[0]} ha già ferie dal {raw_inizio} al {raw_fine}"
+                except Exception as e:
+                    st.write(f"DEBUG: Errore conversione date riga {nome_es}: {e}")
+                    continue
+                    
+    except Exception as e:
+        return f"⚠️ Errore critico: {e}"
 
-  # --- PROCEDI AL SALVATAGGIO ---
-  totale_giorni = calcola_giorni_lavorativi_esatti(inizio_nuovo, fine_nuovo)
-  
-  riga_da_salvare = [
-    nome_nuovo, 
-    inizio_nuovo.strftime('%d-%m-%Y'), 
-    fine_nuovo.strftime('%d-%m-%Y'), 
-    riga[3], 
-    totale_giorni
-  ]
-  
-  try:
-    sheet.append_row(riga_da_salvare)
-    return True
-  except Exception as e:
-    return f"🚨 Errore nell'invio dei dati: {e}"
+    # --- SALVATAGGIO ---
+    totale_giorni = calcola_giorni_lavorativi_esatti(inizio_nuovo, fine_nuovo)
+    riga_da_salvare = [riga[0], inizio_nuovo.strftime('%d-%m-%Y'), fine_nuovo.strftime('%d-%m-%Y'), riga[3], totale_giorni]
+    
+    try:
+        sheet.append_row(riga_da_salvare)
+        return True
+    except Exception as e:
+        return f"🚨 Errore salvataggio: {e}"
