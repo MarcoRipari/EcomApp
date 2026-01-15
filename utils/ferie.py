@@ -1,6 +1,10 @@
 import streamlit as st
 import gspread
 
+from utils import *
+
+load_functions_from("functions", globals())
+
 ferie_sheet_id = st.secrets["FERIE_GSHEET_ID"]
 
 def add_ferie(riga):
