@@ -150,23 +150,26 @@ def ferie():
   if dipendente_scelto != "-- Seleziona un dipendente --":
     dettaglio_utente = df[df['NOME'] == dipendente_scelto]
     st.subheader(f"Dettaglio assenze: {dipendente_scelto}")
-                                                                            
+
+    dettaglio_utente['DATA INIZIO'] = pd.to_datetime(dettaglio_utente['DATA INIZIO'], dayfirst=True, errors='coerce')
+    dettaglio_utente['DATA FINE'] = pd.to_datetime(dettaglio_utente['DATA FINE'], dayfirst=True, errors='coerce')
+    MESI_ITA = {
+        1: "Gennaio", 2: "Febbraio", 3: "Marzo", 4: "Aprile", 5: "Maggio", 6: "Giugno",
+        7: "Luglio", 8: "Agosto", 9: "Settembre", 10: "Ottobre", 11: "Novembre", 12: "Dicembre"
+    }
+
+    dettaglio_utente['DATA INIZIO'] = dettaglio_utente['DATA INIZIO'].apply(
+        lambda x: f"{x.day} {MESI_ITA[x.month]} {x.year}" if pd.notnull(x) else ""
+    )
+    dettaglio_utente['DATA FINE'] = dettaglio_utente['DATA FINE'].apply(
+        lambda x: f"{x.day} {MESI_ITA[x.month]} {x.year}" if pd.notnull(x) else ""
+    )
     
     # Mostriamo la tabella con i dettagli delle singole richieste
     st.dataframe(
       dettaglio_utente[['DATA INIZIO', 'DATA FINE', 'TIPO', 'GIORNI LAVORATIVI']],
       use_container_width=True,
-      hide_index=True,
-      column_config={
-          "DATA INIZIO": st.column_config.DateColumn(
-              "INIZIO",
-              format="D MMM YYYY",  # Oppure "D MMM YYYY" per 1 Gen 2026
-          ),
-          "DATA FINE": st.column_config.DateColumn(
-              "FINE",
-              format="D MMM YYYY",  # Oppure "D MMM YYYY" per 1 Gen 2026
-          )
-      }
+      hide_index=True
     )
     
     # Un piccolo riassunto grafico per l'utente selezionato
