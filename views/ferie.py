@@ -86,55 +86,40 @@ def ferie():
     st.write("✅ Nessuno è in ferie questa settimana.")
   
   st.divider()
+    st.subheader("📊 Riepilogo Disponibilità")
+    
+    cols = st.columns(3)
+    
+    # Cicliamo sul DataFrame ANAGRAFICA per avere i budget corretti
+    for i, riga_dip in df_anagrafica.iterrows():
+        nome_dip = riga_dip['NOME']
+        budget_personale = riga_dip['TOTALE'] # Prende il valore dal foglio Dipendenti
 
-  st.subheader("📊 Riepilogo Disponibilità")
-  
-  # Creiamo una griglia di card (3 colonne per riga)
-  cols = st.columns(3)
-  
-  # Cicliamo sulla lista anagrafica completa
-  for i, riga_dipendente in dipendenti:
-      # Cerchiamo i dati del dipendente nel report calcolato precedentemente
-      # Se il dipendente non ha ancora preso ferie, impostiamo i valori a zero
-      dati_report = report[report['NOME'] == riga_dipendente['NOME']]
-      
-      if not dati_report.empty:
-          giorni_totali = riga_dipendente['TOTALE']
-          giorni_goduti = dati_report.iloc[0]['GIORNI LAVORATIVI']
-          giorni_residui = dati_report.iloc[0]['Giorni Residui']
-      else:
-          # Caso per dipendente che non ha ancora registrato ferie
-          giorni_totali = FERIE_TOTALI_ANNUE
-          giorni_goduti = 0
-          giorni_residui = FERIE_TOTALI_ANNUE
-  
-      # Calcolo logica visuale
-      percentuale = min(giorni_goduti / giorni_totali, 1.0)
-      colore_testo = "red" if giorni_residui < 5 else "#31333F"
-      
-      with cols[i % 3]:
-          # HTML Card
-          st.markdown(f"""
-              <div style="
-                  border: 1px solid #e6e9ef; 
-                  padding: 20px; 
-                  border-radius: 10px; 
-                  background-color: #f9f9f9;
-                  margin-bottom: 10px;
-                  height: 160px;
-                  box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
-                  <h3 style="margin-top:0; color:#1E88E5; font-size: 18px;">{riga_dipendente['NOME']}</h3>
-                  <p style="margin-bottom:5px; font-size:14px; color: #555;">Godute: <b>{giorni_goduti} gg</b></p>
-                  <p style="color:{colore_testo}; font-size:16px;">Residuo: <b>{giorni_residui} gg</b></p>
-              </div>
-          """, unsafe_allow_html=True)
-          
-          # Barra di progresso
-          st.progress(percentuale)
-
-          # Pulsante per aprire il popup (Dialog)
-          if st.button(f"Modifica Budget {riga_dipendente['NOME']}", key=f"btn_{riga_dipendente['NOME']}"):
-              edit_budget_dialog(nome_dipendente, giorni_totali)
+        # Cerchiamo quanto ha fatto nel foglio ferie
+        dato_fatte = report_godute[report_godute['NOME'] == nome_dip]
+        giorni_goduti = dato_fatte.iloc[0]['GIORNI LAVORATIVI'] if not dato_fatte.empty else 0
+        
+        giorni_residui = budget_personale - giorni_goduti
+        percentuale = min(giorni_goduti / budget_personale, 1.0) if budget_personale > 0 else 0
+        colore_testo = "red" if giorni_residui < 5 else "#31333F"
+        
+        with cols[i % 3]:
+            # Card con HTML
+            st.markdown(f"""
+                <div style="border: 1px solid #e6e9ef; padding: 20px; border-radius: 10px; 
+                            background-color: #f9f9f9; height: 160px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
+                    <h3 style="margin:0; color:#1E88E5; font-size: 18px;">{nome_dip}</h3>
+                    <p style="margin:5px 0; font-size:14px;">Budget: <b>{budget_personale} gg</b></p>
+                    <p style="margin:5px 0; font-size:14px;">Godute: <b>{giorni_goduti} gg</b></p>
+                    <p style="color:{colore_testo}; font-size:16px; margin:0;">Residuo: <b>{giorni_residui} gg</b></p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            st.progress(percentuale)
+            
+            # Pulsante per aprire il popup (Dialog)
+            if st.button(f"Modifica Budget {nome_dip}", key=f"btn_{nome_dip}"):
+                edit_budget_dialog(nome_dip, budget_personale)
 
   # 6. Widget per visualizzare il dettaglio di un singolo dipendente
   st.divider()
