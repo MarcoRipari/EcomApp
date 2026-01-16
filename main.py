@@ -81,6 +81,7 @@ with st.sidebar:
                              {"main":"Foto", "name":"Aggiungi prelevate", "icon":"hand-index", "role":["guest","logistica","customer care","admin"]},
                              {"main":"Ferie", "name":"Report", "icon":"list", "role":["admin"]},
                              {"main":"Ferie", "name":"Aggiungi ferie", "icon":"plus", "role":["admin"]},
+                             {"main":"Ferie", "name":"Gestione dipendenti", "icon":"plus", "role":["admin"]},
                              {"main":"Admin", "name":"Aggiungi utente", "icon":"plus", "role":["admin"]}
                             ]
         
@@ -182,3 +183,6 @@ elif page == "Ferie - Report":
 
 elif page == "Ferie - Aggiungi ferie":
     aggiungi_ferie()
+
+elif page == "Ferie - Gestione dipendenti":
+    gestione_dipendenti()
