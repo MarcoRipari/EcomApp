@@ -124,7 +124,7 @@ def ferie():
                   margin-bottom: 10px;
                   height: 160px;
                   box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
-                  <h3 style="margin-top:0; color:#1E88E5; font-size: 18px;">{nome_dipendente}</h3>
+                  <h3 style="margin-top:0; color:#1E88E5; font-size: 18px;">{riga_dipendente['NOME']}</h3>
                   <p style="margin-bottom:5px; font-size:14px; color: #555;">Godute: <b>{giorni_goduti} gg</b></p>
                   <p style="color:{colore_testo}; font-size:16px;">Residuo: <b>{giorni_residui} gg</b></p>
               </div>
