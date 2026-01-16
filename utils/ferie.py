@@ -12,6 +12,7 @@ def dettaglio_dipendente(nome):
   sheet = get_sheet(ferie_sheet_id, "DIPENDENTI")
   lista = pd.DataFrame(sheet.get_all_records())
   dettaglio = lista[lista['NOME'] == nome]
+  dettaglio['TOTALE'] = pd.to_numeric(dettaglio['TOTALE'], errors='coerce')
   return dettaglio
   
 def get_dipendenti():
