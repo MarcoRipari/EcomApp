@@ -38,7 +38,8 @@ def ferie():
 
   
   # --- 4. Calcolo (manteniamo la logica precedente) ---
-  report['Giorni Residui'] = dipendenti[dipendenti['NOME'] == report['NOME']]['TOTALE'] - report['GIORNI LAVORATIVI']
+  report = report.merge(dipendenti[['NOME', 'TOTALE']], on='NOME', how='left')
+  report['Giorni Residui'] = report['TOTALE'] - report['GIORNI LAVORATIVI']
 
   st.subheader("📅 In ferie questa settimana")
   
