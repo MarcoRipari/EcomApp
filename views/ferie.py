@@ -20,7 +20,7 @@ def ferie():
   data = sheet.get_all_records()
   
   if not data:
-    st.warning("Non ci sono dati registrati nel foglio ferie.")
+    st.warning("Non ci sono dati registrati nel foglio ferie")
     return
 
   df = pd.DataFrame(data)
