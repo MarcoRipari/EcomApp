@@ -59,7 +59,7 @@ with st.sidebar:
                           {"name":"Ordini", "icon":"truck", "role":["logistica","customer care","admin"]},
                           {"name":"Giacenze", "icon":"box", "role":["logistica","customer care","admin"]},
                           {"name":"Foto", "icon":"camera", "role":["logistica","customer care","admin"]},
-                          {"name":"Ferie", "icon":"palm", "role":["admin"]},
+                          {"name":"Ferie", "icon":"sun", "role":["admin"]},
                           {"name":"Admin", "icon":"gear", "role":["admin"]},
                           {"name":"Test", "icon":"gear", "role":["admin"]},
                           {"name":"Logout", "icon":"key", "role":["guest","logistica","customer care","admin"]}
@@ -81,7 +81,7 @@ with st.sidebar:
                              {"main":"Foto", "name":"Aggiungi prelevate", "icon":"hand-index", "role":["guest","logistica","customer care","admin"]},
                              {"main":"Ferie", "name":"Report", "icon":"list", "role":["admin"]},
                              {"main":"Ferie", "name":"Aggiungi ferie", "icon":"plus", "role":["admin"]},
-                             {"main":"Ferie", "name":"Gestione dipendenti", "icon":"plus", "role":["admin"]},
+                             {"main":"Ferie", "name":"Gestione dipendenti", "icon":"gear", "role":["admin"]},
                              {"main":"Admin", "name":"Aggiungi utente", "icon":"plus", "role":["admin"]}
                             ]
         
