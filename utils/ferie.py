@@ -10,7 +10,8 @@ ferie_sheet_id = st.secrets["FERIE_GSHEET_ID"]
 
 def get_dipendenti():
   sheet = get_sheet(ferie_sheet_id, "DIPENDENTI")
-  dipendenti = pd.DataFrame(sheet.get_all_records()).sort_values(by='NOME', ascending=True)['NOME'].tolist()
+  dipendenti = pd.DataFrame(sheet.get_all_records())
+  dipendenti = dipendenti.sort_values(by='NOME', ascending=True)['NOME'].tolist()
   return dipendenti
   
 def calcola_giorni_lavorativi_esatti(inizio, fine):
