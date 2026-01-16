@@ -109,7 +109,7 @@ def ferie():
       else:
           # Caso per dipendente che non ha ancora registrato ferie
           giorni_goduti = 0
-          giorni_residui = FERIE_TOTALI_ANNUE
+          giorni_residui = dipendenti[dipendenti['NOME'] == nome_dipendente].iloc[0]['TOTALE']
           giorni_totali = dipendenti[dipendenti['NOME'] == nome_dipendente].iloc[0]['TOTALE']
   
       # Calcolo logica visuale
