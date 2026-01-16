@@ -138,7 +138,7 @@ def ferie():
 
   # 6. Widget per visualizzare il dettaglio di un singolo dipendente
   st.divider()
-  report.columns = ['Dipendente', 'Giorni Goduti', 'Residuo']
+  report.columns = ['Dipendente', 'Giorni Goduti', 'Residuo', 'TOTALE']
   
   # Recuperiamo i nomi unici e aggiungiamo un'opzione vuota all'inizio
   #nomi_dipendenti = report['Dipendente'].unique().tolist()
