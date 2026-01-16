@@ -8,7 +8,7 @@ load_functions_from("functions", globals())
 
 def ferie():
   FERIE_TOTALI_ANNUE = 34
-  dipendenti = get_dipendenti()['NOME'].tolist()
+  dipendenti = get_dipendenti()
   
   st.header("Ferie")
 
@@ -95,7 +95,7 @@ def ferie():
   cols = st.columns(3)
   
   # Cicliamo sulla lista anagrafica completa
-  for i, nome_dipendente in enumerate(dipendenti):
+  for i, nome_dipendente in enumerate(dipendenti['NOME'].tolist()):
       # Cerchiamo i dati del dipendente nel report calcolato precedentemente
       # Se il dipendente non ha ancora preso ferie, impostiamo i valori a zero
       dati_report = report[report['NOME'] == nome_dipendente]
@@ -213,3 +213,9 @@ def aggiungi_ferie():
           st.success("Ferie inserite con successo!")
         else:
           st.error(f"{upload}")
+
+def gestione_dipendenti():
+  st.header("Gestione dipendenti")
+  dipendenti = get_dipendenti()['NOME'].tolist()
+  
+  
