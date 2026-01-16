@@ -90,3 +90,16 @@ def add_ferie(riga):
         return True
     except Exception as e:
         return f"🚨 Errore salvataggio: {e}"
+
+
+# --- NUOVA FUNZIONE DIALOG PER MODIFICA BUDGET ---
+@st.dialog("Modifica Budget Ferie")
+def edit_budget_dialog(nome, budget_attuale):
+    st.write(f"Stai modificando il budget annuo per **{nome}**")
+    nuovo_budget = st.number_input("Nuovo Totale Giorni", value=int(budget_attuale), min_value=0)
+    
+    if st.button("Salva"):
+        # Qui devi implementare la logica per scrivere sul foglio Google "DIPENDENTI"
+        # Esempio: update_dipendente_budget(nome, nuovo_budget)
+        st.success(f"Budget per {nome} aggiornato a {nuovo_budget}!")
+        st.rerun()
