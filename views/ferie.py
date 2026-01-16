@@ -36,6 +36,7 @@ def ferie():
   
   report = df.groupby('NOME')['GIORNI LAVORATIVI'].sum().reset_index()
   report = report.merge(dipendenti[['NOME', 'TOTALE']], on='NOME', how='left')
+  report['TOTALE'] = float(report['TOTALE'])
 
   
   # --- 4. Calcolo (manteniamo la logica precedente) ---
