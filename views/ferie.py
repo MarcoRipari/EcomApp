@@ -9,8 +9,6 @@ load_functions_from("functions", globals())
 def ferie():
   FERIE_TOTALI_ANNUE = 34
   dipendenti = get_dipendenti()
-  
-  st.header("Ferie")
 
   # 1. Recupero i dati dal foglio
   # Utilizzo la tua funzione get_sheet (assicurati che restituisca l'oggetto worksheet)
