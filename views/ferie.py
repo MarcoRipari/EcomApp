@@ -7,36 +7,22 @@ from utils import *
 load_functions_from("functions", globals())
       
 def ferie():
-  FERIE_TOTALI_ANNUE = 34
-  dipendenti = get_dipendenti()
+# 1. Recupero Anagrafica (con i budget personalizzati)
+    df_anagrafica = get_dipendenti() # Assumiamo sia un DataFrame con colonne NOME e TOTALE
+    
+    st.header("Ferie")
 
-  # 1. Recupero i dati dal foglio
-  # Utilizzo la tua funzione get_sheet (assicurati che restituisca l'oggetto worksheet)
-  sheet = get_sheet(ferie_sheet_id, "FERIE")
-  
-  # 2. Trasformo i dati in un DataFrame Pandas per gestirli facilmente
-  data = sheet.get_all_records()
-  
-  if not data:
-    st.warning("Non ci sono dati registrati nel foglio ferie.")
-    return
+    # 2. Recupero Dati Ferie effettive
+    sheet = get_sheet(ferie_sheet_id, "FERIE")
+    data = sheet.get_all_records()
+    if not data:
+        st.warning("Non ci sono dati registrati nel foglio ferie.")
+        df = pd.DataFrame(columns=['NOME', 'GIORNI LAVORATIVI', 'DATA INIZIO', 'DATA FINE', 'TIPO'])
+    else:
+        df = pd.DataFrame(data)
 
-  df = pd.DataFrame(data)
-
-  # Rinominiamo le colonne per sicurezza se i nomi nel foglio sono diversi
-  # Assicurati che nel foglio i nomi siano esattamente "NOME" e "GIORNI LAVORATIVI"
-  # Altrimenti usa df.columns = ['NOME', 'INIZIO', 'FINE', 'TIPO', 'GIORNI']
-  
-  # 3. Raggruppamento per Dipendente e Somma
-  # Usiamo solo le righe di tipo "Ferie" se vuoi escludere Malattia/Permessi dal conteggio
-  # df_ferie = df[df['TIPO'] == 'Ferie'] 
-  # (Se vuoi sommare tutto, usa direttamente df)
-  
-  report = df.groupby('NOME')['GIORNI LAVORATIVI'].sum().reset_index()
-
-  
-  # --- 4. Calcolo (manteniamo la logica precedente) ---
-  report['Giorni Residui'] = FERIE_TOTALI_ANNUE - report['GIORNI LAVORATIVI']
+    # 3. Calcolo giorni goduti per dipendente
+    report_godute = df.groupby('NOME')['GIORNI LAVORATIVI'].sum().reset_index()
 
   st.subheader("📅 In ferie questa settimana")
   
