@@ -106,11 +106,12 @@ def ferie():
           giorni_residui = dati_report.iloc[0]['Giorni Residui']
       else:
           # Caso per dipendente che non ha ancora registrato ferie
+          giorni_totali = FERIE_TOTALI_ANNUE
           giorni_goduti = 0
           giorni_residui = FERIE_TOTALI_ANNUE
   
       # Calcolo logica visuale
-      percentuale = min(giorni_goduti / FERIE_TOTALI_ANNUE, 1.0)
+      percentuale = min(giorni_goduti / giorni_totali, 1.0)
       colore_testo = "red" if giorni_residui < 5 else "#31333F"
       
       with cols[i % 3]:
@@ -134,7 +135,7 @@ def ferie():
           st.progress(percentuale)
 
           # Pulsante per aprire il popup (Dialog)
-          if st.button(f"Modifica Budget {nome_dip}", key=f"btn_{nome_dip}"):
+          if st.button(f"Modifica Budget {riga_dipendente['NOME']}", key=f"btn_{riga_dipendente['NOME']}"):
               edit_budget_dialog(nome_dipendente, giorni_totali)
 
   # 6. Widget per visualizzare il dettaglio di un singolo dipendente
