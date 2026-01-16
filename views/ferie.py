@@ -110,7 +110,7 @@ def ferie():
           # Caso per dipendente che non ha ancora registrato ferie
           giorni_goduti = 0
           giorni_residui = FERIE_TOTALI_ANNUE
-          giorni_totali = dipendenti[dipendenti['NOME'] == nome_dipendente]['TOTALE']
+          giorni_totali = dipendenti[dipendenti['NOME'] == nome_dipendente].iloc[0]['TOTALE']
   
       # Calcolo logica visuale
       percentuale = min(giorni_goduti / giorni_totali, 1.0)
