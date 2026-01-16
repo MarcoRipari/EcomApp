@@ -35,10 +35,10 @@ def ferie():
   # (Se vuoi sommare tutto, usa direttamente df)
   
   report = df.groupby('NOME')['GIORNI LAVORATIVI'].sum().reset_index()
+  report = report.merge(dipendenti[['NOME', 'TOTALE']], on='NOME', how='left')
 
   
   # --- 4. Calcolo (manteniamo la logica precedente) ---
-  report = report.merge(dipendenti[['NOME', 'TOTALE']], on='NOME', how='left')
   report['Giorni Residui'] = report['TOTALE'] - report['GIORNI LAVORATIVI']
 
   st.subheader("📅 In ferie questa settimana")
