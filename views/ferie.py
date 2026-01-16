@@ -182,7 +182,7 @@ def ferie():
     # Un piccolo riassunto grafico per l'utente selezionato
     giorni_presi = report.loc[report['Dipendente'] == dipendente_scelto, 'Giorni Goduti'].values[0]
     giorni_restanti = report.loc[report['Dipendente'] == dipendente_scelto, 'Residuo'].values[0]
-      
+    st.write(report)
     st.info(f"Riepilogo: {giorni_presi} giorni goduti, {giorni_restanti} ancora disponibili.")
   else:
     st.info("Seleziona un nome dal menu a tendina per vedere l'elenco dettagliato delle date.")
