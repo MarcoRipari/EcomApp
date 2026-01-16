@@ -109,7 +109,7 @@ def ferie():
           giorni_residui = FERIE_TOTALI_ANNUE
   
       # Calcolo logica visuale
-      percentuale = min(giorni_goduti / FERIE_TOTALI_ANNUE, 1.0)
+      percentuale = min(giorni_goduti / dipendenti[dipendenti['NOME'] == nome_dipendente]['TOTALE'], 1.0)
       colore_testo = "red" if giorni_residui < 5 else "#31333F"
       
       with cols[i % 3]:
