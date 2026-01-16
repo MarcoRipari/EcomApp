@@ -8,7 +8,7 @@ load_functions_from("functions", globals())
 
 def ferie():
   FERIE_TOTALI_ANNUE = 34
-  dipendenti = get_dipendenti()
+  dipendenti = get_dipendenti()['NOME'].tolist()
   
   st.header("Ferie")
 
