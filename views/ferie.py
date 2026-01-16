@@ -36,7 +36,7 @@ def ferie():
   
   report = df.groupby('NOME')['GIORNI LAVORATIVI'].sum().reset_index()
   report = report.merge(dipendenti[['NOME', 'TOTALE']], on='NOME', how='left')
-  report['TOTALE'] = pd.to_datetime(report['TOTALE'], errors='coerce')
+  report['TOTALE'] = pd.to_numeric(report['TOTALE'], errors='coerce')
   st.write(report['TOTALE'])
 
   
