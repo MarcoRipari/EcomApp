@@ -5,7 +5,7 @@ import gspread
 from utils import *
 
 load_functions_from("functions", globals())
-
+      
 def ferie():
   FERIE_TOTALI_ANNUE = 34
   dipendenti = get_dipendenti()
@@ -95,12 +95,13 @@ def ferie():
   cols = st.columns(3)
   
   # Cicliamo sulla lista anagrafica completa
-  for i, nome_dipendente in enumerate(dipendenti['NOME'].tolist()):
+  for i, riga_dipendente in dipendenti:
       # Cerchiamo i dati del dipendente nel report calcolato precedentemente
       # Se il dipendente non ha ancora preso ferie, impostiamo i valori a zero
-      dati_report = report[report['NOME'] == nome_dipendente]
+      dati_report = report[report['NOME'] == riga_dipendente['NOME']]
       
       if not dati_report.empty:
+          giorni_totali = riga_dipendente['TOTALE']
           giorni_goduti = dati_report.iloc[0]['GIORNI LAVORATIVI']
           giorni_residui = dati_report.iloc[0]['Giorni Residui']
       else:
@@ -131,6 +132,10 @@ def ferie():
           
           # Barra di progresso
           st.progress(percentuale)
+
+          # Pulsante per aprire il popup (Dialog)
+          if st.button(f"Modifica Budget {nome_dip}", key=f"btn_{nome_dip}"):
+              edit_budget_dialog(nome_dipendente, giorni_totali)
 
   # 6. Widget per visualizzare il dettaglio di un singolo dipendente
   st.divider()
