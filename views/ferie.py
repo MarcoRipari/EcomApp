@@ -89,17 +89,17 @@ def ferie():
             percentuale = min(giorni_goduti / budget_personale, 1.0) if budget_personale > 0 else 0
             colore_testo = "red" if giorni_residui < 5 else "#31333F"
         
-      with cols[i % 3]:
-            # Card con HTML
-            st.markdown(f"""
-                <div style="border: 1px solid #e6e9ef; padding: 20px; border-radius: 10px; 
-                            background-color: #f9f9f9; height: 160px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
-                    <h3 style="margin:0; color:#1E88E5; font-size: 18px;">{nome_dip}</h3>
-                    <p style="margin:5px 0; font-size:14px;">Budget: <b>{budget_personale} gg</b></p>
-                    <p style="margin:5px 0; font-size:14px;">Godute: <b>{giorni_goduti} gg</b></p>
-                    <p style="color:{colore_testo}; font-size:16px; margin:0;">Residuo: <b>{giorni_residui} gg</b></p>
-                </div>
-            """, unsafe_allow_html=True)
+            with cols[i % 3]:
+                  # Card con HTML
+                  st.markdown(f"""
+                        <div style="border: 1px solid #e6e9ef; padding: 20px; border-radius: 10px; 
+                              background-color: #f9f9f9; height: 160px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
+                        <h3 style="margin:0; color:#1E88E5; font-size: 18px;">{nome_dip}</h3>
+                        <p style="margin:5px 0; font-size:14px;">Budget: <b>{budget_personale} gg</b></p>
+                        <p style="margin:5px 0; font-size:14px;">Godute: <b>{giorni_goduti} gg</b></p>
+                        <p style="color:{colore_testo}; font-size:16px; margin:0;">Residuo: <b>{giorni_residui} gg</b></p>
+                        </div>
+                  """, unsafe_allow_html=True)
             
             st.progress(percentuale)
             
