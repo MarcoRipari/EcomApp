@@ -10,7 +10,7 @@ ferie_sheet_id = st.secrets["FERIE_GSHEET_ID"]
 
 def dettaglio_dipendente(nome):
   sheet = get_sheet(ferie_sheet_id, "DIPENDENTI")
-  lista = pd.DataFrame(sheet.get_all_records()))
+  lista = pd.DataFrame(sheet.get_all_records())
   dettaglio = lista[lista['NOME'] == nome]
   return dettaglio
   
