@@ -254,4 +254,4 @@ def gestione_dipendenti():
           """, unsafe_allow_html=True)
 
         if st.button(f"📝 Modifica {dipendente.NOME}", key=f"edit_{dipendente.NOME}", use_container_width=True):
-                modifica_ferie_totali_modal(dipendente.NOME, dipendente.TOTALE)
+            modifica_ferie_totali_modal(dipendente.NOME, dipendente.TOTALE)
