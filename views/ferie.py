@@ -9,8 +9,6 @@ load_functions_from("functions", globals())
 def ferie():
     # 1. Recupero l'anagrafica che ha già i calcoli (NOME, TOTALE, FATTE, RESIDUO)
     df_dipendenti = get_dipendenti() 
-    
-    st.header("Ferie")
 
     # 2. Recupero i dati grezzi delle ferie solo per la sezione "In ferie questa settimana" e il "Dettaglio"
     sheet = get_sheet(ferie_sheet_id, "FERIE")
