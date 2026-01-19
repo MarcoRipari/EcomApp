@@ -220,11 +220,7 @@ def gestione_dipendenti():
           giorni_goduti = 0
           giorni_residui = dipendenti[dipendenti['NOME'] == nome_dipendente].iloc[0]['TOTALE']
           giorni_totali = dipendenti[dipendenti['NOME'] == nome_dipendente].iloc[0]['TOTALE']
-  
-      # Calcolo logica visuale
-      percentuale = min(giorni_goduti / giorni_totali, 1.0)
-      colore_testo = "red" if giorni_residui < 5 else "#31333F"
-      
+
       with cols[i % 3]:
           # HTML Card
           st.markdown(f"""
@@ -241,8 +237,5 @@ def gestione_dipendenti():
                   <p style="color:{colore_testo}; font-size:16px;">Residuo: <b>{giorni_residui} gg</b></p>
               </div>
           """, unsafe_allow_html=True)
-          
-          # Barra di progresso
-          st.progress(percentuale)
   
   
