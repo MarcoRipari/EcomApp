@@ -225,7 +225,7 @@ def gestione_dipendenti():
   cols = st.columns(3)
   
   # Cicliamo sulla lista anagrafica completa
-  for i, dipendente in enumerate(dipendenti.tolist()):
+  for i, dipendente in enumerate(dipendenti.itertuples(index=False)):
       with cols[i % 3]:
           # HTML Card
           st.markdown(f"""
@@ -237,8 +237,8 @@ def gestione_dipendenti():
                   margin-bottom: 10px;
                   height: 160px;
                   box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
-                  <h3 style="margin-top:0; color:#1E88E5; font-size: 18px;">{dipendente['NOME']}</h3>
-                  <p style="margin-bottom:5px; font-size:14px; color: #555;">Totale: <b>{dipendente['TOTALE']} gg</b></p>
+                  <h3 style="margin-top:0; color:#1E88E5; font-size: 18px;">{dipendente.NOME}</h3>
+                  <p style="margin-bottom:5px; font-size:14px; color: #555;">Totale: <b>{dipendente.TOTALE} gg</b></p>
               </div>
           """, unsafe_allow_html=True)
   
