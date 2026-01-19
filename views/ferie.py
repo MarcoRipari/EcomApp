@@ -237,21 +237,23 @@ def gestione_dipendenti():
   
   # Cicliamo sulla lista anagrafica completa
   for i, dipendente in enumerate(dipendenti.itertuples(index=False)):
-      with cols[i % 3]:
-          # HTML Card
-          st.markdown(f"""
-              <div style="
-                  border: 1px solid #e6e9ef; 
-                  padding: 20px; 
-                  border-radius: 10px; 
-                  background-color: #f9f9f9;
-                  margin-bottom: 10px;
-                  height: 160px;
-                  box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
-                  <h3 style="margin-top:0; color:#1E88E5; font-size: 18px;">{dipendente.NOME}</h3>
-                  <p style="margin-bottom:5px; font-size:14px; color: #555;">Totale: <b>{dipendente.TOTALE} gg</b></p>
-              </div>
-          """, unsafe_allow_html=True)
-
-        if st.button(f"📝 Modifica {dipendente.NOME}", key=f"edit_{dipendente.NOME}", use_container_width=True):
-            modifica_ferie_totali_modal(dipendente.NOME, dipendente.TOTALE)
+        with cols[i % 3]:
+            # Visualizzazione Card
+            st.markdown(f"""
+                <div style="
+                    border: 1px solid #e6e9ef; 
+                    padding: 20px; 
+                    border-radius: 10px; 
+                    background-color: #f9f9f9;
+                    margin-bottom: 5px;
+                    height: 120px;
+                    box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
+                    <h3 style="margin-top:0; color:#1E88E5; font-size: 18px;">{dipendente.NOME}</h3>
+                    <p style="margin-bottom:5px; font-size:14px; color: #555;">Totale: <b>{dipendente.TOTALE} gg</b></p>
+                </div>
+            """, unsafe_allow_html=True)
+            
+            # Pulsante Modifica con icona
+            # Usiamo una chiave unica (key) basata sul nome per distinguere i bottoni
+            if st.button(f"📝 Modifica {dipendente.NOME}", key=f"edit_{dipendente.NOME}", use_container_width=True):
+                modifica_budget_modal(dipendente.NOME, dipendente.TOTALE)
