@@ -57,6 +57,8 @@ def bordered_box_fotografi(title, data_dict, genera_pdf_fn, emoji="📥"):
     larghezza_col = {
         "DESCRIZIONE":250,
     }
+    align_col = {"DESCRIZIONE":"LEFT"}
+    limiti_chars = {"DESCRIZIONE":35}
     st.markdown(f"### {emoji} {title}")
 
     cols = st.columns(len(data_dict))
@@ -78,7 +80,8 @@ def bordered_box_fotografi(title, data_dict, genera_pdf_fn, emoji="📥"):
             # Pulsante subito sotto
             st.download_button(
                 label="📥 Download",
-                data=genera_pdf_fn(df,col_widths=larghezza_col),
+                data=genera_pdf_fn(df, header_align="CENTER", text_align="CENTER", valign="MIDDLE",
+                            col_widths=larghezza_col, align_map=align_col, truncate_map=limiti_chars),
                 file_name=f"{title}_{label}.pdf",
                 mime="application/pdf",
                 disabled=df.empty,
