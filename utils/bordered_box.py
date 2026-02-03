@@ -56,6 +56,10 @@ f'</div>'
 def bordered_box_fotografi(title, data_dict, genera_pdf_fn, emoji="📥"):
     larghezza_col = {
         "DESCRIZIONE":250,
+        "COR":35,
+        "LAT":35,
+        "X":25,
+        "Y":25
     }
     align_col = {"DESCRIZIONE":"LEFT"}
     limiti_chars = {"DESCRIZIONE":35}
