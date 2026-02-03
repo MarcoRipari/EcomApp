@@ -55,6 +55,9 @@ f'</div>'
 
 def bordered_box_fotografi(title, data_dict, genera_pdf_fn, emoji="📥"):
     larghezza_col = {
+        "COD":50,
+        "VAR":35,
+        "COL":40,
         "DESCRIZIONE":250,
         "COR":35,
         "LAT":35,
