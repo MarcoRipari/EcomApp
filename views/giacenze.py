@@ -130,7 +130,7 @@ def giacenze_importa():
 
         # --- Colonne numeriche ---
         numeric_cols_info = { "D": "0", "M": "000", "O": "0", "P": "0" }
-        for i in range(19, 34):  # Colonne R-AF
+        for i in range(18, 30):  # Colonne R-AD
             col_letter = gspread.utils.rowcol_to_a1(1, i)[:-1]
             numeric_cols_info[col_letter] = "0"
 
