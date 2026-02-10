@@ -118,7 +118,23 @@ def giacenze_importa():
     df_input = st.session_state.df_input
 
     default_sheet_id = giacenze_sheet_id
-    selected_sheet_id = st.text_input("Inserisci ID del Google Sheet", value=giacenze_sheet_id)
+    
+    SHEETS = {
+        "Foglio FOTO": "1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4",
+        "Foglio GIACENZE": "13DnpAX7M9wymMR1YIH5IP28y_UaCPajBUIcoHca562U",
+    }
+    options = list(SHEETS.keys()) + ["Manuale"]
+
+    sheet_option = st.selectbox(
+        "Seleziona foglio:",
+        options
+    )
+    
+    if sheet_option in SHEETS:
+        selected_sheet_id = SHEETS[sheet_option]
+    else:
+        selected_sheet_id = st.text_input("Inserisci ID del Google Sheet")
+    #selected_sheet_id = st.text_input("Inserisci ID del Google Sheet", value=giacenze_sheet_id)
     nome_sheet_tab = st.text_input("Inserisci nome del TAB", value="GIACENZE")
 
     col1, col2, col3, col4 = st.columns(4)
