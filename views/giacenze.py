@@ -123,6 +123,7 @@ def giacenze_importa():
         "Foglio FOTO": "1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4",
         "Foglio GIACENZE": "13DnpAX7M9wymMR1YIH5IP28y_UaCPajBUIcoHca562U",
     }
+    
     options = list(SHEETS.keys()) + ["Manuale"]
 
     sheet_option = st.selectbox(
