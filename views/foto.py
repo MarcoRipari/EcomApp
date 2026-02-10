@@ -38,9 +38,9 @@ def foto_dashboard():
   disp_012 = df[df["DISP 012"] == True]
   download_col1,download_col2,download_col3 = st.columns(3)
   with download_col1:
-    disp_matias = disp[disp["FOTOGRAFO"] == "MATIAS"][["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
-    disp_matias_027 = disp_027[disp_027["FOTOGRAFO"] == "MATIAS"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
-    disp_matias_012 = disp_012[disp_012["FOTOGRAFO"] == "MATIAS"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
+    disp_matias = disp[disp["FOTOGRAFO"] == "MATIAS"][["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]].sort_values(by=["COR","LAT","X","Y","COD","VAR","COL"])
+    disp_matias_027 = disp_027[disp_027["FOTOGRAFO"] == "MATIAS"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]].sort_values(by=["UBI","COD","VAR","COL"])
+    disp_matias_012 = disp_012[disp_012["FOTOGRAFO"] == "MATIAS"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]].sort_values(by=["UBI","COD","VAR","COL"])
     bordered_box_fotografi(
         "MATIAS",
         {
