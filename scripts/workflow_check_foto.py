@@ -270,7 +270,7 @@ async def main():
             "values": output_col_k
         },
         {
-            "range": f"P2:P{len(output_col_l)+1}",
+            "range": f"L2:L{len(output_col_l)+1}",
             "values": output_col_l
         }
     ])
