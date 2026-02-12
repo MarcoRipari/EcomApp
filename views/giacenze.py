@@ -158,7 +158,7 @@ def giacenze_importa():
                 return float(x)
             except:
                 return str(x)
-        st.write(df_input)
+
         for col_letter in numeric_cols_info.keys():
             col_idx = gspread.utils.a1_to_rowcol(f"{col_letter}1")[1] - 1
             if df_input.columns.size > col_idx:
@@ -171,7 +171,7 @@ def giacenze_importa():
                 df_input[col_name] = df_input[col_name].apply(lambda x: "" if pd.isna(x) else str(x))
 
         
-        
+        st.write(df_input)
         data_to_write = [df_input.columns.tolist()] + df_input.values.tolist()
         intestazioni_magazzini = ["060/029","060/018","060/015","060/025","027/001",
               "028/029","139/029","028/001","012/001"]
