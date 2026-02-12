@@ -165,17 +165,20 @@ def giacenze_importa():
                 col_name = df_input.columns[col_idx]
                 df_input[col_name] = df_input[col_name].apply(to_number_safe)
 
-        target_indices = [gspread.utils.a1_to_rowcol(f"{col}1")[1] for col in numeric_cols_info.keys()]
+        target_indices = [gspread.utils.a1_to_rowcol(f"{col}1")[1] - 1 for col in numeric_cols_info.keys()]
         for idx, col_name in enumerate(df_input.columns):
             if idx not in target_indices:
                 df_input[col_name] = df_input[col_name].apply(lambda x: "" if pd.isna(x) else str(x))
 
-
+        st.write(df_input)
         
         data_to_write = [df_input.columns.tolist()] + df_input.values.tolist()
         intestazioni_magazzini = ["060/029","060/018","060/015","060/025","027/001",
               "028/029","139/029","028/001","012/001"]
+
         data_to_write[0][18:26] = intestazioni_magazzini
+
+        st.write(data_to_write)
 
         # --- Destinazione GSheet ---       
         with col2:
