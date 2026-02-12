@@ -170,15 +170,7 @@ def giacenze_importa():
             if idx not in target_indices:
                 df_input[col_name] = df_input[col_name].apply(lambda x: "" if pd.isna(x) else str(x))
 
-        df_input.columns.values[18] = "060/029"
-        df_input.columns.values[19] = "060/018"
-        df_input.columns.values[20] = "060/015"
-        df_input.columns.values[21] = "060/025"
-        df_input.columns.values[22] = "027/001"
-        df_input.columns.values[23] = "028/029"
-        df_input.columns.values[24] = "139/029"
-        df_input.columns.values[25] = "028/001"
-        df_input.columns.values[26] = "012/001"
+
         
         data_to_write = [df_input.columns.tolist()] + df_input.values.tolist()
 
@@ -204,8 +196,6 @@ def giacenze_importa():
                 if nome_file == "Manuale" and file_bytes_for_upload:
                     with st.spinner("Carico il file su DropBox..."):
                         upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
-
-                st.session_state.df_input = None
                         
         with col3:
             if st.button("Importa Giacenze & Anagrafica"):
@@ -234,14 +224,13 @@ def giacenze_importa():
                     with st.spinner("Carico il file su DropBox..."):
                         upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
 
-                st.session_state.df_input = None
 
         with col4:
             if nome_file == "Manuale" and file_bytes_for_upload:
                 if st.button("Carica su DropBox"):
                     with st.spinner("Carico il file su DropBox..."):
                         upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
-                    st.session_state.df_input = None
+
                     
     with col1:
         if st.button("Importa Anagrafica"):
