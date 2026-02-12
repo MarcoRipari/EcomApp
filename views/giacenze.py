@@ -10,7 +10,7 @@ anagrafica_sheet_id = st.secrets["ANAGRAFICA_GSHEET_ID"]
 giacenze_sheet_id = st.secrets["GIACENZE_GSHEET_ID"]
 
 def giacenze_importa():
-    st.header("Importa giacenze2")
+    st.header("Importa giacenze")
 
     options = ["Manuale", "UBIC", "PIM"]
     
@@ -204,6 +204,8 @@ def giacenze_importa():
                 if nome_file == "Manuale" and file_bytes_for_upload:
                     with st.spinner("Carico il file su DropBox..."):
                         upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
+
+                st.session_state.df_input = None
                         
         with col3:
             if st.button("Importa Giacenze & Anagrafica"):
@@ -232,11 +234,14 @@ def giacenze_importa():
                     with st.spinner("Carico il file su DropBox..."):
                         upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
 
+                st.session_state.df_input = None
+
         with col4:
             if nome_file == "Manuale" and file_bytes_for_upload:
                 if st.button("Carica su DropBox"):
                     with st.spinner("Carico il file su DropBox..."):
                         upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
+                    st.session_state.df_input = None
                     
     with col1:
         if st.button("Importa Anagrafica"):
