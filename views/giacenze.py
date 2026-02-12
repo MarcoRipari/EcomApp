@@ -165,7 +165,7 @@ def giacenze_importa():
                 col_name = df_input.columns[col_idx]
                 df_input[col_name] = df_input[col_name].apply(to_number_safe)
 
-        target_indices = [gspread.utils.a1_to_rowcol(f"{col}1")[1] - 1 for col in numeric_cols_info.keys()]
+        target_indices = [gspread.utils.a1_to_rowcol(f"{col}1")[1] for col in numeric_cols_info.keys()]
         for idx, col_name in enumerate(df_input.columns):
             if idx not in target_indices:
                 df_input[col_name] = df_input[col_name].apply(lambda x: "" if pd.isna(x) else str(x))
