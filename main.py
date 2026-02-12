@@ -186,6 +186,3 @@ elif page == "Ferie - Aggiungi ferie":
 
 elif page == "Ferie - Gestione dipendenti":
     gestione_dipendenti()
-
-elif page == "Test":
-
