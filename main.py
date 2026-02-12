@@ -186,3 +186,16 @@ elif page == "Ferie - Aggiungi ferie":
 
 elif page == "Ferie - Gestione dipendenti":
     gestione_dipendenti()
+
+elif page == "Test":
+    components.html("""
+<!-- SalesGenius Chat Widget -->
+<script>
+  (function() {
+    var s = document.createElement('script');
+    s.src = 'https://condescending-poitras-1.preview.emergentagent.com/widget.js';
+    s.dataset.widgetKey = '89769ba1';
+    document.body.appendChild(s);
+  })();
+</script>
+""", height=600)
