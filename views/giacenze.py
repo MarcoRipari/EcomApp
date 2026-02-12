@@ -139,7 +139,7 @@ def giacenze_importa():
     nome_sheet_tab = st.text_input("Inserisci nome del TAB", value="GIACENZE")
 
     col1, col2, col3, col4 = st.columns(4)
-    st.write(df_input)
+
     if df_input is not None:
         view_df = st.checkbox("Visualizza il dataframe?", value=False)
         if view_df:
@@ -158,7 +158,7 @@ def giacenze_importa():
                 return float(x)
             except:
                 return str(x)
-
+        st.write(df_input)
         for col_letter in numeric_cols_info.keys():
             col_idx = gspread.utils.a1_to_rowcol(f"{col_letter}1")[1] - 1
             if df_input.columns.size > col_idx:
