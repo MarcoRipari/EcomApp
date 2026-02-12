@@ -170,15 +170,15 @@ def giacenze_importa():
             if idx not in target_indices:
                 df_input[col_name] = df_input[col_name].apply(lambda x: "" if pd.isna(x) else str(x))
 
-        df_input.columns.value[18] = "060/029"
-        df_input.columns.value[19] = "060/018"
-        df_input.columns.value[20] = "060/015"
-        df_input.columns.value[21] = "060/025"
-        df_input.columns.value[22] = "027/001"
-        df_input.columns.value[23] = "028/029"
-        df_input.columns.value[24] = "139/029"
-        df_input.columns.value[25] = "028/001"
-        df_input.columns.value[26] = "012/001"
+        df_input.columns.values[18] = "060/029"
+        df_input.columns.values[19] = "060/018"
+        df_input.columns.values[20] = "060/015"
+        df_input.columns.values[21] = "060/025"
+        df_input.columns.values[22] = "027/001"
+        df_input.columns.values[23] = "028/029"
+        df_input.columns.values[24] = "139/029"
+        df_input.columns.values[25] = "028/001"
+        df_input.columns.values[26] = "012/001"
         
         data_to_write = [df_input.columns.tolist()] + df_input.values.tolist()
 
