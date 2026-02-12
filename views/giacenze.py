@@ -171,8 +171,9 @@ def giacenze_importa():
                 df_input[col_name] = df_input[col_name].apply(lambda x: "" if pd.isna(x) else str(x))
 
         
-        st.write(df_input)
+        
         data_to_write = [df_input.columns.tolist()] + df_input.values.tolist()
+        st.write(data_to_write)
         intestazioni_magazzini = ["060/029","060/018","060/015","060/025","027/001",
               "028/029","139/029","028/001","012/001"]
 
