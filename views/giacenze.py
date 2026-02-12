@@ -175,7 +175,7 @@ def giacenze_importa():
         data_to_write = [df_input.columns.tolist()] + df_input.values.tolist()
         intestazioni_magazzini = ["060/029","060/018","060/015","060/025","027/001","028/029","139/029","028/001","012/001"]
 
-        data_to_write[0][18:26] = intestazioni_magazzini
+        data_to_write[0][18:27] = intestazioni_magazzini
 
         st.write(data_to_write)
 
