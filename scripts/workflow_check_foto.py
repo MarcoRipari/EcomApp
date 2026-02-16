@@ -278,6 +278,69 @@ async def main():
     print("✅ Google Sheet aggiornato")
     print(f"📦 Aggiornate {len(results)} SKU")
     print(f"🖼️ Foto scaricate su Dropbox: {tot_foto_salvate}")
+
+    # --- NUOVA LOGICA: GESTIONE FOGLIO URGENZE ---
+    URGENZE_SHEET_ID = "1YbU9twZgJECIsbxhRft-7yGGuH37xzVdOkz7jJIL5aQ"
+    
+    # 1. Recuperiamo i dati aggiornati (per avere i valori reali delle colonne K, M, N, O, P)
+    # Ricarichiamo i dati per sicurezza dopo il batch_update precedente
+    all_data_updated = sheet.get_all_values()
+    rows_updated = all_data_updated[1:]
+    
+    # Helper per convertire stringhe/booleani del foglio in check consistenti
+    def is_true(val):
+        return str(val).strip().upper() == "TRUE"
+    
+    def is_false(val):
+        v = str(val).strip().upper()
+        return v == "FALSE" or v == ""
+
+    lista_urgenze = []
+    for row in rows_updated:
+        # Assicuriamoci che la riga sia lunga abbastanza (fino a colonna P = indice 15)
+        if len(row) > 15:
+            sku = row[0].strip()       # Colonna A
+            k = row[10].strip()        # Colonna K
+            m = row[12].strip()        # Colonna M
+            n = row[13].strip()        # Colonna N
+            o = row[14].strip()        # Colonna O
+            p = row[15].strip()        # Colonna P
+
+            # Condizione: K=True, M=False, N=False, O=False, P=False
+            if is_true(k) and is_false(m) and is_false(n) and is_false(o) and is_false(p):
+                if sku:
+                    lista_urgenze.append([sku, "FOTO"])
+
+    # 2. Accedi al foglio URGENZE
+    try:
+        urg_sheet = gs_client.open_by_key(URGENZE_SHEET_ID).worksheet("URGENZE")
+        all_urg_data = urg_sheet.get_all_values()
+        
+        # 3. Elimina le righe che hanno "FOTO" in colonna B
+        # Invece di eliminare riga per riga (lento), filtriamo i dati esistenti mantenendo solo gli altri
+        header_urg = all_urg_data[0] if all_urg_data else ["SKU", "TIPO"]
+        nuovi_dati_urg = [header_urg]
+        
+        for r in all_urg_data[1:]:
+            if len(r) > 1:
+                if r[1] != "FOTO":
+                    nuovi_dati_urg.append(r)
+            else:
+                nuovi_dati_urg.append(r)
+        
+        # Aggiungiamo i nuovi SKU filtrati
+        nuovi_dati_urg.extend(lista_urgenze)
+
+        # 4. Sovrascrivi il foglio URGENZE con i dati puliti + nuovi
+        urg_sheet.clear()
+        urg_sheet.update("A1", nuovi_dati_urg)
+        
+        print(f"🚀 Foglio URGENZE aggiornato: aggiunti {len(lista_urgenze)} SKU.")
+
+    except Exception as e:
+        print(f"⚠️ Errore durante l'aggiornamento del foglio URGENZE: {e}")
+
+    print("✅ Processo completato.")
     
 if __name__ == "__main__":
     import asyncio
