@@ -279,68 +279,66 @@ async def main():
     print(f"📦 Aggiornate {len(results)} SKU")
     print(f"🖼️ Foto scaricate su Dropbox: {tot_foto_salvate}")
 
-    # --- NUOVA LOGICA: GESTIONE FOGLIO URGENZE ---
+    # --- LOGICA AGGIORNATA: GESTIONE FOGLIO URGENZE SENZA RIGHE VUOTE ---
     URGENZE_SHEET_ID = "1YbU9twZgJECIsbxhRft-7yGGuH37xzVdOkz7jJIL5aQ"
     
-    # 1. Recuperiamo i dati aggiornati (per avere i valori reali delle colonne K, M, N, O, P)
-    # Ricarichiamo i dati per sicurezza dopo il batch_update precedente
+    # 1. Recupero dati aggiornati dal foglio principale
     all_data_updated = sheet.get_all_values()
     rows_updated = all_data_updated[1:]
     
-    # Helper per convertire stringhe/booleani del foglio in check consistenti
     def is_true(val):
-        return str(val).strip().upper() == "TRUE"
+        return str(val).strip().upper() in ["TRUE", "VERO", "1"]
     
     def is_false(val):
         v = str(val).strip().upper()
-        return v == "FALSE" or v == ""
+        return v in ["FALSE", "FALSO", "0", ""]
 
-    lista_urgenze = []
+    nuovi_sku_foto = []
     for row in rows_updated:
-        # Assicuriamoci che la riga sia lunga abbastanza (fino a colonna P = indice 15)
+        # Controllo che la riga arrivi almeno alla colonna P (indice 15)
         if len(row) > 15:
-            sku = row[0].strip()       # Colonna A
-            k = row[10].strip()        # Colonna K
-            m = row[12].strip()        # Colonna M
-            n = row[13].strip()        # Colonna N
-            o = row[14].strip()        # Colonna O
-            p = row[15].strip()        # Colonna P
+            sku = row[0].strip()  # Colonna A
+            k = row[10].strip()   # Colonna K
+            m = row[12].strip()   # Colonna M
+            n = row[13].strip()   # Colonna N
+            o = row[14].strip()   # Colonna O
+            p = row[15].strip()   # Colonna P
 
-            # Condizione: K=True, M=False, N=False, O=False, P=False
             if is_true(k) and is_false(m) and is_false(n) and is_false(o) and is_false(p):
                 if sku:
-                    lista_urgenze.append([sku, "FOTO"])
+                    nuovi_sku_foto.append([sku, "FOTO"])
 
-    # 2. Accedi al foglio URGENZE
+    # 2. Accesso al secondo foglio
     try:
         urg_sheet = gs_client.open_by_key(URGENZE_SHEET_ID).worksheet("URGENZE")
-        all_urg_data = urg_sheet.get_all_values()
+        dat_esistenti = urg_sheet.get_all_values()
         
-        # 3. Elimina le righe che hanno "FOTO" in colonna B
-        # Invece di eliminare riga per riga (lento), filtriamo i dati esistenti mantenendo solo gli altri
-        header_urg = all_urg_data[0] if all_urg_data else ["SKU", "TIPO"]
-        nuovi_dati_urg = [header_urg]
+        # 3. Pulizia e Riordino in memoria
+        # Teniamo l'header (se esiste) e tutte le righe che NON sono "FOTO" e NON sono vuote
+        header = dat_esistenti[0] if dat_esistenti else ["SKU", "TIPO"]
+        lista_finale = [header]
         
-        for r in all_urg_data[1:]:
-            if len(r) > 1:
-                if r[1] != "FOTO":
-                    nuovi_dati_urg.append(r)
-            else:
-                nuovi_dati_urg.append(r)
-        
-        # Aggiungiamo i nuovi SKU filtrati
-        nuovi_dati_urg.extend(lista_urgenze)
+        for r in dat_esistenti[1:]:
+            # Se la riga ha contenuto, non è "FOTO" e non è una riga vuota (es. r[0] non vuoto)
+            if len(r) >= 2 and r[1] != "FOTO" and r[0].strip() != "":
+                lista_finale.append(r)
+            elif len(r) == 1 and r[0].strip() != "": # Caso riga con solo SKU
+                lista_finale.append(r)
 
-        # 4. Sovrascrivi il foglio URGENZE con i dati puliti + nuovi
+        # 4. Aggiunta dei nuovi SKU filtrati in coda a quelli esistenti (non "FOTO")
+        lista_finale.extend(nuovi_sku_foto)
+
+        # 5. Scrittura pulita sul foglio
+        # Cancelliamo tutto il contenuto precedente per evitare residui in fondo
         urg_sheet.clear()
-        urg_sheet.update("A1", nuovi_dati_urg)
         
-        print(f"🚀 Foglio URGENZE aggiornato: aggiunti {len(lista_urgenze)} SKU.")
+        # Aggiorniamo partendo da A1: questo compatta automaticamente la lista eliminando i buchi
+        urg_sheet.update("A1", lista_finale)
+        
+        print(f"🚀 Foglio URGENZE compattato e aggiornato. Nuovi SKU 'FOTO': {len(nuovi_sku_foto)}")
 
     except Exception as e:
         print(f"⚠️ Errore durante l'aggiornamento del foglio URGENZE: {e}")
-
-    print("✅ Processo completato.")
     
 if __name__ == "__main__":
     import asyncio
