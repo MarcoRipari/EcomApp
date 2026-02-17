@@ -133,3 +133,42 @@ def foto_import_ordini():
       with st.spinner("Upload su GSheet in corso..."):
         sheet_ordini.append_rows(data, value_input_option="RAW")
         st.success("Caricati correttamente su GSheet")
+
+def foto_aggiungi_prelevate():
+  st.header("Aggiungi prelevate")
+  st.markdown("Aggiungi la lista delle paia prelevate")
+  
+  sheet = get_sheet(foto_sheet_id, "CONSEGNATE")
+  sheet_len = len(pd.DataFrame(sheet.get_all_values()))
+  oggi = datetime.today().date().strftime('%d/%m/%Y')
+  text_input = st.text_area("Lista paia prelevate", height=400, width=800)
+  
+  if text_input:
+      # Regex per SKU: 7 numeri, spazio, 2 numeri, spazio, 4 caratteri alfanumerici
+      #pattern = r"\b\d{7} \d{2} [A-Z0-9]{4}\b"
+      pattern = r"\b[0-9a-zA-Z]{7} [0-9a-zA-Z]{2} [0-9a-zA-Z]{4}\b"
+      skus_raw = re.findall(pattern, text_input)
+  
+      # Rimuovi spazi interni e converti in stringa (senza apostrofo per confronto)
+      skus_clean = [str(sku.replace(" ", "")) for sku in skus_raw]
+  
+      st.subheader(f"SKU trovate: {len(skus_clean)}")
+  
+      if st.button("Carica su GSheet"):
+          # Leggi SKU già presenti nel foglio
+          existing_skus = sheet.col_values(1)
+          # Rimuovi eventuali apostrofi e converti in str per confronto
+          existing_skus_clean = [str(sku).lstrip("'") for sku in existing_skus]
+  
+          # Filtra SKU nuove
+          skus_to_append_clean = [sku for sku in skus_clean if sku not in existing_skus_clean]
+  
+          if skus_to_append_clean:
+              # Aggiungi apostrofo solo al momento dell'append per forzare formato testo
+              rows_to_append = [[f"'{sku}", "=REPO($A{sheet_len+1})", f"{oggi}", f"=SE(VAL.NON.DISP(CONFRONTA(INDIRETTO(\"LISTA!$D\"&CONFRONTA($A{sheet_len+1};LISTA!A:A;0));SPLIT(SETTINGS(\"brandMatias\");\",\");0));SE(VAL.NON.DISP(CONFRONTA(INDIRETTO(\"LISTA!$D\"&CONFRONTA($A{sheet_len+1};LISTA!A:A;0));SPLIT(SETTINGS(\"brandMatteo\");\",\");0));\"\";\"MATTEO\");\"MATIAS\")"] for sku in skus_to_append_clean]
+              
+              # Append a partire dall'ultima riga disponibile
+              sheet.append_rows(rows_to_append, value_input_option="USER_ENTERED")
+              st.success(f"✅ {len(skus_to_append_clean)} nuove SKU aggiunte al foglio PRELEVATE!")
+          else:
+              st.info("⚠️ Tutte le SKU inserite sono già presenti nel foglio.")
