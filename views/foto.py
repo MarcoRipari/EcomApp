@@ -28,11 +28,11 @@ def foto_dashboard():
   with col1:
       bordered_box("Da scattare", count_da_scattare(), "📸")
   with col2:
-      bordered_box("Dal fotografo", count_da_scattare("consegnate"), "🧑‍🎨")
-  with col3:
-      bordered_box("Mancanti", count_da_scattare("mancanti"), "⏳")
-  with col4:
       bordered_box("Riscattare", count_da_scattare("riscattare"), "🔁")
+  with col3:
+      bordered_box("Dal fotografo", count_da_scattare("consegnate"), "🧑‍🎨")
+  with col4:
+      bordered_box("Mancanti", count_da_scattare("mancanti"), "⏳")
   with col5:
       bordered_box("Disponibili", count_da_scattare("disponibili"), "✅")
 
