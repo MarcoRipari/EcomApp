@@ -33,7 +33,7 @@ def count_da_scattare(type="totale"):
   riscattare = len(df[df["RISCATTARE"] == True])
   consegnate = len(df[(df["CONSEGNATA"] == True) & (df["SCATTARE"] == True)])
   if type == "mancanti":
-    return scattare
+    return (scattare + riscattare) - consegnate
   elif type == "riscattare":
     return riscattare
   elif type == "totale":
