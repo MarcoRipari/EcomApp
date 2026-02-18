@@ -24,7 +24,7 @@ def foto_dashboard():
   st.session_state.df_foto_filtro = "Tutti"
   
   st.title("Dashboard2")
-  col1, col2, col3, col4 = st.columns(4)
+  col1, col2, col3, col4, col5 = st.columns(5)
   with col1:
       bordered_box("Da scattare", count_da_scattare(), "📸")
   with col2:
@@ -33,6 +33,8 @@ def foto_dashboard():
       bordered_box("Mancanti", count_da_scattare("mancanti"), "⏳")
   with col4:
       bordered_box("Riscattare", count_da_scattare("riscattare"), "🔁")
+  with col5:
+      bordered_box("Disponibili", count_da_scattare("disponibili"), "✅")
 
   disp = df[df["DISP"] == True]
   disp_027 = df[df["DISP 027"] == True]
