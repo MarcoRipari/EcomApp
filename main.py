@@ -178,6 +178,9 @@ elif page == "Foto - Dashboard":
 elif page == "Foto - Riscatta SKU":
     foto_riscattare()
 
+elif page == "Foto - Aggiungi prelevate":
+    foto_aggiungi_prelevate()
+
 elif page == "Ferie - Report":
     ferie()
 
