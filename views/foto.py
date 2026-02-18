@@ -166,7 +166,7 @@ def foto_aggiungi_prelevate():
   
           if skus_to_append_clean:
               # Aggiungi apostrofo solo al momento dell'append per forzare formato testo
-              rows_to_append = [[f"'{sku}", f"{oggi}", f"=IMAGE(SOSTITUISCI(SETTINGS!$B$4;\"*SKU*\";MINUSC($A{sheet_len+1})))", f"=SE(VAL.NON.DISP(CONFRONTA($D{sheet_len+1};SPLIT(SETTINGS(\"brandMatias\");\",\");0));SE(VAL.NON.DISP(CONFRONTA($D{sheet_len+1};SPLIT(SETTINGS(\"brandMatteo\");\",\");0));\"\";\"MATTEO\");\"MATIAS\")", "ECOM"] for sku in skus_to_append_clean]
+              rows_to_append = [[f"'{sku}", f"{oggi}", f"=IMAGE(SOSTITUISCI(SETTINGS!$B$4;\"*SKU*\";MINUSC($A3)))", f"=SE(VAL.NON.DISP(CONFRONTA($D{sheet_len+1};SPLIT(SETTINGS(\"brandMatias\");\",\");0));SE(VAL.NON.DISP(CONFRONTA($D{sheet_len+1};SPLIT(SETTINGS(\"brandMatteo\");\",\");0));\"\";\"MATTEO\");\"MATIAS\")", "ECOM"] for sku in skus_to_append_clean]
               
               
               # Append a partire dall'ultima riga disponibile
