@@ -32,6 +32,7 @@ def count_da_scattare(type="totale"):
   scattare = len(df[df["SCATTARE"] == True])
   riscattare = len(df[df["RISCATTARE"] == True])
   consegnate = len(df[(df["CONSEGNATA"] == True) & (df["SCATTARE"] == True)])
+  disponibili = len(df[(df["SCATTARE"] == True) & (df["CONSEGNATA"] == False)])
   if type == "mancanti":
     return (scattare + riscattare) - consegnate
   elif type == "riscattare":
@@ -40,6 +41,8 @@ def count_da_scattare(type="totale"):
     return scattare + riscattare
   elif type == "consegnate":
     return consegnate
+  elif type == "disponibili":
+    return disponibili
 
 def mostra_riscattare(sku_input):
   df = st.session_state.df_foto
