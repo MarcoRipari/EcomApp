@@ -215,7 +215,6 @@ def giacenze_importa():
         # --- Destinazione GSheet ---       
         with col2:
             if st.button("Importa Giacenze"):
-                st.write(type(selected_sheet_id))
                 if type(selected_sheet_id) == list:
                     for s in selected_sheet_id:
                         import_giacenze(s)
@@ -229,7 +228,7 @@ def giacenze_importa():
                         
         with col3:
             if st.button("Importa Giacenze & Anagrafica"):
-                if len(selected_sheet_id) > 1:
+                if type(selected_sheet_id) == list:
                     for s in selected_sheet_id:
                         import_giacenze(s)
                         import_anagrafica(s)
@@ -251,7 +250,7 @@ def giacenze_importa():
                     
     with col1:
         if st.button("Importa Anagrafica"):
-            if len(selected_sheet_id) > 1:
+            if type(selected_sheet_id) == list:
                 for s in selected_sheet_id:
                     import_anagrafica(s)
             else:
