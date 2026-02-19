@@ -9,6 +9,15 @@ load_functions_from("functions", globals())
 anagrafica_sheet_id = st.secrets["ANAGRAFICA_GSHEET_ID"]
 giacenze_sheet_id = st.secrets["GIACENZE_GSHEET_ID"]
 
+sheets_to_import = ['1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4', # FOTO
+                    '13DnpAX7M9wymMR1YIH5IP28y_UaCPajBUIcoHca562U', # VECCHIA STAGIONE
+                    '1YbU9twZgJECIsbxhRft-7yGGuH37xzVdOkz7jJIL5aQ', # NUOVA STAGIONE
+                    '1o8Zir8DNKxW9QERqeZr7G-EEnoTqwRVYlyuOrzQJnhA', # SELE-SALDI-25-2
+                    '1mvMi-ybuLdIF3GnAnl2GLqR2Bxic1nBD3Bxt1GQZTec', # Base_Dati_Retag
+                    '1eR3ZOE6IzGgYP4mPnyGBfWiDof4Gpv9olOVu_G_k1dg', # SELE-OUTLET-PE26
+                    '1wvHZpS8Y45V4MWKgVv_WZx7t98p3Z83EXWc_e9vNFwc'  # LISTA-SKUS-PE26
+                   ]
+
 def giacenze_importa():
     st.header("Importa giacenze2")
 
@@ -120,6 +129,7 @@ def giacenze_importa():
     default_sheet_id = giacenze_sheet_id
     
     SHEETS = {
+        "COMPLETO": sheets_to_import,
         "Foglio FOTO": "1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4",
         "Foglio GIACENZE": "13DnpAX7M9wymMR1YIH5IP28y_UaCPajBUIcoHca562U",
     }
@@ -177,28 +187,37 @@ def giacenze_importa():
         intestazioni_magazzini = ["060/029","060/018","060/015","060/025","027/001","028/029","139/029","028/001","012/001"]
         data_to_write[0][18:27] = intestazioni_magazzini
 
+        def import_giacenze(sheet_id):
+            sheet_upload_tab = get_sheet(sheet_id, nome_sheet_tab)
+            
+            with st.spinner("Aggiorno giacenze su GSheet..."):
+                sheet_upload_tab.clear()
+                sheet_upload_tab.update("A1", data_to_write)
+                        
+                last_row = len(df_input) + 1
+
+                ranges_to_format = [
+                    (f"{col_letter}2:{col_letter}{last_row}",
+                        CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=pattern)))
+                    for col_letter, pattern in numeric_cols_info.items()
+                ]
+                format_cell_ranges(sheet_upload_tab, ranges_to_format)
+                st.success("✅ Giacenze importate con successo!")
+
+            if nome_file == "Manuale" and file_bytes_for_upload:
+                with st.spinner("Carico il file su DropBox..."):
+                    upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
+
+        
         # --- Destinazione GSheet ---       
         with col2:
             if st.button("Importa Giacenze"):
-                sheet_upload_tab = get_sheet(selected_sheet_id, nome_sheet_tab)
+                if len(selected_sheet_id) > 1:
+                    for s in selected_sheet_id:
+                        import_giacenze(s)
+                else:
+                    import_giacenze(selected_sheet_id)
                 
-                with st.spinner("Aggiorno giacenze su GSheet..."):
-                    sheet_upload_tab.clear()
-                    sheet_upload_tab.update("A1", data_to_write)
-                            
-                    last_row = len(df_input) + 1
-    
-                    ranges_to_format = [
-                        (f"{col_letter}2:{col_letter}{last_row}",
-                            CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=pattern)))
-                        for col_letter, pattern in numeric_cols_info.items()
-                    ]
-                    format_cell_ranges(sheet_upload_tab, ranges_to_format)
-                    st.success("✅ Giacenze importate con successo!")
-
-                if nome_file == "Manuale" and file_bytes_for_upload:
-                    with st.spinner("Carico il file su DropBox..."):
-                        upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
                         
         with col3:
             if st.button("Importa Giacenze & Anagrafica"):
