@@ -202,11 +202,14 @@ def giacenze_importa():
                     for col_letter, pattern in numeric_cols_info.items()
                 ]
                 format_cell_ranges(sheet_upload_tab, ranges_to_format)
-                st.success("✅ Giacenze importate con successo!")
+                st.success(f"✅ {sheet_id} - Giacenze importate con successo!")
 
-            if nome_file == "Manuale" and file_bytes_for_upload:
-                with st.spinner("Carico il file su DropBox..."):
-                    upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
+        def import_anagrafica(sheet_id):
+            sheet_upload_anagrafica = get_sheet(sheet_id, "ANAGRAFICA")
+            sheet_anagrafica = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
+            sheet_upload_anagrafica.clear()
+            sheet_upload_anagrafica.update("A1", sheet_anagrafica.get_all_values())
+            st.success(f"✅ {sheet_id} - Anagrafica importata con successo!")
 
         
         # --- Destinazione GSheet ---       
@@ -218,30 +221,21 @@ def giacenze_importa():
                 else:
                     import_giacenze(selected_sheet_id)
                 
+                if nome_file == "Manuale" and file_bytes_for_upload:
+                    with st.spinner("Carico il file su DropBox..."):
+                        upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
+                
                         
         with col3:
             if st.button("Importa Giacenze & Anagrafica"):
-                sheet_upload_tab = get_sheet(selected_sheet_id, nome_sheet_tab)
-                sheet_upload_anagrafica = get_sheet(selected_sheet_id, "ANAGRAFICA")
-                sheet_anagrafica = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
-                
-                with st.spinner("Aggiorno giacenze e anagrafica su GSheet..."):
-                    sheet_upload_tab.clear()
-                    sheet_upload_tab.update("A1", data_to_write)
-                            
-                    last_row = len(df_input) + 1
-    
-                    ranges_to_format = [
-                        (f"{col_letter}2:{col_letter}{last_row}",
-                            CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=pattern)))
-                        for col_letter, pattern in numeric_cols_info.items()
-                    ]
-                    format_cell_ranges(sheet_upload_tab, ranges_to_format)
-
-                    sheet_upload_anagrafica.clear()
-                    sheet_upload_anagrafica.update("A1", sheet_anagrafica.get_all_values())
-                    st.success("✅ Giacenze e anagrafica importate con successo!")
-    
+                if len(selected_sheet_id) > 1:
+                    for s in selected_sheet_id:
+                        import_giacenze(s)
+                        import_anagrafica(s)
+                else:
+                    import_giacenze(selected_sheet_id)
+                    import_anagrafica(selected_sheet_id)
+                  
                 if nome_file == "Manuale" and file_bytes_for_upload:
                     with st.spinner("Carico il file su DropBox..."):
                         upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
@@ -256,13 +250,11 @@ def giacenze_importa():
                     
     with col1:
         if st.button("Importa Anagrafica"):
-            sheet_upload_anagrafica = get_sheet(selected_sheet_id, "ANAGRAFICA")
-            sheet_anagrafica = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
-            
-            with st.spinner("Aggiorno anagrafica su GSheet..."):
-                sheet_upload_anagrafica.clear()
-                sheet_upload_anagrafica.update("A1", sheet_anagrafica.get_all_values())
-                st.success("✅ Anagrafica importata con successo!")
+            if len(selected_sheet_id) > 1:
+                for s in selected_sheet_id:
+                    import_anagrafica(s)
+            else:
+                import_anagrafica(selected_sheet_id)
 
 
 def aggiorna_anagrafica():
