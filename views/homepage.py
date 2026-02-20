@@ -8,6 +8,10 @@ load_functions_from("functions", globals())
 
 def homepage():
     st.title("Homepage")
+
             
-    sheet_id = st.text_input("Inserisci Sheet ID")
-    tab = st.text_input("Inserisci Tab")
+    if st.sidebar.button("Svuota Cache"):
+                st.cache_data.clear()
+                st.cache_resource.clear()
+                st.success("Cache svuotata con successo!")
+                st.rerun()
