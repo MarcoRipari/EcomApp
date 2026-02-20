@@ -193,21 +193,18 @@ def giacenze_importa():
             sheet_upload_tab = get_sheet(sheet_id, nome_sheet_tab)
             
             with st.spinner("Aggiorno giacenze su GSheet..."):
-                try:
-                    sheet_upload_tab.clear()
-                    sheet_upload_tab.update("A1", data_to_write)
-                    last_row = len(df_input) + 1
-  
-                    ranges_to_format = [
-                        (f"{col_letter}2:{col_letter}{last_row}",
-                            CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=pattern)))
-                        for col_letter, pattern in numeric_cols_info.items()
-                      ]
-                    format_cell_ranges(sheet_upload_tab, ranges_to_format)
-                    st.success(f"✅ {sheet_id} - Giacenze importate con successo!")
-                except Exception as e:
-                    logging.info(e)
-                    st.write(e)
+                sheet_upload_tab.clear()
+                sheet_upload_tab.update("A1", data_to_write)
+                        
+                last_row = len(df_input) + 1
+
+                ranges_to_format = [
+                    (f"{col_letter}2:{col_letter}{last_row}",
+                        CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=pattern)))
+                    for col_letter, pattern in numeric_cols_info.items()
+                ]
+                format_cell_ranges(sheet_upload_tab, ranges_to_format)
+                st.success(f"✅ {sheet_id} - Giacenze importate con successo!")
 
         def import_anagrafica(sheet_id):
             sheet_upload_anagrafica = get_sheet(sheet_id, "ANAGRAFICA")
