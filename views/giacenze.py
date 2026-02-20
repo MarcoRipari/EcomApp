@@ -151,7 +151,6 @@ def giacenze_importa():
     col1, col2, col3, col4 = st.columns(4)
 
     if df_input is not None:
-        df_input['TAGLIA'] = df_input['TAGLIA'].astype(str).str.strip()
         view_df = st.checkbox("Visualizza il dataframe?", value=False)
         if view_df:
             st.write(df_input)
