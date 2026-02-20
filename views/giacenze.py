@@ -191,10 +191,10 @@ def giacenze_importa():
             sheet_upload_tab = get_sheet(sheet_id, nome_sheet_tab)
             
             with st.spinner("Aggiorno giacenze su GSheet..."):
-                st.write("Ciao")
                 sheet_upload_tab.clear()
+                st.write("Ciao")
                 sheet_upload_tab.update("A1", data_to_write)
-                        
+                st.write("Ciao")
                 last_row = len(df_input) + 1
 
                 ranges_to_format = [
