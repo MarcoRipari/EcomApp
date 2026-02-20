@@ -191,24 +191,77 @@ def giacenze_importa():
         data_to_write[0][18:27] = intestazioni_magazzini
 
         def import_giacenze(sheet_id):
-            sheet_upload_tab = get_sheet(sheet_id, nome_sheet_tab)
-            
-            with st.spinner("Aggiorno giacenze su GSheet..."):
-                try:
-                  sheet_upload_tab.clear()
-                  sheet_upload_tab.update("A1", data_to_write)
-                  last_row = len(df_input) + 1
-  
-                  ranges_to_format = [
-                      (f"{col_letter}2:{col_letter}{last_row}",
-                          CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=pattern)))
-                      for col_letter, pattern in numeric_cols_info.items()
-                  ]
-                  format_cell_ranges(sheet_upload_tab, ranges_to_format)
-                  st.success(f"✅ {sheet_id} - Giacenze importate con successo!")
-                except Exception as e:
-                  logging.info(e)
-                  st.write(e)
+            try:
+                sheet_upload_tab = get_sheet(sheet_id, nome_sheet_tab)
+                
+                with st.spinner(f"Invio dati a {sheet_id}..."):
+                    df_work = df_input.copy()
+                    
+                    # --- 1. Gestione Colonne Numeriche ---
+                    numeric_cols_info = { "D": "0", "M": "000", "O": "0", "P": "0" }
+                    for i in range(18, 30):
+                        col_letter = gspread.utils.rowcol_to_a1(1, i)[:-1]
+                        numeric_cols_info[col_letter] = "0"
+        
+                    def to_numeric_native(x):
+                        if pd.isna(x) or x == "":
+                            return ""
+                        try:
+                            # Convertiamo in float standard di Python, non numpy.float64
+                            return float(str(x).replace(',', '.'))
+                        except:
+                            return str(x)
+        
+                    for col_letter in numeric_cols_info.keys():
+                        col_idx = gspread.utils.a1_to_rowcol(f"{col_letter}1")[1] - 1
+                        if df_work.columns.size > col_idx:
+                            col_name = df_work.columns[col_idx]
+                            df_work[col_name] = df_work[col_name].apply(to_numeric_native)
+        
+                    # --- 2. Preparazione dati e Intestazioni ---
+                    data_to_write = [df_work.columns.tolist()] + df_work.values.tolist()
+                    
+                    intestazioni = ["060/029","060/018","060/015","060/025","027/001","028/029","139/029","028/001","012/001"]
+                    if len(data_to_write[0]) >= 27:
+                        data_to_write[0][18:27] = intestazioni
+        
+                    # --- 3. SANIFICAZIONE JSON (IL FIX) ---
+                    # Questo trasforma ogni oggetto numpy/pandas in un tipo base Python
+                    def sanitize_list(data):
+                        sanitized = []
+                        for row in data:
+                            clean_row = []
+                            for item in row:
+                                if pd.isna(item):
+                                    clean_row.append("")
+                                elif hasattr(item, "item"): # Gestisce numpy.int64, numpy.float64, ecc.
+                                    clean_row.append(item.item())
+                                else:
+                                    clean_row.append(item)
+                            sanitized.append(clean_row)
+                        return sanitized
+        
+                    safe_data = sanitize_list(data_to_write)
+        
+                    # --- 4. Scrittura ---
+                    sheet_upload_tab.clear()
+                    # Usiamo raw=False per permettere a USER_ENTERED di funzionare
+                    sheet_upload_tab.update("A1", safe_data, value_input_option='USER_ENTERED')
+                    
+                    # --- 5. Formattazione ---
+                    last_row = len(df_work) + 1
+                    ranges = [
+                        (f"{c}2:{c}{last_row}", 
+                         CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=p))) 
+                        for c, p in numeric_cols_info.items()
+                    ]
+                    format_cell_ranges(sheet_upload_tab, ranges)
+                    
+                    st.success(f"✅ Completato: {sheet_id}")
+        
+            except Exception as e:
+                st.error(f"❌ Errore durante l'invio: {str(e)}")
+                logging.error(f"GSheet JSON Error: {e}")
 
         def import_anagrafica(sheet_id):
             sheet_upload_anagrafica = get_sheet(sheet_id, "ANAGRAFICA")
