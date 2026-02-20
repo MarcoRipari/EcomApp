@@ -125,6 +125,7 @@ def giacenze_importa():
             st.session_state.df_input = read_csv_auto_encoding(csv_import, ";")
 
     df_input = st.session_state.df_input
+    df_input['TAGLIA'] = df_input['TAGLIA'].astype(str).str.strip()
 
     default_sheet_id = giacenze_sheet_id
     
