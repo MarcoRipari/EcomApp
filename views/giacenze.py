@@ -125,7 +125,6 @@ def giacenze_importa():
             st.session_state.df_input = read_csv_auto_encoding(csv_import, ";")
 
     df_input = st.session_state.df_input
-    df_input['TAGLIA'] = df_input['TAGLIA'].astype(str).str.strip()
 
     default_sheet_id = giacenze_sheet_id
     
@@ -152,6 +151,7 @@ def giacenze_importa():
     col1, col2, col3, col4 = st.columns(4)
 
     if df_input is not None:
+        df_input['TAGLIA'] = df_input['TAGLIA'].astype(str).str.strip()
         view_df = st.checkbox("Visualizza il dataframe?", value=False)
         if view_df:
             st.write(df_input)
