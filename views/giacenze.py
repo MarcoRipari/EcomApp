@@ -202,7 +202,7 @@ def giacenze_importa():
                     for col_letter, pattern in numeric_cols_info.items()
                 ]
                 format_cell_ranges(sheet_upload_tab, ranges_to_format)
-                st.success(f"✅ {sheet_id} - Giacenze importate con successo!")
+            st.success(f"✅ {sheet_id} - Giacenze importate con successo!")
 
         def import_anagrafica(sheet_id):
             sheet_upload_anagrafica = get_sheet(sheet_id, "ANAGRAFICA")
