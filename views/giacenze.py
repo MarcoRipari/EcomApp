@@ -210,7 +210,7 @@ def giacenze_importa():
                 format_cell_ranges(sheet_upload_tab, ranges_to_format)
                 return True
             except Exception as e:
-              return False
+              return e
 
         def import_anagrafica(sheet_id):
             sheet_upload_anagrafica = get_sheet(sheet_id, "ANAGRAFICA")
