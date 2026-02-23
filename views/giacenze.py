@@ -21,7 +21,7 @@ sheets_to_import = ['1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4', # FOTO
                    ]
 
 def giacenze_importa():
-    st.header("Importa giacenze2")
+    st.header("Importa giacenze")
 
     options = ["Manuale", "UBIC", "PIM"]
     
