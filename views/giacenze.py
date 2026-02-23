@@ -149,10 +149,6 @@ def giacenze_importa():
         selected_sheet_id = st.text_input("Inserisci ID del Google Sheet")
     #selected_sheet_id = st.text_input("Inserisci ID del Google Sheet", value=giacenze_sheet_id)
     nome_sheet_tab = st.text_input("Inserisci nome del TAB", value="GIACENZE")
-
-
-    status_container = st.container()
-
   
     col1, col2, col3, col4 = st.columns(4)
 
@@ -195,7 +191,6 @@ def giacenze_importa():
 
         def import_giacenze(sheet_id, n_cols):
             try:
-                status_container.info(f"Aggiorno foglio: {sheets_id}")
                 sheet_upload_tab = get_sheet(sheet_id, nome_sheet_tab)
                 sheet_upload_tab.clear()
                 sheet_upload_tab.update("A1", data_to_write)
