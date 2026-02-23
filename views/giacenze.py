@@ -106,15 +106,14 @@ def giacenze_importa():
     intestazioni_magazzini = ["060/029","060/018","060/015","060/025","027/001","028/029","139/029","028/001","012/001"]
     data_to_write[0][18:27] = intestazioni_magazzini
 
-    def import_giacenze(sheet_id, n_cols):
+    def import_giacenze(sheet_id, tab, n_cols, dtw):
       try:
-        sheet_upload_tab = get_sheet(sheet_id, nome_sheet_tab)
+        sheet_upload_tab = get_sheet(sheet_id, tab)
         sheet_upload_tab.clear()
-        sheet_upload_tab.update("A1", data_to_write)
+        sheet_upload_tab.update("A1", dtw)
                       
         last_row = len(df_input) + 1
-  
-
+        
         return True
       except Exception as e:
         return e
@@ -132,13 +131,13 @@ def giacenze_importa():
       if st.button("Importa Giacenze"):
         if type(selected_sheet_id) == list:
           for s in selected_sheet_id:
-            res = import_giacenze(s, numeric_cols_info)
+            res = import_giacenze(s, numeric_cols_info, nome_sheet_tab, data_to_write)
             if res:
               st.success(f"✅ {s} - Giacenze importate con successo!")
             else:
               st.error(f"✅ {s} - {res}")
         else:
-          res = import_giacenze(selected_sheet_id, numeric_cols_info)
+          res = import_giacenze(selected_sheet_id, numeric_cols_info, nome_sheet_tab, data_to_write)
           if res:
             st.success(f"✅ {selected_sheet_id,} - Giacenze importate con successo!")
           else:
@@ -152,7 +151,7 @@ def giacenze_importa():
       if st.button("Importa Giacenze & Anagrafica"):
         if type(selected_sheet_id) == list:
           for s in selected_sheet_id:
-            res = import_giacenze(s, numeric_cols_info)
+            res = import_giacenze(s, numeric_cols_info, nome_sheet_tab, data_to_write)
             if res:
               st.success(f"✅ {s} - Giacenze importate con successo!")
             else:
@@ -160,7 +159,7 @@ def giacenze_importa():
               
           import_anagrafica(s)
         else:
-          res = import_giacenze(selected_sheet_id, numeric_cols_info)
+          res = import_giacenze(selected_sheet_id, numeric_cols_info, nome_sheet_tab, data_to_write)
           if res:
             st.success(f"✅ {selected_sheet_id} - Giacenze importate con successo!")
           else:
