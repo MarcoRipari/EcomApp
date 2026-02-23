@@ -192,7 +192,6 @@ def giacenze_importa():
 
             try:
                 with st.spinner("Aggiorno giacenze su GSheet..."):
-                    st.write(sheet_id)
                     sheet_upload_tab.clear()
                     sheet_upload_tab.update("A1", data_to_write)
                             
