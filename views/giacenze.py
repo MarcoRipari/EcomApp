@@ -120,7 +120,7 @@ def giacenze_importa():
     def import_giacenze(sheet_id, tab, n_cols, dtw):
       try:
         with upd_container.container():
-          st.info(f"Aggiorno foglio {sheet_id} - {tab}, {dtw}")
+          st.info(f"Aggiorno foglio {sheet_id}")
           
         sheet_upload_tab = get_sheet(sheet_id, tab)
         sheet_upload_tab.clear()
