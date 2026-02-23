@@ -197,12 +197,7 @@ def giacenze_importa():
                         
                 last_row = len(df_input) + 1
     
-                ranges_to_format = [
-                    (f"{col_letter}2:{col_letter}{last_row}",
-                        CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=pattern)))
-                    for col_letter, pattern in n_cols.items()
-                ]
-                format_cell_ranges(sheet_upload_tab, ranges_to_format)
+
                 return True
             except Exception as e:
               return e
