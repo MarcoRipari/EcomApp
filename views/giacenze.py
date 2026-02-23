@@ -23,64 +23,6 @@ sheets_to_import = ['1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4', # FOTO
 def giacenze_importa():
     st.header("Importa giacenze")
 
-    options = ["Manuale", "UBIC", "PIM"]
-    
-    selected = option_menu(
-        menu_title=None,
-        options=["Manuale", "UBIC", "PIM"],
-        icons=[" ", " ", " "],
-        default_index=0,
-        orientation="horizontal",
-        styles={
-            "container": {
-                "padding": "0 10px 0 0!important",
-                "background-color": "#f0f0f0",
-                "display": "flex",
-                "justify-content": "center"
-            },
-            "nav-link": {
-                "font-size": "16px",
-                "text-align": "center",
-                "margin": "5px",
-                "padding": "0px",
-                "min-height": "40px",
-                "height": "40px",
-                "line-height": "normal",
-                "display": "flex",
-                "align-items": "center",
-                "justify-content": "center",
-                "box-sizing": "border-box",
-                "--hover-color": "#e0e0e0",
-                "before": "none"
-            },
-            "nav-link-selected": {
-                "background-color": "#4CAF50",
-                "color": "white",
-                "border": "2px solid #cccccc",
-                "border-radius": "10px",
-                "padding": "0px",
-                "min-height": "40px",
-                "height": "40px",
-                "line-height": "normal",
-                "display": "flex",
-                "align-items": "center",
-                "justify-content": "center",
-                "box-sizing": "border-box",
-                "before": "none"
-            },
-        }
-    )
-
-    st.session_state.selected_option = selected
-    nome_file = st.session_state.selected_option
-
-    # --- Reset se cambio file/target ---
-    if "downloaded_file_name" not in st.session_state or st.session_state.downloaded_file_name != nome_file:
-        st.session_state.df_input = None
-        st.session_state.downloaded_file = None
-        st.session_state.downloaded_file_metadata = None
-        st.session_state.downloaded_file_name = nome_file
-
     csv_import = None
     file_bytes_for_upload = None
     last_update = None
@@ -88,45 +30,19 @@ def giacenze_importa():
     dbx = get_dropbox_client()
     folder_path = "/GIACENZE"
 
-    # --- Manuale ---
-    if nome_file == "Manuale":
-        uploaded_file = st.file_uploader("Carica un file CSV manualmente", type="csv", key="uploader_manual")
-        if uploaded_file:
-            if ("uploaded_file_name" not in st.session_state) or (st.session_state.uploaded_file_name != uploaded_file.name):
-                st.session_state.uploaded_file_name = uploaded_file.name
-                st.session_state.df_input = None  # reset DataFrame se file nuovo
-                st.session_state.uploaded_file_bytes = uploaded_file.getvalue()
-                uploaded_file.seek(0)
-                
-            csv_import = uploaded_file
-            file_bytes_for_upload = st.session_state.uploaded_file_bytes
-            manual_nome_file = "GIACENZE.csv"
-
-    # --- UBIC / PIM ---
-    else:
-        if st.session_state.downloaded_file is None:
-            with st.spinner(f"Download {nome_file} da DropBox..."):
-                st.session_state.downloaded_file, st.session_state.downloaded_file_metadata = download_csv_from_dropbox(
-                    dbx, folder_path, f"{nome_file}.csv")
-                st.session_state.downloaded_file_name = nome_file
-
-        latest_file = st.session_state.downloaded_file
-        metadata = st.session_state.downloaded_file_metadata
-        
-        if latest_file:
-            csv_import = latest_file
-            file_bytes_for_upload = latest_file.getvalue()
-            last_update = format_dropbox_date(metadata.client_modified)
-            st.info(f"{nome_file} ultimo aggiornamento: {last_update}")
-        else:
-            st.warning(f"Nessun file trovato su Dropbox, carica manualmente")
+    uploaded_file = st.file_uploader("Carica un file CSV manualmente", type="csv", key="uploader_manual")
+  
+    if uploaded_file:
+      uploaded_file.seek(0)
+          
+      csv_import = uploaded_file
+      file_bytes_for_upload = csv_import.getvalue()
+      manual_nome_file = "GIACENZE.csv"
 
     # --- Carico CSV solo se df_input è None ---
-    if csv_import and st.session_state.df_input is None:
-        with st.spinner("Carico il CSV..."):
-            st.session_state.df_input = read_csv_auto_encoding(csv_import, ";")
-
-    df_input = st.session_state.df_input
+    if csv_import:
+      with st.spinner("Carico il CSV..."):
+        df_input = read_csv_auto_encoding(csv_import, ";")
 
     default_sheet_id = giacenze_sheet_id
     
