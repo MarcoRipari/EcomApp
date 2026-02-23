@@ -189,21 +189,24 @@ def giacenze_importa():
 
         def import_giacenze(sheet_id, n_cols):
             sheet_upload_tab = get_sheet(sheet_id, nome_sheet_tab)
-            
-            with st.spinner("Aggiorno giacenze su GSheet..."):
-                st.write(sheet_id)
-                sheet_upload_tab.clear()
-                sheet_upload_tab.update("A1", data_to_write)
-                        
-                last_row = len(df_input) + 1
 
-                ranges_to_format = [
-                    (f"{col_letter}2:{col_letter}{last_row}",
-                        CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=pattern)))
-                    for col_letter, pattern in n_cols.items()
-                ]
-                format_cell_ranges(sheet_upload_tab, ranges_to_format)
-            st.success(f"✅ {sheet_id} - Giacenze importate con successo!")
+            try:
+              with st.spinner("Aggiorno giacenze su GSheet..."):
+                  st.write(sheet_id)
+                  sheet_upload_tab.clear()
+                  sheet_upload_tab.update("A1", data_to_write)
+                          
+                  last_row = len(df_input) + 1
+  
+                  ranges_to_format = [
+                      (f"{col_letter}2:{col_letter}{last_row}",
+                          CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=pattern)))
+                      for col_letter, pattern in n_cols.items()
+                  ]
+                  format_cell_ranges(sheet_upload_tab, ranges_to_format)
+                return True
+            except Exception as e:
+              return False
 
         def import_anagrafica(sheet_id):
             sheet_upload_anagrafica = get_sheet(sheet_id, "ANAGRAFICA")
@@ -218,7 +221,11 @@ def giacenze_importa():
             if st.button("Importa Giacenze"):
                 if type(selected_sheet_id) == list:
                     for s in selected_sheet_id:
-                        import_giacenze(s, numeric_cols_info)
+                        res = import_giacenze(s, numeric_cols_info)
+                        if res:
+                            st.success(f"✅ {sheet_id} - Giacenze importate con successo!")
+                        else:
+                            st.error(f"✅ {sheet_id} - Errore importazione giacenze!")
                 else:
                     import_giacenze(selected_sheet_id, numeric_cols_info)
                 
@@ -231,7 +238,11 @@ def giacenze_importa():
             if st.button("Importa Giacenze & Anagrafica"):
                 if type(selected_sheet_id) == list:
                     for s in selected_sheet_id:
-                        import_giacenze(s, numeric_cols_info)
+                        res = import_giacenze(s, numeric_cols_info)
+                        if res:
+                            st.success(f"✅ {sheet_id} - Giacenze importate con successo!")
+                        else:
+                            st.error(f"✅ {sheet_id} - Errore importazione giacenze!")
                         import_anagrafica(s)
                 else:
                     import_giacenze(selected_sheet_id, numeric_cols_info)
