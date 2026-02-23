@@ -236,7 +236,7 @@ def giacenze_importa():
                         st.write(selected_sheet_id)
                         st.success(f"✅ {selected_sheet_id,} - Giacenze importate con successo!")
                     else:
-                        st.error(f"✅ {selected_sheet_id,} - Errore importazione giacenze!")
+                        st.error(f"✅ {selected_sheet_id,} - {res}")
                 
                 if nome_file == "Manuale" and file_bytes_for_upload:
                     with st.spinner("Carico il file su DropBox..."):
@@ -258,7 +258,7 @@ def giacenze_importa():
                     if res:
                         st.success(f"✅ {selected_sheet_id} - Giacenze importate con successo!")
                     else:
-                        st.error(f"✅ {selected_sheet_id} - Errore importazione giacenze!")
+                        st.error(f"✅ {selected_sheet_id} - {res}")
                       
                     import_anagrafica(selected_sheet_id)
                   
