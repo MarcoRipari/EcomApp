@@ -3,6 +3,7 @@ from streamlit_option_menu import option_menu
 import gspread
 import numpy as np
 import logging
+import time
 
 from utils import *
 
@@ -119,12 +120,13 @@ def giacenze_importa():
     def import_giacenze(sheet_id, tab, n_cols, dtw):
       try:
         with upd_container.container():
-          st.info(f"Aggiorno foglio {sheet_id}")
-          sheet_upload_tab = get_sheet(sheet_id, tab)
-          sheet_upload_tab.clear()
-          sheet_upload_tab.update("A1", dtw)
-                        
-          last_row = len(df_input) + 1
+          st.info(f"Aggiorno foglio {sheet_id} - {tab}, {dtw}")
+          
+        sheet_upload_tab = get_sheet(sheet_id, tab)
+        sheet_upload_tab.clear()
+        sheet_upload_tab.update("A1", dtw)
+                      
+        last_row = len(df_input) + 1
         
         return True
       except Exception as e:
@@ -145,14 +147,14 @@ def giacenze_importa():
           tot = len(selected_sheet_id)
           for i, s in enumerate(selected_sheet_id):
             with res_container.container():
-              res = import_giacenze(s, numeric_cols_info, nome_sheet_tab, data_to_write)
+              res = import_giacenze(s, nome_sheet_tab, numeric_cols_info, data_to_write)
               if res:
-                st.success(f"✅ {i}/{tot} - Giacenze importate con successo!")
+                st.success(f"✅ {i+1}/{tot} - Giacenze importate con successo!")
               else:
                 st.error(f"✅ {s} - {res}")
         else:
           with res_container.container():
-            res = import_giacenze(selected_sheet_id, numeric_cols_info, nome_sheet_tab, data_to_write)
+            res = import_giacenze(selected_sheet_id, nome_sheet_tab, numeric_cols_info, data_to_write)
             if res:
               st.success(f"✅ Giacenze importate con successo!")
             else:
@@ -171,16 +173,16 @@ def giacenze_importa():
           tot = len(selected_sheet_id)
           for i, s in enumerate(selected_sheet_id):
             with res_container.container():
-              res = import_giacenze(s, numeric_cols_info, nome_sheet_tab, data_to_write)
+              res = import_giacenze(s, nome_sheet_tab, numeric_cols_info, data_to_write)
               if res:
-                st.success(f"✅ {i}/{tot} - Giacenze importate con successo!")
+                st.success(f"✅ {i+1}/{tot} - Giacenze importate con successo!")
               else:
                 st.error(f"✅ {s} - Errore importazione giacenze!")
                 
             import_anagrafica(s)
         else:
           with res_container.container():
-            res = import_giacenze(selected_sheet_id, numeric_cols_info, nome_sheet_tab, data_to_write)
+            res = import_giacenze(selected_sheet_id, nome_sheet_tab, numeric_cols_info, data_to_write)
             if res:
               st.success(f"✅ Giacenze importate con successo!")
             else:
