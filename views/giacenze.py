@@ -229,7 +229,7 @@ def giacenze_importa():
                         res = import_giacenze(s, numeric_cols_info)
                         if res:
                             status_container.success(f"✅ {s} - Giacenze importate!")
-                            st.success(f"✅ {s - Giacenze importate con successo!")
+                            st.success(f"✅ {s} - Giacenze importate con successo!")
                         else:
                             st.error(f"✅ {s} - Errore importazione giacenze!")
                 else:
