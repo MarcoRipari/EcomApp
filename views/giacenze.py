@@ -187,7 +187,7 @@ def giacenze_importa():
         intestazioni_magazzini = ["060/029","060/018","060/015","060/025","027/001","028/029","139/029","028/001","012/001"]
         data_to_write[0][18:27] = intestazioni_magazzini
 
-        def import_giacenze(sheet_id):
+        def import_giacenze(sheet_id, n_cols):
             sheet_upload_tab = get_sheet(sheet_id, nome_sheet_tab)
             
             with st.spinner("Aggiorno giacenze su GSheet..."):
@@ -199,7 +199,7 @@ def giacenze_importa():
                 ranges_to_format = [
                     (f"{col_letter}2:{col_letter}{last_row}",
                         CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=pattern)))
-                    for col_letter, pattern in numeric_cols_info.items()
+                    for col_letter, pattern in n_cols.items()
                 ]
                 format_cell_ranges(sheet_upload_tab, ranges_to_format)
             st.success(f"✅ {sheet_id} - Giacenze importate con successo!")
@@ -217,9 +217,9 @@ def giacenze_importa():
             if st.button("Importa Giacenze"):
                 if type(selected_sheet_id) == list:
                     for s in selected_sheet_id:
-                        import_giacenze(s)
+                        import_giacenze(s, numeric_cols_info)
                 else:
-                    import_giacenze(selected_sheet_id)
+                    import_giacenze(selected_sheet_id, numeric_cols_info)
                 
                 if nome_file == "Manuale" and file_bytes_for_upload:
                     with st.spinner("Carico il file su DropBox..."):
@@ -230,10 +230,10 @@ def giacenze_importa():
             if st.button("Importa Giacenze & Anagrafica"):
                 if type(selected_sheet_id) == list:
                     for s in selected_sheet_id:
-                        import_giacenze(s)
+                        import_giacenze(s, numeric_cols_info)
                         import_anagrafica(s)
                 else:
-                    import_giacenze(selected_sheet_id)
+                    import_giacenze(selected_sheet_id, numeric_cols_info)
                     import_anagrafica(selected_sheet_id)
                   
                 if nome_file == "Manuale" and file_bytes_for_upload:
