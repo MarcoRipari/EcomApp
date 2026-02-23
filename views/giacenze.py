@@ -226,7 +226,7 @@ def giacenze_importa():
                         else:
                             st.error(f"✅ {sheet_id} - Errore importazione giacenze!")
                 else:
-                    res = import_giacenze(s, numeric_cols_info)
+                    res = import_giacenze(selected_sheet_id, numeric_cols_info)
                     if res:
                         st.success(f"✅ {sheet_id} - Giacenze importate con successo!")
                     else:
@@ -248,7 +248,12 @@ def giacenze_importa():
                             st.error(f"✅ {sheet_id} - Errore importazione giacenze!")
                         import_anagrafica(s)
                 else:
-                    import_giacenze(selected_sheet_id, numeric_cols_info)
+                    res = import_giacenze(selected_sheet_id, numeric_cols_info)
+                    if res:
+                        st.success(f"✅ {sheet_id} - Giacenze importate con successo!")
+                    else:
+                        st.error(f"✅ {sheet_id} - Errore importazione giacenze!")
+                      
                     import_anagrafica(selected_sheet_id)
                   
                 if nome_file == "Manuale" and file_bytes_for_upload:
