@@ -74,7 +74,8 @@ def giacenze_importa():
   nome_sheet_tab = st.text_input("Inserisci nome del TAB", value="GIACENZE")
 
 
-  status_container = st.empty()
+  upd_container = st.empty()
+  res_container = st.empty()
   
   col1, col2, col3, col4 = st.columns(4)
 
@@ -117,14 +118,13 @@ def giacenze_importa():
 
     def import_giacenze(sheet_id, tab, n_cols, dtw):
       try:
-        with status_container.container():
+        with upd_container.container():
           st.info(f"Aggiorno foglio {sheet_id}")
           sheet_upload_tab = get_sheet(sheet_id, tab)
           sheet_upload_tab.clear()
           sheet_upload_tab.update("A1", dtw)
                         
           last_row = len(df_input) + 1
-          st.success(f"✅ {sheet_id} - Giacenze importate con successo!")
         
         return True
       except Exception as e:
@@ -141,19 +141,20 @@ def giacenze_importa():
       # --- Destinazione GSheet ---       
     with col2:
       if st.button("Importa Giacenze"):
-        if type(selected_sheet_id) == list:
-          for s in selected_sheet_id:
-            res = import_giacenze(s, numeric_cols_info, nome_sheet_tab, data_to_write)
-            if res:
-              st.success(f"✅ {s} - Giacenze importate con successo!")
-            else:
-              st.error(f"✅ {s} - {res}")
-        else:
-          res = import_giacenze(selected_sheet_id, numeric_cols_info, nome_sheet_tab, data_to_write)
-          if res:
-            st.success(f"✅ {selected_sheet_id,} - Giacenze importate con successo!")
+        with res_container.container():
+          if type(selected_sheet_id) == list:
+            for s in selected_sheet_id:
+              res = import_giacenze(s, numeric_cols_info, nome_sheet_tab, data_to_write)
+              if res:
+                st.success(f"✅ {s} - Giacenze importate con successo!")
+              else:
+                st.error(f"✅ {s} - {res}")
           else:
-            st.error(f"✅ {selected_sheet_id,} - {res}")
+            res = import_giacenze(selected_sheet_id, numeric_cols_info, nome_sheet_tab, data_to_write)
+            if res:
+              st.success(f"✅ {selected_sheet_id,} - Giacenze importate con successo!")
+            else:
+              st.error(f"✅ {selected_sheet_id,} - {res}")
             
       with st.spinner("Carico il file su DropBox..."):
         upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
