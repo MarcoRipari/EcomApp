@@ -116,11 +116,11 @@ def giacenze_importa():
         with upd_container.container():
           st.info(f"Aggiorno foglio {sheet_id}")
           
-          sheet_upload_tab = get_sheet(sheet_id, tab)
-          sheet_upload_tab.clear()
-          sheet_upload_tab.update("A1", dtw)
-                        
-          last_row = len(df_input) + 1
+        sheet_upload_tab = get_sheet(sheet_id, tab)
+        sheet_upload_tab.clear()
+        sheet_upload_tab.update("A1", dtw)
+                      
+        last_row = len(df_input) + 1
         
         return True
       except Exception as e:
