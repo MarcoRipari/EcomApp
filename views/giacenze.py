@@ -150,6 +150,10 @@ def giacenze_importa():
     #selected_sheet_id = st.text_input("Inserisci ID del Google Sheet", value=giacenze_sheet_id)
     nome_sheet_tab = st.text_input("Inserisci nome del TAB", value="GIACENZE")
 
+
+    status_container = st.container()
+
+  
     col1, col2, col3, col4 = st.columns(4)
 
     if df_input is not None:
@@ -224,15 +228,17 @@ def giacenze_importa():
                     for s in selected_sheet_id:
                         res = import_giacenze(s, numeric_cols_info)
                         if res:
-                            st.success(f"✅ {sheet_id} - Giacenze importate con successo!")
+                            status_container.success(f"✅ {s} - Giacenze importate!")
+                            st.success(f"✅ {s - Giacenze importate con successo!")
                         else:
-                            st.error(f"✅ {sheet_id} - Errore importazione giacenze!")
+                            st.error(f"✅ {s} - Errore importazione giacenze!")
                 else:
                     res = import_giacenze(selected_sheet_id, numeric_cols_info)
                     if res:
-                        st.success(f"✅ {sheet_id} - Giacenze importate con successo!")
+                        status_container.success(f"✅ {selected_sheet_id,} - Giacenze importate!")
+                        st.success(f"✅ {selected_sheet_id,} - Giacenze importate con successo!")
                     else:
-                        st.error(f"✅ {sheet_id} - Errore importazione giacenze!")
+                        st.error(f"✅ {selected_sheet_id,} - Errore importazione giacenze!")
                 
                 if nome_file == "Manuale" and file_bytes_for_upload:
                     with st.spinner("Carico il file su DropBox..."):
@@ -252,9 +258,9 @@ def giacenze_importa():
                 else:
                     res = import_giacenze(selected_sheet_id, numeric_cols_info)
                     if res:
-                        st.success(f"✅ {s} - Giacenze importate con successo!")
+                        st.success(f"✅ {selected_sheet_id} - Giacenze importate con successo!")
                     else:
-                        st.error(f"✅ {s} - Errore importazione giacenze!")
+                        st.error(f"✅ {selected_sheet_id} - Errore importazione giacenze!")
                       
                     import_anagrafica(selected_sheet_id)
                   
