@@ -156,8 +156,8 @@ def giacenze_importa():
             else:
               st.error(f"✅ {selected_sheet_id,} - {res}")
             
-      with st.spinner("Carico il file su DropBox..."):
-        upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
+        with st.spinner("Carico il file su DropBox..."):
+          upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
               
                       
     with col3:
