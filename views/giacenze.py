@@ -11,13 +11,19 @@ load_functions_from("functions", globals())
 anagrafica_sheet_id = st.secrets["ANAGRAFICA_GSHEET_ID"]
 giacenze_sheet_id = st.secrets["GIACENZE_GSHEET_ID"]
 
-sheets_to_import = ['1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4', # FOTO
+sheets_to_import2 = ['1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4', # FOTO
                     '13DnpAX7M9wymMR1YIH5IP28y_UaCPajBUIcoHca562U', # VECCHIA STAGIONE
                     '1YbU9twZgJECIsbxhRft-7yGGuH37xzVdOkz7jJIL5aQ', # NUOVA STAGIONE
                     '1o8Zir8DNKxW9QERqeZr7G-EEnoTqwRVYlyuOrzQJnhA', # SELE-SALDI-25-2
                     '1mvMi-ybuLdIF3GnAnl2GLqR2Bxic1nBD3Bxt1GQZTec', # Base_Dati_Retag
                     '1eR3ZOE6IzGgYP4mPnyGBfWiDof4Gpv9olOVu_G_k1dg', # SELE-OUTLET-PE26
                     '1wvHZpS8Y45V4MWKgVv_WZx7t98p3Z83EXWc_e9vNFwc'  # LISTA-SKUS-PE26
+                   ]
+
+
+sheets_to_import = ['1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4', # FOTO
+                    '13DnpAX7M9wymMR1YIH5IP28y_UaCPajBUIcoHca562U', # VECCHIA STAGIONE
+                    '1YbU9twZgJECIsbxhRft-7yGGuH37xzVdOkz7jJIL5aQ', # NUOVA STAGIONE
                    ]
 
 def giacenze_importa():
@@ -67,6 +73,9 @@ def giacenze_importa():
   #selected_sheet_id = st.text_input("Inserisci ID del Google Sheet", value=giacenze_sheet_id)
   nome_sheet_tab = st.text_input("Inserisci nome del TAB", value="GIACENZE")
 
+
+  status_container = st.container()
+  
   col1, col2, col3, col4 = st.columns(4)
 
   if df_input is not None:
@@ -108,6 +117,7 @@ def giacenze_importa():
 
     def import_giacenze(sheet_id, tab, n_cols, dtw):
       try:
+        status_container.info(f"Aggiorno foglio {sheet_id}")
         sheet_upload_tab = get_sheet(sheet_id, tab)
         sheet_upload_tab.clear()
         sheet_upload_tab.update("A1", dtw)
@@ -133,12 +143,14 @@ def giacenze_importa():
           for s in selected_sheet_id:
             res = import_giacenze(s, numeric_cols_info, nome_sheet_tab, data_to_write)
             if res:
+              status_container.success(f"✅ {s} - Giacenze importate con successo!")
               st.success(f"✅ {s} - Giacenze importate con successo!")
             else:
               st.error(f"✅ {s} - {res}")
         else:
           res = import_giacenze(selected_sheet_id, numeric_cols_info, nome_sheet_tab, data_to_write)
           if res:
+            status_container.success(f"✅ {selected_sheet_id} - Giacenze importate con successo!")
             st.success(f"✅ {selected_sheet_id,} - Giacenze importate con successo!")
           else:
             st.error(f"✅ {selected_sheet_id,} - {res}")
@@ -153,6 +165,7 @@ def giacenze_importa():
           for s in selected_sheet_id:
             res = import_giacenze(s, numeric_cols_info, nome_sheet_tab, data_to_write)
             if res:
+              status_container.success(f"✅ {s} - Giacenze importate con successo!")
               st.success(f"✅ {s} - Giacenze importate con successo!")
             else:
               st.error(f"✅ {s} - Errore importazione giacenze!")
@@ -161,6 +174,7 @@ def giacenze_importa():
         else:
           res = import_giacenze(selected_sheet_id, numeric_cols_info, nome_sheet_tab, data_to_write)
           if res:
+            status_container.success(f"✅ {selected_sheet_id} - Giacenze importate con successo!")
             st.success(f"✅ {selected_sheet_id} - Giacenze importate con successo!")
           else:
             st.error(f"✅ {selected_sheet_id} - {res}")
