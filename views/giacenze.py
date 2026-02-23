@@ -141,42 +141,50 @@ def giacenze_importa():
       # --- Destinazione GSheet ---       
     with col2:
       if st.button("Importa Giacenze"):
-        with res_container.container():
-          if type(selected_sheet_id) == list:
-            for s in selected_sheet_id:
+        if type(selected_sheet_id) == list:
+          tot = len(selected_sheet_id)
+          for i, s in enumerate(selected_sheet_id):
+            with res_container.container():
               res = import_giacenze(s, numeric_cols_info, nome_sheet_tab, data_to_write)
               if res:
-                st.success(f"✅ {s} - Giacenze importate con successo!")
+                st.success(f"✅ {i}/{tot} - Giacenze importate con successo!")
               else:
                 st.error(f"✅ {s} - {res}")
-          else:
+        else:
+          with res_container.container():
             res = import_giacenze(selected_sheet_id, numeric_cols_info, nome_sheet_tab, data_to_write)
             if res:
-              st.success(f"✅ {selected_sheet_id,} - Giacenze importate con successo!")
+              st.success(f"✅ Giacenze importate con successo!")
             else:
-              st.error(f"✅ {selected_sheet_id,} - {res}")
+              st.error(f"✅ {selected_sheet_id} - {res}")
             
         with st.spinner("Carico il file su DropBox..."):
           upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
+
+        time.sleep(5)
+        res_container
               
                       
     with col3:
       if st.button("Importa Giacenze & Anagrafica"):
         if type(selected_sheet_id) == list:
-          for s in selected_sheet_id:
-            res = import_giacenze(s, numeric_cols_info, nome_sheet_tab, data_to_write)
-            if res:
-              st.success(f"✅ {s} - Giacenze importate con successo!")
-            else:
-              st.error(f"✅ {s} - Errore importazione giacenze!")
-              
-          import_anagrafica(s)
+          tot = len(selected_sheet_id)
+          for i, s in enumerate(selected_sheet_id):
+            with res_container.container():
+              res = import_giacenze(s, numeric_cols_info, nome_sheet_tab, data_to_write)
+              if res:
+                st.success(f"✅ {i}/{tot} - Giacenze importate con successo!")
+              else:
+                st.error(f"✅ {s} - Errore importazione giacenze!")
+                
+            import_anagrafica(s)
         else:
-          res = import_giacenze(selected_sheet_id, numeric_cols_info, nome_sheet_tab, data_to_write)
-          if res:
-            st.success(f"✅ {selected_sheet_id} - Giacenze importate con successo!")
-          else:
-            st.error(f"✅ {selected_sheet_id} - {res}")
+          with res_container.container():
+            res = import_giacenze(selected_sheet_id, numeric_cols_info, nome_sheet_tab, data_to_write)
+            if res:
+              st.success(f"✅ Giacenze importate con successo!")
+            else:
+              st.error(f"✅ {selected_sheet_id} - {res}")
                     
           import_anagrafica(selected_sheet_id)
                 
