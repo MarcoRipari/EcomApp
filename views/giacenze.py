@@ -245,16 +245,16 @@ def giacenze_importa():
                     for s in selected_sheet_id:
                         res = import_giacenze(s, numeric_cols_info)
                         if res:
-                            st.success(f"✅ {sheet_id} - Giacenze importate con successo!")
+                            st.success(f"✅ {s} - Giacenze importate con successo!")
                         else:
-                            st.error(f"✅ {sheet_id} - Errore importazione giacenze!")
+                            st.error(f"✅ {s} - Errore importazione giacenze!")
                         import_anagrafica(s)
                 else:
                     res = import_giacenze(selected_sheet_id, numeric_cols_info)
                     if res:
-                        st.success(f"✅ {sheet_id} - Giacenze importate con successo!")
+                        st.success(f"✅ {s} - Giacenze importate con successo!")
                     else:
-                        st.error(f"✅ {sheet_id} - Errore importazione giacenze!")
+                        st.error(f"✅ {s} - Errore importazione giacenze!")
                       
                     import_anagrafica(selected_sheet_id)
                   
