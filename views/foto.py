@@ -36,7 +36,7 @@ def foto_dashboard():
   with col5:
       bordered_box("Disponibili", count_da_scattare("disponibili"), "✅")
 
-  df["X"] = df["X"].float()
+  
   disp = df[df["DISP"] == True]
   disp_027 = df[df["DISP 027"] == True]
   disp_012 = df[df["DISP 012"] == True]
