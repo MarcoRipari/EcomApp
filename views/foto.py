@@ -56,9 +56,9 @@ def foto_dashboard():
     )
 
   with download_col3:
-    disp_matteo = disp[disp["FOTOGRAFO"] == "MATTEO"][["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
-    disp_matteo_027 = disp_027[disp_027["FOTOGRAFO"] == "MATTEO"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
-    disp_matteo_012 = disp_012[disp_012["FOTOGRAFO"] == "MATTEO"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
+    disp_matteo = disp[disp["FOTOGRAFO"] == "MATTEO"][["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]].sort_values(by=["COR","X","Y","LAT","COD","VAR","COL"])
+    disp_matteo_027 = disp_027[disp_027["FOTOGRAFO"] == "MATTEO"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]].sort_values(by=["UBI","COD","VAR","COL"])
+    disp_matteo_012 = disp_012[disp_012["FOTOGRAFO"] == "MATTEO"][["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]].sort_values(by=["UBI","COD","VAR","COL"])
     bordered_box_fotografi(
         "MATTEO",
         {
