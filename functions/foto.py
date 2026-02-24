@@ -23,6 +23,8 @@ def load_df_foto():
   df["DISP 027"] = normalize_bool(df["DISP 027"])
   df["DISP 012"] = normalize_bool(df["DISP 012"])
 
+  df["X"] = pd.to_numeric(df["X"], errors="coerce")
+
   st.session_state.df_foto = df
 
 load_df_foto()
