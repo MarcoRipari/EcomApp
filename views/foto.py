@@ -17,7 +17,7 @@ map_cod_cli = {
 }
 
 def foto_dashboard():
-  with st.spinner("Carico lista SKUs..."):
+  with st.spinner("Carico lista SKUs.."):
     load_df_foto()
     df = st.session_state.df_foto
     
