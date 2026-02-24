@@ -24,6 +24,7 @@ def load_df_foto():
   df["DISP 012"] = normalize_bool(df["DISP 012"])
 
   df["X"] = pd.to_numeric(df["X"], errors="coerce").astype("Int64")
+  df["Y"] = pd.to_numeric(df["Y"], errors="coerce").astype("Int64")
 
   st.session_state.df_foto = df
 
