@@ -15,7 +15,7 @@ def load_df_foto():
   values = sheet.get_all_values()
   df = pd.DataFrame(values[1:], columns=values[0])
   
-  # Normalizzo i booleani (True / False)
+  # Normalizzo i booleani(True / False)
   df["SCATTARE"] = normalize_bool(df["SCATTARE"])
   df["CONSEGNATA"] = normalize_bool(df["CONSEGNATA"])
   df["RISCATTARE"] = normalize_bool(df["RISCATTARE"])
