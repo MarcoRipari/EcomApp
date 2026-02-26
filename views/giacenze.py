@@ -41,7 +41,7 @@ def giacenze_importa():
     if "target_rimanenti" not in st.session_state:
         st.session_state.target_rimanenti = []
     if "import_logs" not in st.session_state:
-        st.session_state.import_logs = []
+        st.session_state.import_logs = {} # Usiamo un dizionario per ordine e pulizia
 
     dbx = get_dropbox_client()
     folder_path = "/GIACENZE"
@@ -54,7 +54,7 @@ def giacenze_importa():
         if st.session_state.file_bytes_for_upload != content:
             st.session_state.file_bytes_for_upload = content
             st.session_state.df_input = None
-            st.session_state.import_logs = [] # Reset log se cambio file
+            st.session_state.import_logs = {}
 
     if st.session_state.file_bytes_for_upload and st.session_state.df_input is None:
         buffer = BytesIO(st.session_state.file_bytes_for_upload)
@@ -62,22 +62,38 @@ def giacenze_importa():
 
     df_input = st.session_state.df_input
 
-    # --- 3. CONFIGURAZIONE TARGET ---
-    SHEETS = {
+    # --- 3. CONFIGURAZIONE TARGET E MAPPATURA NOMI ---
+    # Creiamo una mappa ID -> NOME per la visualizzazione
+    SHEETS_MAP = {
+        "1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4": "Foglio FOTO",
+        "13DnpAX7M9wymMR1YIH5IP28y_UaCPajBUIcoHca562U": "Foglio GIACENZE"
+    }
+    # Aggiungiamo quelli dinamici da sheets_to_import se è una lista
+    if isinstance(sheets_to_import, list):
+        for s_id in sheets_to_import:
+            if s_id not in SHEETS_MAP:
+                SHEETS_MAP[s_id] = f"Target Completo ({s_id[:5]}...)"
+
+    SHEETS_OPTIONS = {
         "COMPLETO": sheets_to_import, 
         "Foglio FOTO": "1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4",
         "Foglio GIACENZE": "13DnpAX7M9wymMR1YIH5IP28y_UaCPajBUIcoHca562U",
     }
     
-    options = list(SHEETS.keys()) + ["Manuale"]
+    options = list(SHEETS_OPTIONS.keys()) + ["Manuale"]
     sheet_option = st.selectbox("Seleziona target:", options)
-    selected_sheet_id = SHEETS[sheet_option] if sheet_option in SHEETS else st.text_input("ID Manuale")
+    
+    if sheet_option in SHEETS_OPTIONS:
+        selected_sheet_id = SHEETS_OPTIONS[sheet_option]
+    else:
+        selected_sheet_id = st.text_input("ID Manuale")
+
     nome_sheet_tab = st.text_input("Nome TAB", value="GIACENZE")
 
-    # --- 4. LOGICA DI ELABORAZIONE (Dati pronti) ---
+    # --- 4. PREPARAZIONE DATI ---
     if df_input is not None:
         df_proc = df_input.copy()
-        # (Preprocessing numerico identico a prima...)
+        # Preprocessing numerico (mantenuto come da tua logica)
         numeric_cols_info = { "D": "0", "M": "000", "O": "0", "P": "0" }
         for i in range(18, 30):
             col_letter = gspread.utils.rowcol_to_a1(1, i)[:-1]
@@ -100,52 +116,57 @@ def giacenze_importa():
         if len(data_to_write[0]) >= 27:
             data_to_write[0][18:27] = intestazioni_magazzini
 
-        # --- 5. SISTEMA DI CONTROLLO LOOP ---
+        # --- 5. INTERFACCIA E AZIONI ---
         col1, col2, col3, col4 = st.columns(4)
 
-        # Bottone di avvio
-        if col2.button("Avvia Importazione"):
+        if col2.button("Avvia Importazione", use_container_width=True):
             st.session_state.target_rimanenti = selected_sheet_id if isinstance(selected_sheet_id, list) else [selected_sheet_id]
             st.session_state.import_in_corso = True
-            st.session_state.import_logs = []
+            st.session_state.import_logs = {}
             st.rerun()
 
-        # Esecuzione del loop (uno alla volta)
+        # --- 6. ESECUZIONE LOOP (LOGICA SOBRIA) ---
         if st.session_state.import_in_corso and st.session_state.target_rimanenti:
             current_target = st.session_state.target_rimanenti.pop(0)
+            nome_leggibile = SHEETS_MAP.get(current_target, current_target)
             
-            with st.status(f"Elaborazione {current_target}...") as status:
+            # st.status con etichetta pulita
+            with st.status(f"Aggiornamento: **{nome_leggibile}**...", expanded=False) as status:
                 try:
-                    # Esecuzione fisica
                     sh = get_sheet(current_target, nome_sheet_tab)
                     sh.clear()
                     sh.update("A1", data_to_write)
                     
-                    # Formattazione
                     last_row = len(df_proc) + 1
                     ranges = [(f"{c}2:{c}{last_row}", CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=p))) 
                               for c, p in numeric_cols_info.items()]
                     format_cell_ranges(sh, ranges)
                     
-                    st.session_state.import_logs.append(f"✅ {current_target}: Successo")
+                    st.session_state.import_logs[nome_leggibile] = "✅ OK"
                 except Exception as e:
-                    st.session_state.import_logs.append(f"❌ {current_target}: Errore {str(e)}")
+                    st.session_state.import_logs[nome_leggibile] = f"❌ Errore: {str(e)[:50]}..."
                 
-                status.update(label="Completato!", state="complete")
+                status.update(label=f"Fatto: {nome_leggibile}", state="complete")
             
-            # Forza il rerun per passare al prossimo target
             st.rerun()
 
-        # Fine lavori
+        # --- 7. RIEPILOGO FINALE ---
+        if st.session_state.import_logs:
+            st.divider()
+            st.subheader("Stato Elaborazione", divider="green")
+            
+            # Creiamo una tabella sobria invece di tante "patacche" st.success
+            log_df = pd.DataFrame([
+                {"Foglio": k, "Esito": v} for k, v in st.session_state.import_logs.items()
+            ])
+            st.table(log_df) # Molto più pulito delle card verdi
+
         if st.session_state.import_in_corso and not st.session_state.target_rimanenti:
             st.session_state.import_in_corso = False
             if st.session_state.file_bytes_for_upload:
-                upload_csv_to_dropbox(dbx, folder_path, manual_nome_file, st.session_state.file_bytes_for_upload)
-            st.success("Tutte le operazioni sono terminate!")
-
-        # Mostra i log accumulati
-        for log in st.session_state.import_logs:
-            st.write(log)
+                with st.spinner("Sincronizzazione finale Dropbox..."):
+                    upload_csv_to_dropbox(dbx, folder_path, manual_nome_file, st.session_state.file_bytes_for_upload)
+            st.balloons() # Un tocco di festa solo alla fine
 
     with col1:
         if st.button("Anagrafica"):
