@@ -31,7 +31,7 @@ sheets_to_import = ['1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4', # FOTO
 def giacenze_importa():
     st.header("Importa giacenze")
 
-    # --- 1. STATO PERSISTENTE (Per evitare reset durante il loop) ---
+    # --- 1. STATO PERSISTENTE ---
     if "df_input" not in st.session_state:
         st.session_state.df_input = None
     if "file_bytes_for_upload" not in st.session_state:
@@ -47,16 +47,32 @@ def giacenze_importa():
     folder_path = "/GIACENZE"
     manual_nome_file = "GIACENZE.csv"
 
-    # --- 2. CARICAMENTO FILE ---
+    # --- 2. DEFINIZIONE NOMI FOGLI (MODIFICA QUI GLI ID) ---
+    # Mappa qui tutti i tuoi ID ai nomi reali per vederli correttamente
+    SHEETS_NAMES = {
+        "1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4": "Foglio FOTO",
+        "13DnpAX7M9wymMR1YIH5IP28y_UaCPajBUIcoHca562U": "Foglio GIACENZE",
+        # Aggiungi qui gli ID del set "COMPLETO" se vuoi nomi specifici
+        # "ID_GSHEET_1": "Sede Centrale",
+        # "ID_GSHEET_2": "Punto Vendita X",
+    }
+
+    # Opzioni per la selectbox
+    SHEETS_OPTIONS = {
+        "COMPLETO": sheets_to_import if 'sheets_to_import' in globals() else [], 
+        "Foglio FOTO": "1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4",
+        "Foglio GIACENZE": "13DnpAX7M9wymMR1YIH5IP28y_UaCPajBUIcoHca562U",
+    }
+
+    # --- 3. CARICAMENTO FILE ---
     uploaded_file = st.file_uploader("Carica un file CSV", type="csv", key="uploader_manual")
     if uploaded_file:
         content = uploaded_file.getvalue()
         if st.session_state.file_bytes_for_upload != content:
             st.session_state.file_bytes_for_upload = content
             st.session_state.df_input = None
-            st.session_state.import_logs = {} # Reset log se il file cambia
+            st.session_state.import_logs = {}
 
-    # Lettura automatica se il file è presente ma il DF è vuoto
     if st.session_state.file_bytes_for_upload and st.session_state.df_input is None:
         with st.spinner("Analisi dei dati in corso..."):
             buffer = BytesIO(st.session_state.file_bytes_for_upload)
@@ -64,27 +80,7 @@ def giacenze_importa():
 
     df_input = st.session_state.df_input
 
-    # --- 3. CONFIGURAZIONE TARGET E MAPPATURA NOMI ---
-    # Recuperiamo gli ID dalla tua variabile globale sheets_to_import
-    # (Assumo che sheets_to_import sia definita altrove nel tuo codice)
-    
-    SHEETS_MAP = {
-        "1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4": "Foglio FOTO",
-        "13DnpAX7M9wymMR1YIH5IP28y_UaCPajBUIcoHca562U": "Foglio GIACENZE"
-    }
-    
-    # Integriamo dinamicamente i nomi per il set COMPLETO
-    if 'sheets_to_import' in globals() and isinstance(sheets_to_import, list):
-        for s_id in sheets_to_import:
-            if s_id not in SHEETS_MAP:
-                SHEETS_MAP[s_id] = f"Target Completo ({s_id[:6]})"
-
-    SHEETS_OPTIONS = {
-        "COMPLETO": sheets_to_import if 'sheets_to_import' in globals() else [], 
-        "Foglio FOTO": "1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4",
-        "Foglio GIACENZE": "13DnpAX7M9wymMR1YIH5IP28y_UaCPajBUIcoHca562U",
-    }
-    
+    # --- 4. SELEZIONE TARGET ---
     options = list(SHEETS_OPTIONS.keys()) + ["Manuale"]
     sheet_option = st.selectbox("Seleziona target:", options)
     
@@ -95,13 +91,8 @@ def giacenze_importa():
 
     nome_sheet_tab = st.text_input("Nome del TAB", value="GIACENZE")
 
-    # --- 4. LOGICA DI PREPARAZIONE DATI ---
+    # --- 5. LOGICA PREPARAZIONE DATI ---
     if df_input is not None:
-        # Checkbox per visualizzazione (sobria)
-        if st.checkbox("Visualizza anteprima dati", value=False):
-            st.dataframe(df_input.head(10), use_container_width=True)
-
-        # Preprocessing numerico
         df_proc = df_input.copy()
         numeric_cols_info = { "D": "0", "M": "000", "O": "0", "P": "0" }
         for i in range(18, 30):
@@ -120,28 +111,28 @@ def giacenze_importa():
                 col_name = df_proc.columns[col_idx]
                 df_proc[col_name] = df_proc[col_name].apply(to_number_safe)
 
-        # Conversione in lista per GSheets
         data_to_write = [df_proc.columns.tolist()] + df_proc.fillna("").values.tolist()
         
-        # Intestazioni magazzini fisse
         intestazioni_magazzini = ["060/029","060/018","060/015","060/025","027/001","028/029","139/029","028/001","012/001"]
         if len(data_to_write[0]) >= 27:
             data_to_write[0][18:27] = intestazioni_magazzini
 
-        # --- 5. AZIONI (COLONNE) ---
         col1, col2, col3, col4 = st.columns(4)
 
+        # Azione 1: Anagrafica (Immediata)
         with col1:
             if st.button("Importa Anagrafica", use_container_width=True):
                 targets = selected_sheet_id if isinstance(selected_sheet_id, list) else [selected_sheet_id]
                 for s in targets:
-                    with st.spinner(f"Anagrafica -> {SHEETS_MAP.get(s, s)}"):
+                    nome = SHEETS_NAMES.get(s, f"Foglio {targets.index(s)+1}")
+                    with st.spinner(f"Aggiorno Anagrafica: {nome}"):
                         sh_dest = get_sheet(s, "ANAGRAFICA")
                         sh_src = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
                         sh_dest.clear()
                         sh_dest.update("A1", sh_src.get_all_values())
-                st.toast("Anagrafiche aggiornate!")
+                st.toast("Anagrafiche completate!")
 
+        # Azione 2 & 3: Loop con Rerun
         with col2:
             if st.button("Importa Giacenze", use_container_width=True):
                 st.session_state.target_rimanenti = selected_sheet_id if isinstance(selected_sheet_id, list) else [selected_sheet_id]
@@ -150,7 +141,7 @@ def giacenze_importa():
                 st.rerun()
 
         with col3:
-            if st.button("Giacenze + Anagrafica", use_container_width=True):
+            if st.button("Giacenze + Anag", use_container_width=True):
                 st.session_state.target_rimanenti = selected_sheet_id if isinstance(selected_sheet_id, list) else [selected_sheet_id]
                 st.session_state.import_in_corso = "TOTALE"
                 st.session_state.import_logs = {}
@@ -159,31 +150,35 @@ def giacenze_importa():
         with col4:
             if st.button("Backup Dropbox", use_container_width=True):
                 if st.session_state.file_bytes_for_upload:
-                    with st.spinner("Caricamento..."):
+                    with st.spinner("Dropbox..."):
                         upload_csv_to_dropbox(dbx, folder_path, manual_nome_file, st.session_state.file_bytes_for_upload)
-                    st.success("Sincronizzato!")
+                    st.success("Backup OK!")
 
-        # --- 6. CORE LOOP (Auto-eseguito dopo il rerun) ---
+        # --- 6. CORE LOOP (Gestione Nomi Dinamici) ---
         if st.session_state.import_in_corso and st.session_state.target_rimanenti:
-            current_target = st.session_state.target_rimanenti.pop(0)
-            nome_leggibile = SHEETS_MAP.get(current_target, current_target)
-            modalita = st.session_state.import_in_corso
+            # Calcoliamo l'indice per dare un nome se non esiste in SHEETS_NAMES
+            totali = len(st.session_state.target_rimanenti) + len(st.session_state.import_logs)
+            corrente_idx = len(st.session_state.import_logs) + 1
             
-            with st.status(f"Elaborazione: **{nome_leggibile}**...", expanded=False) as status:
+            current_target = st.session_state.target_rimanenti.pop(0)
+            
+            # Recupero nome: se non è in SHEETS_NAMES, usa "Foglio N"
+            nome_leggibile = SHEETS_NAMES.get(current_target, f"Foglio {corrente_idx}")
+            
+            with st.status(f"Elaborazione: **{nome_leggibile}** ({corrente_idx}/{totali})", expanded=False) as status:
                 try:
-                    # Parte 1: Giacenze
+                    # Giacenze
                     sh = get_sheet(current_target, nome_sheet_tab)
                     sh.clear()
                     sh.update("A1", data_to_write)
                     
-                    # Formattazione
                     last_row = len(df_proc) + 1
                     ranges = [(f"{c}2:{c}{last_row}", CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=p))) 
                               for c, p in numeric_cols_info.items()]
                     format_cell_ranges(sh, ranges)
                     
-                    # Parte 2: Anagrafica (se modalità TOTALE)
-                    if modalita == "TOTALE":
+                    # Anagrafica opzionale
+                    if st.session_state.import_in_corso == "TOTALE":
                         sh_dest = get_sheet(current_target, "ANAGRAFICA")
                         sh_src = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
                         sh_dest.clear()
@@ -191,26 +186,28 @@ def giacenze_importa():
 
                     st.session_state.import_logs[nome_leggibile] = "✅ OK"
                 except Exception as e:
-                    st.session_state.import_logs[nome_leggibile] = f"❌ Errore: {str(e)[:40]}..."
+                    st.session_state.import_logs[nome_leggibile] = f"❌ Errore: {str(e)[:30]}"
                 
                 status.update(label=f"Completato: {nome_leggibile}", state="complete")
             
             st.rerun()
 
-        # --- 7. FINE E RIEPILOGO ---
+        # --- 7. RIEPILOGO ---
         if st.session_state.import_logs:
             if not st.session_state.target_rimanenti and st.session_state.import_in_corso:
-                # Abbiamo appena finito l'ultimo
                 st.session_state.import_in_corso = False
                 if st.session_state.file_bytes_for_upload:
                     upload_csv_to_dropbox(dbx, folder_path, manual_nome_file, st.session_state.file_bytes_for_upload)
                 st.balloons()
 
-            # Tabella riepilogativa finale
             st.divider()
-            st.subheader("Riepilogo Operazioni", divider="green")
+            st.subheader("Riepilogo Importazione", divider="green")
+            # Tabella pulita senza indici
             res_df = pd.DataFrame([{"Foglio": k, "Stato": v} for k, v in st.session_state.import_logs.items()])
             st.dataframe(res_df, use_container_width=True, hide_index=True)
+
+    if st.checkbox("Visualizza anteprima CSV", value=False) and df_input is not None:
+        st.dataframe(df_input.head(10))
 
 
 def aggiorna_anagrafica():
