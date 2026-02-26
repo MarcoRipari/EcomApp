@@ -16,6 +16,7 @@ map_cod_cli = {
   "0034630":"AMAZON"
 }
 
+
 def foto_dashboard():
   with st.spinner("Carico lista SKUs..."):
     load_df_foto()
