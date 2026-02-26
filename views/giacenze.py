@@ -34,6 +34,11 @@ def giacenze_importa():
 
   uploaded_file = st.file_uploader("Carica un file CSV manualmente", type="csv", key="uploader_manual")
 
+  if 'file_up' not in st.session_state:
+    st.session_state['file_up'] = None
+  else:
+    uploaded_file = st.session_state.file_up
+    
   if uploaded_file:
     uploaded_file.seek(0)
 
