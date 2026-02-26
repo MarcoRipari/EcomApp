@@ -7,6 +7,7 @@ import time
 
 from utils import *
 
+
 load_functions_from("functions", globals())
 
 anagrafica_sheet_id = st.secrets["ANAGRAFICA_GSHEET_ID"]
