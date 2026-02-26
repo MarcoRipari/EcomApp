@@ -47,7 +47,6 @@ def giacenze_importa():
     file_bytes_for_upload = csv_import.getvalue()
     manual_nome_file = "GIACENZE.csv"
     
-
   # --- Carico CSV solo se df_input è None ---
   #if csv_import:
   if st.session_state.file_up:
