@@ -35,7 +35,7 @@ def count_da_scattare(type="totale"):
   scattare = len(df[df["SCATTARE"] == True])
   riscattare = len(df[df["RISCATTARE"] == True])
   consegnate = len(df[(df["CONSEGNATA"] == True) & (df["SCATTARE"] == True)])
-  disponibili = len(df[(df["SCATTARE"] == True) & (df["CONSEGNATA"] == False) & ((df["DISP"] == True) | (df["DISP 027"] == True) | (df["DISP 012"] == True))])
+  disponibili = len((df[(df["SCATTARE"] == True) & (df["CONSEGNATA"] == False) | df[(df["RISCATTARE"] == True) & (df["CONSEGNATA"] == False)) & ((df["DISP"] == True) | (df["DISP 027"] == True) | (df["DISP 012"] == True))])
   if type == "mancanti":
     return (scattare + riscattare) - consegnate
   elif type == "riscattare":
