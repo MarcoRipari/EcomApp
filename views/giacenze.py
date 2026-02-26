@@ -27,182 +27,177 @@ sheets_to_import = ['1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4', # FOTO
                    ]
 
 def giacenze_importa():
-  st.header("Importa giacenze")
+    st.header("Importa giacenze")
 
-  csv_import = None
-  file_bytes_for_upload = None
-  last_update = None
-  df_input = None
-  manual_nome_file = "GIACENZE.csv"
+    # --- Inizializzazione Session State per persistenza ---
+    if "df_input" not in st.session_state:
+        st.session_state.df_input = None
+    if "file_bytes" not in st.session_state:
+        st.session_state.file_bytes = None
+    if "manual_filename" not in st.session_state:
+        st.session_state.manual_filename = "GIACENZE.csv"
 
-  dbx = get_dropbox_client()
-  folder_path = "/GIACENZE"
+    dbx = get_dropbox_client()
+    folder_path = "/GIACENZE"
 
-  uploaded_file = st.file_uploader("Carica un file CSV manualmente", type="csv", key="uploader_manual")
+    # --- Caricamento File ---
+    uploaded_file = st.file_uploader("Carica un file CSV manualmente", type="csv", key="uploader_manual")
 
-  if uploaded_file:
-    uploaded_file.seek(0)
+    if uploaded_file:
+        # Se il file è nuovo o diverso, resettiamo il dataframe in memoria
+        if st.session_state.file_bytes != uploaded_file.getvalue():
+            st.session_state.file_bytes = uploaded_file.getvalue()
+            st.session_state.df_input = None 
 
-    csv_import = uploaded_file
-    file_bytes_for_upload = csv_import.getvalue()
+    # --- Lettura CSV (Eseguita solo se necessario) ---
+    if st.session_state.file_bytes and st.session_state.df_input is None:
+        with st.spinner("Carico il CSV..."):
+            # Usiamo un BytesIO per leggere i bytes salvati nello stato
+            from io import BytesIO
+            csv_buffer = BytesIO(st.session_state.file_bytes)
+            st.session_state.df_input = read_csv_auto_encoding(csv_buffer, ";")
+
+    # Scorciatoia per comodità
+    df_input = st.session_state.df_input
+
+    # --- Configurazione Destinazione ---
+    SHEETS = {
+        "COMPLETO": sheets_to_import, # Questa deve essere una lista di ID
+        "Foglio FOTO": "1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4",
+        "Foglio GIACENZE": "13DnpAX7M9wymMR1YIH5IP28y_UaCPajBUIcoHca562U",
+    }
     
-  # --- Carico CSV solo se df_input è None ---
-  if csv_import:
-    with st.spinner("Carico il CSV..."):
-      df_input = read_csv_auto_encoding(csv_import, ";")
-
-  default_sheet_id = giacenze_sheet_id
-  
-  SHEETS = {
-    "COMPLETO": sheets_to_import,
-    "Foglio FOTO": "1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4",
-    "Foglio GIACENZE": "13DnpAX7M9wymMR1YIH5IP28y_UaCPajBUIcoHca562U",
-  }
-  
-  options = list(SHEETS.keys()) + ["Manuale"]
-
-  sheet_option = st.selectbox(
-    "Seleziona foglio:",
-    options
-  )
-  
-  if sheet_option in SHEETS:
-    selected_sheet_id = SHEETS[sheet_option]
-  else:
-    selected_sheet_id = st.text_input("Inserisci ID del Google Sheet")
-  #selected_sheet_id = st.text_input("Inserisci ID del Google Sheet", value=giacenze_sheet_id)
-  nome_sheet_tab = st.text_input("Inserisci nome del TAB", value="GIACENZE")
-
-
-  upd_container = st.empty()
-  res_container = st.empty()
-  
-  col1, col2, col3, col4 = st.columns(4)
-
-  if df_input is not None:
-    view_df = st.checkbox("Visualizza il dataframe?", value=False)
-    if view_df:
-      st.write(df_input)
-
-      # --- Colonne numeriche ---
-    numeric_cols_info = { "D": "0", "M": "000", "O": "0", "P": "0" }
-    for i in range(18, 30):  # Colonne R-AD
-      col_letter = gspread.utils.rowcol_to_a1(1, i)[:-1]
-      numeric_cols_info[col_letter] = "0"
-
-    def to_number_safe(x):
-      try:
-        if pd.isna(x) or x == "":
-          return ""
-        return float(x)
-      except:
-        return str(x)
-
-    for col_letter in numeric_cols_info.keys():
-      col_idx = gspread.utils.a1_to_rowcol(f"{col_letter}1")[1] - 1
-      if df_input.columns.size > col_idx:
-        col_name = df_input.columns[col_idx]
-        df_input[col_name] = df_input[col_name].apply(to_number_safe)
-
-    target_indices = [gspread.utils.a1_to_rowcol(f"{col}1")[1] - 1 for col in numeric_cols_info.keys()]
-    for idx, col_name in enumerate(df_input.columns):
-      if idx not in target_indices:
-        df_input[col_name] = df_input[col_name].apply(lambda x: "" if pd.isna(x) else str(x))
-
-      
-      
-    data_to_write = [df_input.columns.tolist()] + df_input.values.tolist()
-      
-    intestazioni_magazzini = ["060/029","060/018","060/015","060/025","027/001","028/029","139/029","028/001","012/001"]
-    data_to_write[0][18:27] = intestazioni_magazzini
-
-    def import_giacenze(sheet_id, tab, n_cols, dtw):
-      try:
-        with upd_container.container():
-          st.info(f"Aggiorno foglio {sheet_id}")
-          
-        sheet_upload_tab = get_sheet(sheet_id, tab)
-        sheet_upload_tab.clear()
-        sheet_upload_tab.update("A1", dtw)
-                      
-        last_row = len(df_input) + 1
+    options = list(SHEETS.keys()) + ["Manuale"]
+    sheet_option = st.selectbox("Seleziona foglio:", options)
+    
+    if sheet_option in SHEETS:
+        selected_sheet_id = SHEETS[sheet_option]
+    else:
+        selected_sheet_id = st.text_input("Inserisci ID del Google Sheet")
         
-        return True
-      except Exception as e:
-        return e
+    nome_sheet_tab = st.text_input("Inserisci nome del TAB", value="GIACENZE")
 
-    def import_anagrafica(sheet_id):
-      sheet_upload_anagrafica = get_sheet(sheet_id, "ANAGRAFICA")
-      sheet_anagrafica = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
-      sheet_upload_anagrafica.clear()
-      sheet_upload_anagrafica.update("A1", sheet_anagrafica.get_all_values())
-      st.success(f"✅ {sheet_id} - Anagrafica importata con successo!")
+    # Container per messaggi dinamici
+    upd_container = st.empty()
+    res_container = st.empty()
+    
+    col1, col2, col3, col4 = st.columns(4)
 
-      
-      # --- Destinazione GSheet ---       
-    with col2:
-      if st.button("Importa Giacenze"):
-        if type(selected_sheet_id) == list:
-          tot = len(selected_sheet_id)
-          for i, s in enumerate(selected_sheet_id):
-            with res_container.container():
-              res = import_giacenze(s, nome_sheet_tab, numeric_cols_info, data_to_write)
-              if res:
-                st.success(f"✅ {i+1}/{tot} - Giacenze importate con successo!")
-              else:
-                st.error(f"✅ {s} - {res}")
-        else:
-          with res_container.container():
-            res = import_giacenze(selected_sheet_id, nome_sheet_tab, numeric_cols_info, data_to_write)
-            if res:
-              st.success(f"✅ Giacenze importate con successo!")
-            else:
-              st.error(f"✅ {selected_sheet_id} - {res}")
-            
-        with st.spinner("Carico il file su DropBox..."):
-          upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
-              
-                      
-    with col3:
-      if st.button("Importa Giacenze & Anagrafica"):
-        if type(selected_sheet_id) == list:
-          tot = len(selected_sheet_id)
-          for i, s in enumerate(selected_sheet_id):
-            with res_container.container():
-              res = import_giacenze(s, nome_sheet_tab, numeric_cols_info, data_to_write)
-              if res:
-                st.success(f"✅ {i+1}/{tot} - Giacenze importate con successo!")
-              else:
-                st.error(f"✅ {s} - Errore importazione giacenze!")
+    if df_input is not None:
+        if st.checkbox("Visualizza il dataframe?", value=False):
+            st.write(df_input)
+
+        # --- Elaborazione Dati (Numeric formatting) ---
+        numeric_cols_info = { "D": "0", "M": "000", "O": "0", "P": "0" }
+        for i in range(18, 30):
+            col_letter = gspread.utils.rowcol_to_a1(1, i)[:-1]
+            numeric_cols_info[col_letter] = "0"
+
+        def to_number_safe(x):
+            try:
+                if pd.isna(x) or x == "": return ""
+                return float(str(x).replace(',', '.'))
+            except:
+                return str(x)
+
+        # Applichiamo le trasformazioni su una copia per non sporcare il session_state ad ogni giro
+        df_proc = df_input.copy()
+        for col_letter in numeric_cols_info.keys():
+            col_idx = gspread.utils.a1_to_rowcol(f"{col_letter}1")[1] - 1
+            if df_proc.columns.size > col_idx:
+                col_name = df_proc.columns[col_idx]
+                df_proc[col_name] = df_proc[col_name].apply(to_number_safe)
+
+        # Riempimento NaN per compatibilità GSheet
+        data_to_write = [df_proc.columns.tolist()] + df_proc.fillna("").values.tolist()
+        
+        # Intestazioni magazzini fisse
+        intestazioni_magazzini = ["060/029","060/018","060/015","060/025","027/001","028/029","139/029","028/001","012/001"]
+        if len(data_to_write[0]) >= 27:
+            data_to_write[0][18:27] = intestazioni_magazzini
+
+        # --- Funzioni di Import Interno ---
+        def import_giacenze_core(sheet_id, tab, dtw):
+            try:
+                with upd_container.container():
+                    st.info(f"⏳ Aggiornamento in corso: {sheet_id}")
                 
-            import_anagrafica(s)
-        else:
-          with res_container.container():
-            res = import_giacenze(selected_sheet_id, nome_sheet_tab, numeric_cols_info, data_to_write)
-            if res:
-              st.success(f"✅ Giacenze importate con successo!")
-            else:
-              st.error(f"✅ {selected_sheet_id} - {res}")
-                    
-          import_anagrafica(selected_sheet_id)
+                sheet_target = get_sheet(sheet_id, tab)
+                sheet_target.clear()
+                sheet_target.update("A1", dtw)
                 
-        with st.spinner("Carico il file su DropBox..."):
-          upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
+                # Applichiamo formattazione numerica
+                last_row = len(df_proc) + 1
+                ranges_to_format = [
+                    (f"{col_letter}2:{col_letter}{last_row}", 
+                     CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=pattern)))
+                    for col_letter, pattern in numeric_cols_info.items()
+                ]
+                format_cell_ranges(sheet_target, ranges_to_format)
+                return True
+            except Exception as e:
+                return str(e)
 
+        def import_anagrafica_core(sheet_id):
+            try:
+                sheet_upload_anag = get_sheet(sheet_id, "ANAGRAFICA")
+                sheet_source_anag = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
+                sheet_upload_anag.clear()
+                sheet_upload_anag.update("A1", sheet_source_anag.get_all_values())
+                return True
+            except Exception as e:
+                st.error(f"Errore Anagrafica su {sheet_id}: {e}")
+                return False
 
-    with col4:
-      if st.button("Carica su DropBox"):
-        with st.spinner("Carico il file su DropBox..."):
-          upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
+        # --- LOGICA PULSANTI ---
+        
+        with col2:
+            if st.button("Importa Giacenze"):
+                targets = selected_sheet_id if isinstance(selected_sheet_id, list) else [selected_sheet_id]
+                tot = len(targets)
+                
+                for i, s in enumerate(targets):
+                    res = import_giacenze_core(s, nome_sheet_tab, data_to_write)
+                    with res_container.container():
+                        if res is True:
+                            st.success(f"✅ {i+1}/{tot} - Foglio {s} aggiornato!")
+                        else:
+                            st.error(f"❌ Errore su {s}: {res}")
+                
+                with st.spinner("Backup su Dropbox..."):
+                    upload_csv_to_dropbox(dbx, folder_path, st.session_state.manual_filename, st.session_state.file_bytes)
+                upd_container.empty()
 
-                  
-  with col1:
-    if st.button("Importa Anagrafica"):
-      if type(selected_sheet_id) == list:
-        for s in selected_sheet_id:
-          import_anagrafica(s)
-      else:
-        import_anagrafica(selected_sheet_id)
+        with col3:
+            if st.button("Importa Giacenze & Anagrafica"):
+                targets = selected_sheet_id if isinstance(selected_sheet_id, list) else [selected_sheet_id]
+                tot = len(targets)
+                
+                for i, s in enumerate(targets):
+                    res_g = import_giacenze_core(s, nome_sheet_tab, data_to_write)
+                    import_anagrafica_core(s)
+                    with res_container.container():
+                        if res_g is True:
+                            st.success(f"✅ {i+1}/{tot} - Giacenze + Anagrafica OK ({s})")
+                        else:
+                            st.error(f"❌ Errore Giacenze su {s}: {res_g}")
+                
+                with st.spinner("Backup su Dropbox..."):
+                    upload_csv_to_dropbox(dbx, folder_path, st.session_state.manual_filename, st.session_state.file_bytes)
+                upd_container.empty()
+
+        with col4:
+            if st.button("Carica su DropBox"):
+                with st.spinner("Carico su Dropbox..."):
+                    upload_csv_to_dropbox(dbx, folder_path, st.session_state.manual_filename, st.session_state.file_bytes)
+                    st.success("✅ File CSV caricato con successo!")
+
+    with col1:
+        if st.button("Importa Anagrafica"):
+            targets = selected_sheet_id if isinstance(selected_sheet_id, list) else [selected_sheet_id]
+            for s in targets:
+                if import_anagrafica_core(s):
+                    st.success(f"✅ Anagrafica importata su {s}")
 
 
 def aggiorna_anagrafica():
