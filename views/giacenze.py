@@ -36,13 +36,15 @@ def giacenze_importa():
 
   if uploaded_file:
     uploaded_file.seek(0)
-        
+
     csv_import = uploaded_file
+    st.session_state.file_up = csv_import
     file_bytes_for_upload = csv_import.getvalue()
     manual_nome_file = "GIACENZE.csv"
 
   # --- Carico CSV solo se df_input è None ---
-  if csv_import:
+  #if csv_import:
+  if st.session_state.file_up:
     with st.spinner("Carico il CSV..."):
       df_input = read_csv_auto_encoding(csv_import, ";")
 
