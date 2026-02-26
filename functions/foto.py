@@ -47,6 +47,11 @@ def count_da_scattare(type="totale"):
   elif type == "disponibili":
     return disponibili
 
+def get_da_riscattare():
+  df = st.session_state.df_foto
+  df_da_riscattare = df[df["RISCATTARE"] == False]
+  return df_da_riscattare
+
 def mostra_riscattare(sku_input):
   df = st.session_state.df_foto
   sku_norm = sku_input.strip().upper()
