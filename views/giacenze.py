@@ -33,6 +33,7 @@ def giacenze_importa():
   file_bytes_for_upload = None
   last_update = None
   df_input = None
+  df_input_base = None
   manual_nome_file = "GIACENZE.csv"
 
   dbx = get_dropbox_client()
@@ -43,7 +44,7 @@ def giacenze_importa():
   if 'file_up' not in st.session_state:
     st.session_state['file_up'] = None
   else:
-    df_input = st.session_state.file_up
+    df_input_base = st.session_state.file_up
     
   if uploaded_file:
     uploaded_file.seek(0)
@@ -54,8 +55,8 @@ def giacenze_importa():
   # --- Carico CSV solo se df_input è None ---
   if csv_import:
     with st.spinner("Carico il CSV..."):
-      df_input = read_csv_auto_encoding(csv_import, ";")
-      st.session_state.file_up = df_input
+      df_input_base = read_csv_auto_encoding(csv_import, ";")
+      st.session_state.file_up = df_input_base
 
   default_sheet_id = giacenze_sheet_id
   
@@ -88,6 +89,7 @@ def giacenze_importa():
   #if df_input is not None:
   if st.session_state.file_up is not None:
     view_df = st.checkbox("Visualizza il dataframe?", value=False)
+    df_iput = st.session_state.file_up
     if view_df:
       st.write(df_input)
 
