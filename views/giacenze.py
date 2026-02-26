@@ -28,17 +28,6 @@ sheets_to_import = ['1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4', # FOTO
                     '1YbU9twZgJECIsbxhRft-7yGGuH37xzVdOkz7jJIL5aQ' # NUOVA STAGIONE
                    ]
 
-Hai ragione, nel tagliare il codice per focalizzarmi sulla nuova logica del loop, ho omesso le definizioni delle colonne e la gestione dei pulsanti laterali (col1, col3, col4) che avevi nel file originale.
-
-Ecco lo script completo di tutte le funzioni, integrato con la logica "anti-blocco", la mappatura dei nomi e la tabella di riepilogo elegante.
-Python
-
-import streamlit as st
-import pandas as pd
-import gspread
-from gspread_formatting import *
-from io import BytesIO
-
 def giacenze_importa():
     st.header("Importa giacenze")
 
