@@ -29,6 +29,7 @@ def giacenze_importa():
   file_bytes_for_upload = None
   last_update = None
   df_input = None
+  manual_nome_file = "GIACENZE.csv"
 
   dbx = get_dropbox_client()
   folder_path = "/GIACENZE"
@@ -45,7 +46,6 @@ def giacenze_importa():
 
     csv_import = uploaded_file
     file_bytes_for_upload = csv_import.getvalue()
-    manual_nome_file = "GIACENZE.csv"
     
   # --- Carico CSV solo se df_input è None ---
   if csv_import:
