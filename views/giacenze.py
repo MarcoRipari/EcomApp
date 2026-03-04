@@ -52,19 +52,17 @@ def giacenze_importa():
         "NUOVA STAGIONE": "1YbU9twZgJECIsbxhRft-7yGGuH37xzVdOkz7jJIL5aQ"
     }
 
-    # --- 2. STATO PERSISTENTE (Inizializzazione sicura) ---
-    if "df_input" not in st.session_state:
-        st.session_state.df_input = None
-    if "file_bytes_for_upload" not in st.session_state:
-        st.session_state.file_bytes_for_upload = None
+    # --- 2. STATO PERSISTENTE ---
+    if "import_logs" not in st.session_state:
+        st.session_state.import_logs = {}
     if "import_in_corso" not in st.session_state:
         st.session_state.import_in_corso = False
     if "target_rimanenti" not in st.session_state:
         st.session_state.target_rimanenti = []
-    if "import_logs" not in st.session_state:
-        st.session_state.import_logs = {} # Dizionario persistente
-    if "total_to_import" not in st.session_state:
-        st.session_state.total_to_import = 0
+    if "df_input" not in st.session_state:
+        st.session_state.df_input = None
+    if "file_bytes_for_upload" not in st.session_state:
+        st.session_state.file_bytes_for_upload = None
 
     dbx = get_dropbox_client()
     folder_path = "/GIACENZE"
@@ -77,7 +75,7 @@ def giacenze_importa():
         if st.session_state.file_bytes_for_upload != content:
             st.session_state.file_bytes_for_upload = content
             st.session_state.df_input = None
-            st.session_state.import_logs = {} # Resetta i log solo al cambio file
+            st.session_state.import_logs = {}
 
     if st.session_state.file_bytes_for_upload and st.session_state.df_input is None:
         buffer = BytesIO(st.session_state.file_bytes_for_upload)
@@ -89,118 +87,111 @@ def giacenze_importa():
     options = ["COMPLETO"] + list(SHEETS_CONFIG.keys()) + ["Manuale"]
     sheet_selection = st.selectbox("Seleziona target:", options)
     
-    # Determiniamo i target selezionati
     if sheet_selection == "COMPLETO":
-        targets_da_usare = list(SHEETS_CONFIG.values())
+        targets_finali = list(SHEETS_CONFIG.values())
     elif sheet_selection == "Manuale":
         manual_id = st.text_input("Inserisci ID Google Sheet manuale")
-        targets_da_usare = [manual_id] if manual_id else []
+        targets_finali = [manual_id] if manual_id else []
     else:
-        targets_da_usare = [SHEETS_CONFIG[sheet_selection]]
+        targets_finali = [SHEETS_CONFIG[sheet_selection]]
 
     nome_sheet_tab = st.text_input("Nome del TAB", value="GIACENZE")
 
-    # --- 5. PREPARAZIONE DATI ---
-    data_to_write = []
-    df_proc = None
-    numeric_cols_info = {}
-
-    if df_input is not None:
-        df_proc = df_input.copy()
-        numeric_cols_info = { "D": "0", "M": "000", "O": "0", "P": "0" }
-        for i in range(18, 30):
-            col_letter = gspread.utils.rowcol_to_a1(1, i)[:-1]
-            numeric_cols_info[col_letter] = "0"
-
-        def to_number_safe(x):
-            try:
-                if pd.isna(x) or x == "": return ""
-                return float(str(x).replace(',', '.'))
-            except: return str(x)
-
-        for col_letter in numeric_cols_info.keys():
-            col_idx = gspread.utils.a1_to_rowcol(f"{col_letter}1")[1] - 1
-            if df_proc.columns.size > col_idx:
-                col_name = df_proc.columns[col_idx]
-                df_proc[col_name] = df_proc[col_name].apply(to_number_safe)
-
-        data_to_write = [df_proc.columns.tolist()] + df_proc.fillna("").values.tolist()
-        intestazioni_magazzini = ["060/029","060/018","060/015","060/025","027/001","028/029","139/029","028/001","012/001"]
-        if len(data_to_write[0]) >= 27:
-            data_to_write[0][18:27] = intestazioni_magazzini
-
-    # --- 6. PULSANTI ---
+    # --- 5. LOGICA PULSANTI ---
     col1, col2, col3, col4 = st.columns(4)
 
-    def start_import(tipo):
-        st.session_state.target_rimanenti = targets_da_usare.copy()
-        st.session_state.total_to_import = len(targets_da_usare)
-        st.session_state.import_in_corso = tipo
-        st.session_state.import_logs = {} # Pulisci log vecchi
+    def avvia_processo(modo):
+        st.session_state.import_logs = {next((k for k, v in SHEETS_CONFIG.items() if v == tid), tid[:5]): "⏳ In coda" for tid in targets_finali}
+        st.session_state.target_rimanenti = targets_finali.copy()
+        st.session_state.import_in_corso = modo
         st.rerun()
 
-    if col1.button("Anagrafica", use_container_width=True): start_import("ANAGRAFICA")
-    if col2.button("Giacenze", use_container_width=True): start_import("GIACENZE")
-    if col3.button("Tutto", use_container_width=True): start_import("TOTALE")
+    if col1.button("Anagrafica", use_container_width=True): avvia_processo("ANAGRAFICA")
+    if col2.button("Giacenze", use_container_width=True): avvia_processo("GIACENZE")
+    if col3.button("Tutto", use_container_width=True): avvia_processo("TOTALE")
     if col4.button("Dropbox", use_container_width=True):
         if st.session_state.file_bytes_for_upload:
             with st.spinner("Backup..."):
                 upload_csv_to_dropbox(dbx, folder_path, manual_nome_file, st.session_state.file_bytes_for_upload)
             st.success("OK!")
 
-    # --- 7. RIEPILOGO (Sempre visibile e reattivo) ---
+    # --- 6. VISUALIZZAZIONE LOG (Tabella fissa) ---
     if st.session_state.import_logs:
         st.divider()
-        st.subheader("📊 Stato Avanzamento", divider="green")
-        # Trasformiamo il dizionario in DataFrame per la visualizzazione
-        log_data = [{"Foglio": k, "Stato": v} for k, v in st.session_state.import_logs.items()]
-        st.table(log_data) # 'table' è più stabile di 'dataframe' durante i rerun
+        st.subheader("Stato Avanzamento")
+        st.table([{"Foglio": k, "Stato": v} for k, v in st.session_state.import_logs.items()])
 
-    # --- 8. LOGICA DI ESECUZIONE ---
+    # --- 7. CORE LOOP ---
     if st.session_state.import_in_corso and st.session_state.target_rimanenti:
-        # Prendi il prossimo foglio
         current_id = st.session_state.target_rimanenti.pop(0)
         nome_leggibile = next((k for k, v in SHEETS_CONFIG.items() if v == current_id), f"ID: {current_id[:5]}")
         
-        # Indica subito che stiamo lavorando
-        st.session_state.import_logs[nome_leggibile] = "⏳ In corso..."
+        # Segna l'inizio
+        st.session_state.import_logs[nome_leggibile] = "⏳ Elaborazione..."
         
-        with st.status(f"Lavoro su: {nome_leggibile}...", expanded=True) as status:
-            try:
-                # Esecuzione Anagrafica (se richiesto)
-                if st.session_state.import_in_corso in ["ANAGRAFICA", "TOTALE"]:
-                    sh_dest = get_sheet(current_id, "ANAGRAFICA")
-                    sh_src = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
-                    sh_dest.clear()
-                    sh_dest.update("A1", sh_src.get_all_values())
+        try:
+            # A. DATI (Operazione Veloce)
+            if st.session_state.import_in_corso in ["ANAGRAFICA", "TOTALE"]:
+                sh_ana = get_sheet(current_id, "ANAGRAFICA")
+                sh_src = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
+                sh_ana.clear()
+                sh_ana.update("A1", sh_src.get_all_values())
+            
+            if st.session_state.import_in_corso in ["GIACENZE", "TOTALE"]:
+                sh_gia = get_sheet(current_id, nome_sheet_tab)
                 
-                # Esecuzione Giacenze (se richiesto)
-                if st.session_state.import_in_corso in ["GIACENZE", "TOTALE"]:
-                    sh = get_sheet(current_id, nome_sheet_tab)
-                    sh.clear()
-                    sh.update("A1", data_to_write)
-                    # Formattazione
-                    last_row = len(df_proc) + 1
-                    ranges = [(f"{c}2:{c}{last_row}", CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=p))) 
-                              for c, p in numeric_cols_info.items()]
-                    format_cell_ranges(sh, ranges)
+                # Preparazione dati (stessa logica tua)
+                df_proc = df_input.copy()
+                numeric_cols_info = { "D": "0", "M": "000", "O": "0", "P": "0" }
+                for i in range(18, 30):
+                    col_letter = gspread.utils.rowcol_to_a1(1, i)[:-1]
+                    numeric_cols_info[col_letter] = "0"
 
-                # Se arriviamo qui, è andata bene
-                st.session_state.import_logs[nome_leggibile] = "✅ Completato"
-                status.update(label=f"Fatto: {nome_leggibile}", state="complete")
+                def to_number_safe(val):
+                    try:
+                        if pd.isna(val) or val == "": return ""
+                        return float(str(val).replace(',', '.'))
+                    except: return str(val)
 
-            except Exception as e:
-                st.session_state.import_logs[nome_leggibile] = f"❌ Errore: {str(e)[:30]}"
-                status.update(label=f"Errore su {nome_leggibile}", state="error")
-        
-        # Controllo fine lavori
+                for col_letter, pattern in numeric_cols_info.items():
+                    col_idx = gspread.utils.a1_to_rowcol(f"{col_letter}1")[1] - 1
+                    if df_proc.columns.size > col_idx:
+                        df_proc.iloc[:, col_idx] = df_proc.iloc[:, col_idx].apply(to_number_safe)
+
+                data_to_write = [df_proc.columns.tolist()] + df_proc.fillna("").values.tolist()
+                # Intestazioni magazzini
+                intestazioni = ["060/029","060/018","060/015","060/025","027/001","028/029","139/029","028/001","012/001"]
+                if len(data_to_write[0]) >= 27: data_to_write[0][18:27] = intestazioni
+
+                sh_gia.clear()
+                sh_gia.update("A1", data_to_write)
+                
+                # B. FORMATTAZIONE BATCH (Ottimizzata)
+                # Aggiorniamo il log prima del rischio timeout
+                st.session_state.import_logs[nome_leggibile] = "✅ Dati OK (Formattazione...)"
+                
+                last_row = len(df_proc) + 1
+                batch_requests = []
+                for col_letter, pattern in numeric_cols_info.items():
+                    fmt = CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=pattern))
+                    batch_requests.append((f"{col_letter}2:{col_letter}{last_row}", fmt))
+                
+                # Invio unico per tutte le colonne
+                format_cell_ranges(sh_gia, batch_requests)
+
+            # FINE SUCCESSO
+            st.session_state.import_logs[nome_leggibile] = "✅ Completato"
+
+        except Exception as e:
+            st.session_state.import_logs[nome_leggibile] = f"❌ Errore: {str(e)[:30]}"
+
+        # Controllo chiusura finale
         if not st.session_state.target_rimanenti:
             if st.session_state.import_in_corso != "ANAGRAFICA":
                 upload_csv_to_dropbox(dbx, folder_path, manual_nome_file, st.session_state.file_bytes_for_upload)
             st.session_state.import_in_corso = False
             st.balloons()
         
-        # Rilancia lo script per il prossimo foglio (o per mostrare i palloncini)
         st.rerun()
 
 
