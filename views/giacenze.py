@@ -132,7 +132,7 @@ def giacenze_importa():
                 ana_rows = st.session_state.anagrafica_data
                 total_ana = len(ana_rows)
                 sh_ana = get_sheet(current_id, "ANAGRAFICA")
-                ANA_CHUNK = 2000
+                ANA_CHUNK = 10000
 
                 # Inizio: Pulizia
                 if st.session_state.current_row_index == 0:
