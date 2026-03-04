@@ -83,49 +83,55 @@ def giacenze_importa():
 
     if st.session_state.import_logs:
         st.divider()
-        st.table([{"Foglio": k, "Stato": v} for k, v in st.session_state.import_logs.items()])
+        st.subheader("📊 Riepilogo Processo")
+        # Visualizzazione log
+        log_list = [{"Foglio": k, "Stato": v} for k, v in st.session_state.import_logs.items()]
+        st.table(log_list)
 
-    # --- CORE LOOP ---
+    # --- CORE LOOP (SENZA FORMATTAZIONE ESTERNA) ---
     if st.session_state.import_in_corso and st.session_state.target_rimanenti:
         current_id = st.session_state.target_rimanenti.pop(0)
         nome_leggibile = next((k for k, v in SHEETS_CONFIG.items() if v == current_id), "Sheet")
         
-        st.session_state.import_logs[nome_leggibile] = "⏳ In corso..."
+        st.session_state.import_logs[nome_leggibile] = "🚀 Invio dati..."
         
         try:
-            # A. ANAGRAFICA
+            # A. ANAGRAFICA (Copia diretta tra fogli)
             if st.session_state.import_in_corso in ["ANAGRAFICA", "TOTALE"]:
                 sh_ana = get_sheet(current_id, "ANAGRAFICA")
                 sh_src = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
-                sh_ana.batch_clear(["A1:Z2000"]) # Batch clear non rompe la formattazione esistente
-                sh_ana.update("A1", sh_src.get_all_values())
+                valori_anagrafica = sh_src.get_all_values()
+                sh_ana.batch_clear(["A1:Z5000"])
+                sh_ana.update("A1", valori_anagrafica)
 
             # B. GIACENZE
             if st.session_state.import_in_corso in ["GIACENZE", "TOTALE"]:
                 sh_gia = get_sheet(current_id, nome_sheet_tab)
                 df_temp = read_csv_auto_encoding(BytesIO(st.session_state.file_bytes_for_upload), ";")
                 
-                # Conversione numeri rapida (vettorizzata)
-                numeric_cols_indices = [3, 12, 14, 15] + list(range(17, 29)) # D, M, O, P e Magazzini
-                for idx in numeric_cols_indices:
+                # Conversione numeri VETTORIALE (estremamente veloce)
+                # Colonne: D(3), M(12), O(14), P(15) e Magazzini (17-28)
+                cols_to_fix = [3, 12, 14, 15] + list(range(17, 29))
+                for idx in cols_to_fix:
                     if df_temp.columns.size > idx:
-                        col_name = df_temp.columns[idx]
-                        df_temp[col_name] = pd.to_numeric(df_temp[col_name].astype(str).str.replace(',', '.'), errors='coerce').fillna("")
-
+                        c_name = df_temp.columns[idx]
+                        # Trasformiamo in numeri. I fallimenti diventano stringhe vuote.
+                        df_temp[c_name] = pd.to_numeric(df_temp[c_name].astype(str).str.replace(',', '.'), errors='coerce')
+                
+                # Prepariamo i dati finali
                 data = [df_temp.columns.tolist()] + df_temp.fillna("").values.tolist()
+                
+                # Intestazioni Magazzini
                 if len(data[0]) >= 27:
                     data[0][18:27] = ["060/029","060/018","060/015","060/025","027/001","028/029","139/029","028/001","012/001"]
-                
-                # PULIZIA CONTENUTI SENZA TOCCARE IL FORMATO DELLE CELLE
-                sh_gia.batch_clear(["A1:AZ10000"]) 
-                sh_gia.update("A1", data)
 
-                # FORMATTAZIONE "LIGHT" (Opzionale, solo se vuoi forzare il formato numero)
-                # Applichiamo un formato unico a tutto il blocco numerico per risparmiare tempo
-                fmt = CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern="0"))
-                format_cell_range(sh_gia, "D2:AC10000", fmt)
+                # INVIO ATOMICO
+                sh_gia.batch_clear(["A1:AZ15000"])
+                sh_gia.update("A1", data, value_input_option="USER_ENTERED") 
+                # ^ USER_ENTERED è il trucco: dice a Google di interpretare i numeri automaticamente!
 
             st.session_state.import_logs[nome_leggibile] = "✅ Completato"
+            
         except Exception as e:
             st.session_state.import_logs[nome_leggibile] = f"❌ Errore: {str(e)[:25]}"
 
