@@ -96,7 +96,7 @@ def giacenze_importa():
         st.session_state.target_rimanenti = targets_finali.copy()
         st.session_state.import_in_corso = tipo
         st.session_state.current_row_index = 0
-      st.session_state.anagrafica_data = None # Reset dati temporanei
+        st.session_state.anagrafica_data = None # Reset dati temporanei
         st.rerun()
 
     if col1.button("Anagrafica", use_container_width=True): start_process("ANAGRAFICA")
