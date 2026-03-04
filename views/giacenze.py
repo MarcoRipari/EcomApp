@@ -90,6 +90,16 @@ def giacenze_importa():
     # Creiamo le opzioni: "COMPLETO" (tutti i fogli in SHEETS_CONFIG) + i singoli nomi
     options = ["COMPLETO"] + list(SHEETS_CONFIG.keys()) + ["Manuale"]
     sheet_selection = st.selectbox("Seleziona target:", options)
+
+    current_selected_targets = []
+    if sheet_selection == "COMPLETO":
+        current_selected_targets = list(SHEETS_CONFIG.values())
+    elif sheet_selection == "Manuale":
+        manual_id = st.text_input("Inserisci ID Google Sheet manuale")
+        if manual_id:
+            current_selected_targets = [manual_id]
+    else:
+        current_selected_targets = [SHEETS_CONFIG[sheet_selection]]
     
     if sheet_selection == "COMPLETO":
         selected_targets = list(SHEETS_CONFIG.values())
