@@ -84,56 +84,62 @@ def giacenze_importa():
     if st.session_state.import_logs:
         st.divider()
         st.subheader("📊 Riepilogo Processo")
-        # Visualizzazione log
         log_list = [{"Foglio": k, "Stato": v} for k, v in st.session_state.import_logs.items()]
         st.table(log_list)
 
-    # --- CORE LOOP (SENZA FORMATTAZIONE ESTERNA) ---
+    # --- CORE LOOP (INVIO A BLOCCHI) ---
     if st.session_state.import_in_corso and st.session_state.target_rimanenti:
         current_id = st.session_state.target_rimanenti.pop(0)
         nome_leggibile = next((k for k, v in SHEETS_CONFIG.items() if v == current_id), "Sheet")
         
-        st.session_state.import_logs[nome_leggibile] = "🚀 Invio dati..."
-        
         try:
-            # A. ANAGRAFICA (Copia diretta tra fogli)
+            # A. ANAGRAFICA
             if st.session_state.import_in_corso in ["ANAGRAFICA", "TOTALE"]:
+                st.session_state.import_logs[nome_leggibile] = "🚀 Copia Anagrafica..."
                 sh_ana = get_sheet(current_id, "ANAGRAFICA")
                 sh_src = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
-                valori_anagrafica = sh_src.get_all_values()
+                valori = sh_src.get_all_values()
                 sh_ana.batch_clear(["A1:Z5000"])
-                sh_ana.update("A1", valori_anagrafica)
+                sh_ana.update("A1", valori)
 
             # B. GIACENZE
             if st.session_state.import_in_corso in ["GIACENZE", "TOTALE"]:
                 sh_gia = get_sheet(current_id, nome_sheet_tab)
                 df_temp = read_csv_auto_encoding(BytesIO(st.session_state.file_bytes_for_upload), ";")
                 
-                # Conversione numeri VETTORIALE (estremamente veloce)
-                # Colonne: D(3), M(12), O(14), P(15) e Magazzini (17-28)
+                # Conversione numeri veloce
                 cols_to_fix = [3, 12, 14, 15] + list(range(17, 29))
                 for idx in cols_to_fix:
                     if df_temp.columns.size > idx:
                         c_name = df_temp.columns[idx]
-                        # Trasformiamo in numeri. I fallimenti diventano stringhe vuote.
                         df_temp[c_name] = pd.to_numeric(df_temp[c_name].astype(str).str.replace(',', '.'), errors='coerce')
                 
-                # Prepariamo i dati finali
-                data = [df_temp.columns.tolist()] + df_temp.fillna("").values.tolist()
+                # Prepariamo dati
+                intestazioni = df_temp.columns.tolist()
+                if len(intestazioni) >= 27:
+                    intestazioni[18:27] = ["060/029","060/018","060/015","060/025","027/001","028/029","139/029","028/001","012/001"]
                 
-                # Intestazioni Magazzini
-                if len(data[0]) >= 27:
-                    data[0][18:27] = ["060/029","060/018","060/015","060/025","027/001","028/029","139/029","028/001","012/001"]
-
-                # INVIO ATOMICO
-                sh_gia.batch_clear(["A1:AZ15000"])
-                sh_gia.update("A1", data, value_input_option="USER_ENTERED") 
-                # ^ USER_ENTERED è il trucco: dice a Google di interpretare i numeri automaticamente!
+                rows = df_temp.fillna("").values.tolist()
+                
+                # PULIZIA INIZIALE
+                sh_gia.batch_clear(["A1:AZ20000"])
+                
+                # INVIO IN BLOCCHI (Chunking)
+                CHUNK_SIZE = 2000
+                st.session_state.import_logs[nome_leggibile] = f"🚀 Invio Intestazioni..."
+                sh_gia.update("A1", [intestazioni], value_input_option="USER_ENTERED")
+                
+                total_rows = len(rows)
+                for i in range(0, total_rows, CHUNK_SIZE):
+                    chunk = rows[i : i + CHUNK_SIZE]
+                    start_row = i + 2  # +1 per 1-based, +1 per intestazione
+                    st.session_state.import_logs[nome_leggibile] = f"🚀 Invio righe {i} a {min(i+CHUNK_SIZE, total_rows)}..."
+                    sh_gia.update(f"A{start_row}", chunk, value_input_option="USER_ENTERED")
 
             st.session_state.import_logs[nome_leggibile] = "✅ Completato"
             
         except Exception as e:
-            st.session_state.import_logs[nome_leggibile] = f"❌ Errore: {str(e)[:25]}"
+            st.session_state.import_logs[nome_leggibile] = f"❌ Errore: {str(e)[:30]}"
 
         if not st.session_state.target_rimanenti:
             st.session_state.import_in_corso = False
