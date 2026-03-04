@@ -122,18 +122,26 @@ def giacenze_importa():
             # A. ANAGRAFICA
             if st.session_state.import_in_corso in ["ANAGRAFICA", "TOTALE"] and st.session_state.current_row_index == 0:
                 st.session_state.import_logs[nome_leggibile] = "🚀 Copia Anagrafica..."
+                
+                # Esecuzione copia
                 sh_ana = get_sheet(current_id, "ANAGRAFICA")
                 sh_src = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
-                sh_ana.batch_clear(["A1:Z5000"])
-                sh_ana.update("A1", sh_src.get_all_values())
+                valori_anagrafica = sh_src.get_all_values()
                 
+                sh_ana.batch_clear(["A1:Z5000"])
+                sh_ana.update("A1", valori_anagrafica)
+                
+                # --- PUNTO CRUCIALE PER ROMPERE IL LOOP ---
                 if st.session_state.import_in_corso == "ANAGRAFICA":
+                    # Se l'utente ha chiesto SOLO anagrafica, abbiamo finito il foglio
                     st.session_state.import_logs[nome_leggibile] = "✅ Completato"
                     st.session_state.target_rimanenti.pop(0)
-                    st.rerun()
+                    st.session_state.current_row_index = 0 # Reset per il prossimo foglio
                 else:
-                    st.session_state.current_row_index = 1 # Passa a giacenze
-                    st.rerun()
+                    # Se è "TOTALE", passiamo alle Giacenze (indice 1)
+                    st.session_state.current_row_index = 1 
+                
+                st.rerun() # Forza il refresh e salva lo stato
 
             # B. GIACENZE
             if st.session_state.import_in_corso in ["GIACENZE", "TOTALE"]:
