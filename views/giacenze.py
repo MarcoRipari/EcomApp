@@ -51,6 +51,11 @@ def giacenze_importa():
         "VECCHIA STAGIONE": "13DnpAX7M9wymMR1YIH5IP28y_UaCPajBUIcoHca562U",
         "NUOVA STAGIONE": "1YbU9twZgJECIsbxhRft-7yGGuH37xzVdOkz7jJIL5aQ"
     }
+    
+    # Parametri Dropbox (Assicurati che get_dropbox_client e anagrafica_sheet_id siano definiti globalmente)
+    dbx = get_dropbox_client()
+    folder_path = "/GIACENZE"
+    manual_nome_file = "GIACENZE.csv"
 
     # --- 2. STATO PERSISTENTE ---
     if "import_logs" not in st.session_state: st.session_state.import_logs = {}
