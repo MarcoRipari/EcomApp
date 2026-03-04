@@ -5,7 +5,7 @@ from gspread_formatting import *
 import numpy as np
 import logging
 import time
-from io import BytesIO
+from io import BytesIO, StringIO
 
 from utils import *
 
