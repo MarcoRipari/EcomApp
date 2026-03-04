@@ -31,7 +31,7 @@ sheets_to_import = ['1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4', # FOTO
                    ]
 
 def giacenze_importa():
-    st.header("Importa giacenze")
+    st.header("Importa giacenze2")
 
     # --- 1. CONFIGURAZIONE CENTRALIZZATA ---
     # Inserisci qui tutti i fogli: "Nome Visualizzato": "ID_GSHEET"
