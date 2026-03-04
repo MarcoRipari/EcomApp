@@ -52,7 +52,7 @@ def giacenze_importa():
         "NUOVA STAGIONE": "1YbU9twZgJECIsbxhRft-7yGGuH37xzVdOkz7jJIL5aQ"
     }
 
-# --- 2. STATO PERSISTENTE ---
+    # --- 2. STATO PERSISTENTE ---
     if "df_input" not in st.session_state:
         st.session_state.df_input = None
     if "file_bytes_for_upload" not in st.session_state:
@@ -85,7 +85,7 @@ def giacenze_importa():
 
     df_input = st.session_state.df_input
 
-    # --- 4. SELEZIONE TARGET ---
+    # --- 4. SELEZIONE TARGET (CALCOLATA SEMPRE) ---
     options = ["COMPLETO"] + list(SHEETS_CONFIG.keys()) + ["Manuale"]
     sheet_selection = st.selectbox("Seleziona target:", options)
     
@@ -94,7 +94,8 @@ def giacenze_importa():
         current_selected_targets = list(SHEETS_CONFIG.values())
     elif sheet_selection == "Manuale":
         manual_id = st.text_input("Inserisci ID Google Sheet manuale")
-        if manual_id: current_selected_targets = [manual_id]
+        if manual_id:
+            current_selected_targets = [manual_id]
     else:
         current_selected_targets = [SHEETS_CONFIG[sheet_selection]]
 
@@ -128,87 +129,103 @@ def giacenze_importa():
         # --- 6. PULSANTI ---
         col1, col2, col3, col4 = st.columns(4)
 
-        if col1.button("Anagrafica", use_container_width=True):
-            if current_selected_targets:
-                st.session_state.target_rimanenti = current_selected_targets.copy()
-                st.session_state.total_to_import = len(current_selected_targets)
-                st.session_state.import_in_corso = "ANAGRAFICA"
-                st.session_state.import_logs = {}
-                st.rerun()
+        with col1:
+            if st.button("Anagrafica", use_container_width=True):
+                if current_selected_targets:
+                    st.session_state.target_rimanenti = current_selected_targets.copy()
+                    st.session_state.total_to_import = len(current_selected_targets)
+                    st.session_state.import_in_corso = "ANAGRAFICA"
+                    st.session_state.import_logs = {}
+                    st.rerun()
 
-        if col2.button("Giacenze", use_container_width=True):
-            if current_selected_targets:
-                st.session_state.target_rimanenti = current_selected_targets.copy()
-                st.session_state.total_to_import = len(current_selected_targets)
-                st.session_state.import_in_corso = "GIACENZE"
-                st.session_state.import_logs = {}
-                st.rerun()
+        with col2:
+            if st.button("Giacenze", use_container_width=True):
+                if current_selected_targets:
+                    st.session_state.target_rimanenti = current_selected_targets.copy()
+                    st.session_state.total_to_import = len(current_selected_targets)
+                    st.session_state.import_in_corso = "GIACENZE"
+                    st.session_state.import_logs = {}
+                    st.rerun()
 
-        if col3.button("Tutto", use_container_width=True):
-            if current_selected_targets:
-                st.session_state.target_rimanenti = current_selected_targets.copy()
-                st.session_state.total_to_import = len(current_selected_targets)
-                st.session_state.import_in_corso = "TOTALE"
-                st.session_state.import_logs = {}
-                st.rerun()
+        with col3:
+            if st.button("Tutto", use_container_width=True):
+                if current_selected_targets:
+                    st.session_state.target_rimanenti = current_selected_targets.copy()
+                    st.session_state.total_to_import = len(current_selected_targets)
+                    st.session_state.import_in_corso = "TOTALE"
+                    st.session_state.import_logs = {}
+                    st.rerun()
 
-        if col4.button("Dropbox", use_container_width=True):
-            if st.session_state.file_bytes_for_upload:
-                with st.spinner("Sincronizzazione..."):
-                    upload_csv_to_dropbox(dbx, folder_path, manual_nome_file, st.session_state.file_bytes_for_upload)
-                st.success("Ok!")
+        with col4:
+            if st.button("Dropbox", use_container_width=True):
+                if st.session_state.file_bytes_for_upload:
+                    with st.spinner("Dropbox..."):
+                        upload_csv_to_dropbox(dbx, folder_path, manual_nome_file, st.session_state.file_bytes_for_upload)
+                    st.success("Backup OK!")
 
-        # --- 7. RIEPILOGO (SPOSTATO IN ALTO PER VISIBILITÀ) ---
+        # --- 7. RIEPILOGO (Sempre visibile se ci sono dati) ---
         if st.session_state.import_logs:
             st.divider()
             st.subheader("Stato Operazioni", divider="green")
             res_df = pd.DataFrame([{"Foglio": k, "Stato": v} for k, v in st.session_state.import_logs.items()])
             st.dataframe(res_df, use_container_width=True, hide_index=True)
+            
+            if not st.session_state.import_in_corso:
+                if st.button("Pulisci Riepilogo"):
+                    st.session_state.import_logs = {}
+                    st.rerun()
 
-        # --- 8. CORE LOOP (Gestione Rerun) ---
+        # --- 8. CORE LOOP ---
         if st.session_state.import_in_corso and st.session_state.target_rimanenti:
             current_id = st.session_state.target_rimanenti.pop(0)
+            
+            # Calcolo progresso
             corrente_n = st.session_state.total_to_import - len(st.session_state.target_rimanenti)
             nome_leggibile = next((k for k, v in SHEETS_CONFIG.items() if v == current_id), f"ID: {current_id[:8]}")
             
             with st.status(f"Elaborazione: **{nome_leggibile}** ({corrente_n}/{st.session_state.total_to_import})", expanded=False) as status:
                 try:
+                    # CASO SOLO ANAGRAFICA
                     if st.session_state.import_in_corso == "ANAGRAFICA":
                         sh_dest = get_sheet(current_id, "ANAGRAFICA")
                         sh_src = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
                         sh_dest.clear()
                         sh_dest.update("A1", sh_src.get_all_values())
+                    
+                    # CASO GIACENZE O TOTALE
                     else:
-                        # Giacenze
+                        # 1. Update Giacenze
                         sh = get_sheet(current_id, nome_sheet_tab)
                         sh.clear()
                         sh.update("A1", data_to_write)
-                        # Formattazione
+                        
+                        # 2. Formattazione
                         last_row = len(df_proc) + 1
                         ranges = [(f"{c}2:{c}{last_row}", CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=p))) 
                                   for c, p in numeric_cols_info.items()]
                         format_cell_ranges(sh, ranges)
                         
+                        # 3. Se "TOTALE", aggiungi anche anagrafica
                         if st.session_state.import_in_corso == "TOTALE":
                             sh_dest = get_sheet(current_id, "ANAGRAFICA")
                             sh_src = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
                             sh_dest.clear()
                             sh_dest.update("A1", sh_src.get_all_values())
 
-                    st.session_state.import_logs[nome_leggibile] = "✅ OK"
+                    st.session_state.import_logs[nome_leggibile] = "✅ Completato"
                 except Exception as e:
                     st.session_state.import_logs[nome_leggibile] = f"❌ Errore: {str(e)[:40]}"
                 
                 status.update(label=f"Fatto: {nome_leggibile}", state="complete")
             
-            # Controllo chiusura
+            # Gestione chiusura ultimo elemento
             if not st.session_state.target_rimanenti:
-                if st.session_state.import_in_corso != "ANAGRAFICA":
+                if st.session_state.import_in_corso != "ANAGRAFICA" and st.session_state.file_bytes_for_upload:
                     upload_csv_to_dropbox(dbx, folder_path, manual_nome_file, st.session_state.file_bytes_for_upload)
                 st.session_state.import_in_corso = False
                 st.balloons()
             
-            st.rerun() # Questo comando fa ripartire lo script per il prossimo foglio
+            st.rerun()
 
 
 def aggiorna_anagrafica():
