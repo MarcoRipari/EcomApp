@@ -173,7 +173,7 @@ def giacenze_importa():
             with st.status(f"Elaborazione: **{nome_leggibile}** {progress_str}", expanded=False) as status:
                 try:
                     if st.session_state.import_in_corso == "ANAGRAFICA":
-                        sh_dest = get_sheet(s_id, "ANAGRAFICA")
+                        sh_dest = get_sheet(current_id, "ANAGRAFICA")
                         sh_src = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
                         sh_dest.clear()
                         sh_dest.update("A1", sh_src.get_all_values())
