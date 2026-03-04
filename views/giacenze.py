@@ -131,38 +131,46 @@ def giacenze_importa():
         # --- 6. AZIONI (COLONNE) ---
         col1, col2, col3, col4 = st.columns(4)
 
-        with col1:
-            if st.button("Anagrafica", use_container_width=True):
-                st.session_state.target_rimanenti = selected_targets.copy()
-                st.session_state.total_to_import = len(selected_targets)
-                st.session_state.import_in_corso = "ANAGRAFICA"
-                st.session_state.import_logs = {}
-                st.rerun()
+        if col1.button("Anagrafica", use_container_width=True):
+            st.session_state.target_rimanenti = selected_targets.copy()
+            st.session_state.total_to_import = len(selected_targets)
+            st.session_state.import_in_corso = "ANAGRAFICA"
+            st.session_state.import_logs = {}
+            st.rerun()
 
-        with col2:
-            if st.button("Giacenze", use_container_width=True):
-                st.session_state.target_rimanenti = selected_targets.copy()
-                st.session_state.total_to_import = len(selected_targets)
-                st.session_state.import_in_corso = "GIACENZE"
-                st.session_state.import_logs = {}
-                st.rerun()
+        if col2.button("Giacenze", use_container_width=True):
+            st.session_state.target_rimanenti = selected_targets.copy()
+            st.session_state.total_to_import = len(selected_targets)
+            st.session_state.import_in_corso = "GIACENZE"
+            st.session_state.import_logs = {}
+            st.rerun()
 
-        with col3:
-            if st.button("Tutto", use_container_width=True):
-                st.session_state.target_rimanenti = selected_targets.copy()
-                st.session_state.total_to_import = len(selected_targets)
-                st.session_state.import_in_corso = "TOTALE"
-                st.session_state.import_logs = {}
-                st.rerun()
+        if col3.button("Tutto", use_container_width=True):
+            st.session_state.target_rimanenti = selected_targets.copy()
+            st.session_state.total_to_import = len(selected_targets)
+            st.session_state.import_in_corso = "TOTALE"
+            st.session_state.import_logs = {}
+            st.rerun()
 
-        with col4:
-            if st.button("Dropbox", use_container_width=True):
-                if st.session_state.file_bytes_for_upload:
-                    with st.spinner("Dropbox..."):
-                        upload_csv_to_dropbox(dbx, folder_path, manual_nome_file, st.session_state.file_bytes_for_upload)
-                    st.success("Backup OK!")
+        if col4.button("Dropbox", use_container_width=True):
+            if st.session_state.file_bytes_for_upload:
+                with st.spinner("Dropbox..."):
+                    upload_csv_to_dropbox(dbx, folder_path, manual_nome_file, st.session_state.file_bytes_for_upload)
+                st.success("Backup OK!")
 
-        # --- 7. CORE LOOP ---
+        # --- 7. RIEPILOGO (SPOSTATO QUI PER STABILITÀ) ---
+        if st.session_state.import_logs:
+            st.divider()
+            st.subheader("Stato Operazioni", divider="green")
+            res_df = pd.DataFrame([{"Foglio": k, "Stato": v} for k, v in st.session_state.import_logs.items()])
+            st.dataframe(res_df, use_container_width=True, hide_index=True)
+            
+            if not st.session_state.import_in_corso:
+                if st.button("Pulisci Riepilogo"):
+                    st.session_state.import_logs = {}
+                    st.rerun()
+
+        # --- 8. CORE LOOP (ESECUZIONE SILENZIOSA) ---
         if st.session_state.import_in_corso and st.session_state.target_rimanenti:
             current_id = st.session_state.target_rimanenti.pop(0)
             
@@ -199,31 +207,18 @@ def giacenze_importa():
                 
                 status.update(label=f"Fatto: {nome_leggibile}", state="complete")
             
+            # Se era l'ultimo, gestiamo la chiusura prima del rerun finale
+            if not st.session_state.target_rimanenti:
+                if st.session_state.import_in_corso != "ANAGRAFICA":
+                    upload_csv_to_dropbox(dbx, folder_path, manual_nome_file, st.session_state.file_bytes_for_upload)
+                st.session_state.import_in_corso = False
+                st.balloons()
+            
             st.rerun()
 
-        # --- 8. GESTIONE FINE LAVORI ---
-        if st.session_state.import_in_corso and not st.session_state.target_rimanenti:
-            # Salvataggio finale Dropbox se non era solo Anagrafica
-            if st.session_state.import_in_corso != "ANAGRAFICA" and st.session_state.file_bytes_for_upload:
-                upload_csv_to_dropbox(dbx, folder_path, manual_nome_file, st.session_state.file_bytes_for_upload)
-            
-            st.session_state.import_in_corso = False
-            st.balloons()
-            # Non facciamo st.rerun() qui, lasciamo che il codice prosegua verso il riepilogo
-
-        # --- 9. RIEPILOGO SEMPRE VISIBILE (se esistono log) ---
-        if st.session_state.import_logs:
-            st.divider()
-            st.subheader("Riepilogo Operazioni", divider="green")
-            
-            # Trasformiamo i log in una lista ordinata per la tabella
-            res_list = [{"Foglio": k, "Stato": v} for k, v in st.session_state.import_logs.items()]
-            st.dataframe(pd.DataFrame(res_list), use_container_width=True, hide_index=True)
-            
-            # Bottone per pulire i log e tornare alla visualizzazione pulita
-            if st.button("Pulisci Riepilogo"):
-                st.session_state.import_logs = {}
-                st.rerun()
+    # Anteprima opzionale in fondo
+    if st.checkbox("Mostra dati CSV", value=False) and df_input is not None:
+        st.dataframe(df_input.head(10))
 
 
 def aggiorna_anagrafica():
