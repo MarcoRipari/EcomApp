@@ -126,15 +126,19 @@ def giacenze_importa():
 
         with col1:
             if st.button("Importa Anagrafica", use_container_width=True):
-                for s_id in selected_targets:
-                    # Troviamo il nome corrispondente all'ID
-                    nome = next((k for k, v in SHEETS_CONFIG.items() if v == s_id), s_id)
-                    with st.spinner(f"Anagrafica -> {nome}"):
-                        sh_dest = get_sheet(s_id, "ANAGRAFICA")
-                        sh_src = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
-                        sh_dest.clear()
-                        sh_dest.update("A1", sh_src.get_all_values())
-                st.toast("Anagrafiche aggiornate!")
+                st.session_state.target_rimanenti = selected_targets
+                st.session_state.import_in_corso = "ANAGRAFICA"
+                st.session_state.import_logs = {}
+                st.rerun()
+                #for s_id in selected_targets:
+                #    # Troviamo il nome corrispondente all'ID
+                #    nome = next((k for k, v in SHEETS_CONFIG.items() if v == s_id), s_id)
+                #    with st.spinner(f"Anagrafica -> {nome}"):
+                #        sh_dest = get_sheet(s_id, "ANAGRAFICA")
+                #        sh_src = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
+                #        sh_dest.clear()
+                #        sh_dest.update("A1", sh_src.get_all_values())
+                #st.toast("Anagrafiche aggiornate!")
 
         with col2:
             if st.button("Importa Giacenze", use_container_width=True):
@@ -168,25 +172,32 @@ def giacenze_importa():
             
             with st.status(f"Elaborazione: **{nome_leggibile}** {progress_str}", expanded=False) as status:
                 try:
-                    # Giacenze
-                    sh = get_sheet(current_id, nome_sheet_tab)
-                    sh.clear()
-                    sh.update("A1", data_to_write)
-                    
-                    # Formattazione
-                    last_row = len(df_proc) + 1
-                    ranges = [(f"{c}2:{c}{last_row}", CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=p))) 
-                              for c, p in numeric_cols_info.items()]
-                    format_cell_ranges(sh, ranges)
-                    
-                    # Anagrafica se richiesto
-                    if st.session_state.import_in_corso == "TOTALE":
-                        sh_dest = get_sheet(current_id, "ANAGRAFICA")
+                    if st.session_state.import_in_corso == "ANAGRAFICA":
+                        sh_dest = get_sheet(s_id, "ANAGRAFICA")
                         sh_src = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
                         sh_dest.clear()
                         sh_dest.update("A1", sh_src.get_all_values())
-
-                    st.session_state.import_logs[nome_leggibile] = "✅ OK"
+                        st.session_state.import_logs[nome_leggibile] = "✅ OK"
+                    else:
+                        # Giacenze
+                        sh = get_sheet(current_id, nome_sheet_tab)
+                        sh.clear()
+                        sh.update("A1", data_to_write)
+                        
+                        # Formattazione
+                        last_row = len(df_proc) + 1
+                        ranges = [(f"{c}2:{c}{last_row}", CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=p))) 
+                                  for c, p in numeric_cols_info.items()]
+                        format_cell_ranges(sh, ranges)
+                        
+                        # Anagrafica se richiesto
+                        if st.session_state.import_in_corso == "TOTALE":
+                            sh_dest = get_sheet(current_id, "ANAGRAFICA")
+                            sh_src = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
+                            sh_dest.clear()
+                            sh_dest.update("A1", sh_src.get_all_values())
+    
+                        st.session_state.import_logs[nome_leggibile] = "✅ OK"
                 except Exception as e:
                     st.session_state.import_logs[nome_leggibile] = f"❌ Errore: {str(e)[:40]}"
                 
