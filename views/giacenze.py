@@ -133,30 +133,24 @@ def giacenze_importa():
 
         with col1:
             if st.button("Importa Anagrafica", use_container_width=True):
-                st.session_state.target_rimanenti = selected_targets
+                st.session_state.target_rimanenti = selected_targets.copy()
+                st.session_state.total_to_import = len(selected_targets)
                 st.session_state.import_in_corso = "ANAGRAFICA"
                 st.session_state.import_logs = {}
                 st.rerun()
-                #for s_id in selected_targets:
-                #    # Troviamo il nome corrispondente all'ID
-                #    nome = next((k for k, v in SHEETS_CONFIG.items() if v == s_id), s_id)
-                #    with st.spinner(f"Anagrafica -> {nome}"):
-                #        sh_dest = get_sheet(s_id, "ANAGRAFICA")
-                #        sh_src = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
-                #        sh_dest.clear()
-                #        sh_dest.update("A1", sh_src.get_all_values())
-                #st.toast("Anagrafiche aggiornate!")
 
         with col2:
             if st.button("Importa Giacenze", use_container_width=True):
-                st.session_state.target_rimanenti = selected_targets
+                st.session_state.target_rimanenti = selected_targets.copy()
+                st.session_state.total_to_import = len(selected_targets)
                 st.session_state.import_in_corso = "GIACENZE"
                 st.session_state.import_logs = {}
                 st.rerun()
 
         with col3:
             if st.button("Giacenze + Anag", use_container_width=True):
-                st.session_state.target_rimanenti = selected_targets
+                st.session_state.target_rimanenti = selected_targets.copy()
+                st.session_state.total_to_import = len(selected_targets)
                 st.session_state.import_in_corso = "TOTALE"
                 st.session_state.import_logs = {}
                 st.rerun()
@@ -168,23 +162,21 @@ def giacenze_importa():
                         upload_csv_to_dropbox(dbx, folder_path, manual_nome_file, st.session_state.file_bytes_for_upload)
                     st.success("Backup OK!")
 
-        # --- 7. CORE LOOP (Gestione Nomi tramite SHEETS_CONFIG) ---
+        # --- 7. CORE LOOP (Anti-Reset) ---
         if st.session_state.import_in_corso and st.session_state.target_rimanenti:
-            total_count = len(st.session_state.target_rimanenti) + len(st.session_state.import_logs)
             current_id = st.session_state.target_rimanenti.pop(0)
             
-            # Recupero nome invertendo il dizionario
+            # Calcolo corretto del progresso: (Totali - Rimanenti) su Totali
+            corrente_n = st.session_state.total_to_import - len(st.session_state.target_rimanenti)
             nome_leggibile = next((k for k, v in SHEETS_CONFIG.items() if v == current_id), f"ID: {current_id[:8]}")
-            progress_str = f"({len(st.session_state.import_logs) + 1}/{total_count})"
             
-            with st.status(f"Elaborazione: **{nome_leggibile}** {progress_str}", expanded=False) as status:
+            with st.status(f"Elaborazione: **{nome_leggibile}** ({corrente_n}/{st.session_state.total_to_import})", expanded=False) as status:
                 try:
                     if st.session_state.import_in_corso == "ANAGRAFICA":
                         sh_dest = get_sheet(current_id, "ANAGRAFICA")
                         sh_src = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
                         sh_dest.clear()
                         sh_dest.update("A1", sh_src.get_all_values())
-                        st.session_state.import_logs[nome_leggibile] = "✅ OK"
                     else:
                         # Giacenze
                         sh = get_sheet(current_id, nome_sheet_tab)
@@ -197,14 +189,13 @@ def giacenze_importa():
                                   for c, p in numeric_cols_info.items()]
                         format_cell_ranges(sh, ranges)
                         
-                        # Anagrafica se richiesto
                         if st.session_state.import_in_corso == "TOTALE":
                             sh_dest = get_sheet(current_id, "ANAGRAFICA")
                             sh_src = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
                             sh_dest.clear()
                             sh_dest.update("A1", sh_src.get_all_values())
-    
-                        st.session_state.import_logs[nome_leggibile] = "✅ OK"
+
+                    st.session_state.import_logs[nome_leggibile] = "✅ OK"
                 except Exception as e:
                     st.session_state.import_logs[nome_leggibile] = f"❌ Errore: {str(e)[:40]}"
                 
@@ -213,13 +204,15 @@ def giacenze_importa():
             st.rerun()
 
         # --- 8. FINE E RIEPILOGO ---
-        if st.session_state.import_logs:
-            if not st.session_state.target_rimanenti and st.session_state.import_in_corso:
-                st.session_state.import_in_corso = False
-                if st.session_state.file_bytes_for_upload:
-                    upload_csv_to_dropbox(dbx, folder_path, manual_nome_file, st.session_state.file_bytes_for_upload)
-                st.balloons()
+        # Verifichiamo se abbiamo finito (import_in_corso è True ma non ci sono più target)
+        if st.session_state.import_in_corso and not st.session_state.target_rimanenti:
+            st.session_state.import_in_corso = False
+            if st.session_state.file_bytes_for_upload:
+                upload_csv_to_dropbox(dbx, folder_path, manual_nome_file, st.session_state.file_bytes_for_upload)
+            st.balloons()
 
+        # Il riepilogo deve essere mostrato se ci sono log, indipendentemente dallo stato "in corso"
+        if st.session_state.import_logs:
             st.divider()
             st.subheader("Riepilogo Operazioni", divider="green")
             res_df = pd.DataFrame([{"Foglio": k, "Stato": v} for k, v in st.session_state.import_logs.items()])
