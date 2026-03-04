@@ -58,88 +58,135 @@ def giacenze_importa():
     if "target_rimanenti" not in st.session_state: st.session_state.target_rimanenti = []
     if "current_row_index" not in st.session_state: st.session_state.current_row_index = 0
     if "file_bytes_for_upload" not in st.session_state: st.session_state.file_bytes_for_upload = None
+    if "df_input" not in st.session_state: st.session_state.df_input = None
 
-    uploaded_file = st.file_uploader("Carica CSV", type="csv")
+    # --- 3. CARICAMENTO FILE ---
+    uploaded_file = st.file_uploader("Carica un file CSV", type="csv", key="uploader_manual")
     if uploaded_file:
         content = uploaded_file.getvalue()
         if st.session_state.file_bytes_for_upload != content:
             st.session_state.file_bytes_for_upload = content
+            st.session_state.df_input = None 
             st.session_state.import_logs = {}
 
-    options = ["COMPLETO"] + list(SHEETS_CONFIG.keys())
-    sheet_selection = st.selectbox("Target:", options)
-    targets_finali = list(SHEETS_CONFIG.values()) if sheet_selection == "COMPLETO" else [SHEETS_CONFIG[sheet_selection]]
+    if st.session_state.file_bytes_for_upload and st.session_state.df_input is None:
+        buffer = BytesIO(st.session_state.file_bytes_for_upload)
+        st.session_state.df_input = read_csv_auto_encoding(buffer, ";")
 
-    if st.button("Avvia Giacenze"):
+    df_input = st.session_state.df_input
+
+    # --- 4. INPUT UTENTE ---
+    options = ["COMPLETO"] + list(SHEETS_CONFIG.keys())
+    sheet_selection = st.selectbox("Seleziona target:", options)
+    targets_finali = list(SHEETS_CONFIG.values()) if sheet_selection == "COMPLETO" else [SHEETS_CONFIG[sheet_selection]]
+    
+    # Riferimento al nome del foglio (tab)
+    nome_sheet_tab = st.text_input("Nome del TAB", value="GIACENZE")
+
+    # --- 5. PULSANTI ---
+    col1, col2, col3, col4 = st.columns(4)
+
+    def start_process(tipo):
         st.session_state.import_logs = {k: "⏳ In coda" for k in SHEETS_CONFIG.keys() if SHEETS_CONFIG[k] in targets_finali}
         st.session_state.target_rimanenti = targets_finali.copy()
-        st.session_state.import_in_corso = "GIACENZE"
+        st.session_state.import_in_corso = tipo
         st.session_state.current_row_index = 0
         st.rerun()
 
+    if col1.button("Anagrafica", use_container_width=True): start_process("ANAGRAFICA")
+    if col2.button("Giacenze", use_container_width=True): start_process("GIACENZE")
+    if col3.button("Tutto", use_container_width=True): start_process("TOTALE")
+    if col4.button("Dropbox", use_container_width=True):
+        if st.session_state.file_bytes_for_upload:
+            with st.spinner("Upload Dropbox..."):
+                upload_csv_to_dropbox(dbx, folder_path, manual_nome_file, st.session_state.file_bytes_for_upload)
+            st.success("Backup OK!")
+
+    # Tabella Avanzamento
     if st.session_state.import_logs:
         st.divider()
+        st.subheader("📊 Stato Avanzamento")
         st.table([{"Foglio": k, "Stato": v} for k, v in st.session_state.import_logs.items()])
 
-    # --- CORE LOOP CON AUTO-RESUME ---
+    # --- 6. CORE LOOP CON AUTO-RESUME ---
     if st.session_state.import_in_corso and st.session_state.target_rimanenti:
-        current_id = st.session_state.target_rimanenti[0] # Non facciamo pop() subito
-        nome_leggibile = next((k for k, v in SHEETS_CONFIG.items() if v == current_id), "Sheet")
+        current_id = st.session_state.target_rimanenti[0]
+        nome_leggibile = next((k for k, v in SHEETS_CONFIG.items() if v == current_id), f"ID: {current_id[:5]}")
         
         try:
-            sh_gia = get_sheet(current_id, "GIACENZE")
-            df_temp = read_csv_auto_encoding(BytesIO(st.session_state.file_bytes_for_upload), ";")
-            
-            # Conversione numeri
-            cols_to_fix = [3, 12, 14, 15] + list(range(17, 29))
-            for idx in cols_to_fix:
-                if df_temp.columns.size > idx:
-                    c_name = df_temp.columns[idx]
-                    df_temp[c_name] = pd.to_numeric(df_temp[c_name].astype(str).str.replace(',', '.'), errors='coerce')
-            
-            rows = df_temp.fillna("").values.tolist()
-            total_rows = len(rows)
-            CHUNK_SIZE = 2000
+            # A. ANAGRAFICA
+            if st.session_state.import_in_corso in ["ANAGRAFICA", "TOTALE"] and st.session_state.current_row_index == 0:
+                st.session_state.import_logs[nome_leggibile] = "🚀 Copia Anagrafica..."
+                sh_ana = get_sheet(current_id, "ANAGRAFICA")
+                sh_src = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
+                sh_ana.batch_clear(["A1:Z5000"])
+                sh_ana.update("A1", sh_src.get_all_values())
+                
+                if st.session_state.import_in_corso == "ANAGRAFICA":
+                    st.session_state.import_logs[nome_leggibile] = "✅ Completato"
+                    st.session_state.target_rimanenti.pop(0)
+                    st.rerun()
+                else:
+                    st.session_state.current_row_index = 1 # Passa a giacenze
+                    st.rerun()
 
-            # Se siamo all'inizio del foglio, puliamo e mettiamo intestazioni
-            if st.session_state.current_row_index == 0:
-                st.session_state.import_logs[nome_leggibile] = "🧹 Pulizia..."
-                sh_gia.batch_clear(["A1:AZ35000"])
-                intestazioni = df_temp.columns.tolist()
+            # B. GIACENZE
+            if st.session_state.import_in_corso in ["GIACENZE", "TOTALE"]:
+                # Utilizziamo la variabile nome_sheet_tab definita sopra
+                sh_gia = get_sheet(current_id, nome_sheet_tab)
+                
+                # Elaborazione dati
+                df_proc = df_input.copy()
+                cols_to_fix = [3, 12, 14, 15] + list(range(17, 29))
+                for idx in cols_to_fix:
+                    if df_proc.columns.size > idx:
+                        c_name = df_proc.columns[idx]
+                        df_proc[c_name] = pd.to_numeric(df_proc[c_name].astype(str).str.replace(',', '.'), errors='coerce')
+                
+                intestazioni = df_proc.columns.tolist()
                 if len(intestazioni) >= 27:
                     intestazioni[18:27] = ["060/029","060/018","060/015","060/025","027/001","028/029","139/029","028/001","012/001"]
-                sh_gia.update("A1", [intestazioni], value_input_option="USER_ENTERED")
-                st.session_state.current_row_index = 1 # Segna che abbiamo iniziato
-                st.rerun()
+                
+                rows = df_proc.fillna("").values.tolist()
+                total_rows = len(rows)
+                CHUNK_SIZE = 3000
 
-            # Invio del blocco corrente
-            i = st.session_state.current_row_index - 1 # Riportiamo a 0-based per lo slice
-            if i < total_rows:
-                end_idx = min(i + CHUNK_SIZE, total_rows)
-                st.session_state.import_logs[nome_leggibile] = f"🚀 Caricamento: {end_idx} / {total_rows}"
-                
-                chunk = rows[i : end_idx]
-                start_row_google = i + 2
-                sh_gia.update(f"A{start_row_google}", chunk, value_input_option="USER_ENTERED")
-                
-                # AGGIORNA INDICE E FORZA RERUN (Rinfresca la connessione)
-                st.session_state.current_row_index = end_idx + 1
-                st.rerun()
-            else:
-                # FOGLIO COMPLETATO
-                st.session_state.import_logs[nome_leggibile] = "✅ Completato"
-                st.session_state.target_rimanenti.pop(0) # Rimuoviamo il foglio finito
-                st.session_state.current_row_index = 0 # Resetta per il prossimo foglio
-                st.rerun()
+                # 1. Pulizia e Intestazioni
+                if st.session_state.current_row_index <= 1:
+                    st.session_state.import_logs[nome_leggibile] = f"🧹 Pulizia {nome_sheet_tab}..."
+                    sh_gia.batch_clear(["A1:AZ35000"])
+                    sh_gia.update("A1", [intestazioni], value_input_option="USER_ENTERED")
+                    st.session_state.current_row_index = 2
+                    st.rerun()
+
+                # 2. Caricamento a Blocchi
+                start_idx = st.session_state.current_row_index - 2
+                if start_idx < total_rows:
+                    end_idx = min(start_idx + CHUNK_SIZE, total_rows)
+                    st.session_state.import_logs[nome_leggibile] = f"🚀 Caricamento: {end_idx} / {total_rows}"
+                    
+                    chunk = rows[start_idx : end_idx]
+                    sh_gia.update(f"A{st.session_state.current_row_index}", chunk, value_input_option="USER_ENTERED")
+                    
+                    st.session_state.current_row_index += len(chunk)
+                    st.rerun()
+                else:
+                    # Fine del foglio corrente
+                    st.session_state.import_logs[nome_leggibile] = "✅ Completato"
+                    st.session_state.target_rimanenti.pop(0)
+                    st.session_state.current_row_index = 0
+                    st.rerun()
 
         except Exception as e:
             st.session_state.import_logs[nome_leggibile] = f"❌ Errore: {str(e)[:30]}"
             st.session_state.import_in_corso = False
 
-    if not st.session_state.target_rimanenti and st.session_state.import_logs:
-        if st.session_state.import_in_corso:
-            st.session_state.import_in_corso = False
-            st.balloons()
+    # Fine totale del processo
+    if not st.session_state.target_rimanenti and st.session_state.import_in_corso:
+        if st.session_state.file_bytes_for_upload:
+            upload_csv_to_dropbox(dbx, folder_path, manual_nome_file, st.session_state.file_bytes_for_upload)
+        st.session_state.import_in_corso = False
+        st.balloons()
 
 
 def aggiorna_anagrafica():
