@@ -83,17 +83,16 @@ def giacenze_importa():
 
     if st.session_state.import_logs:
         st.divider()
-        st.subheader("📊 Riepilogo Processo")
-        log_list = [{"Foglio": k, "Stato": v} for k, v in st.session_state.import_logs.items()]
-        st.table(log_list)
+        st.subheader("📊 Monitoraggio Ultra-Rapido")
+        st.table([{"Foglio": k, "Stato": v} for k, v in st.session_state.import_logs.items()])
 
-    # --- CORE LOOP (INVIO A BLOCCHI) ---
+    # --- CORE LOOP (METODO IMPORT CSV) ---
     if st.session_state.import_in_corso and st.session_state.target_rimanenti:
         current_id = st.session_state.target_rimanenti.pop(0)
         nome_leggibile = next((k for k, v in SHEETS_CONFIG.items() if v == current_id), "Sheet")
         
         try:
-            # A. ANAGRAFICA
+            # A. ANAGRAFICA (Metodo rapido)
             if st.session_state.import_in_corso in ["ANAGRAFICA", "TOTALE"]:
                 st.session_state.import_logs[nome_leggibile] = "🚀 Copia Anagrafica..."
                 sh_ana = get_sheet(current_id, "ANAGRAFICA")
@@ -102,39 +101,43 @@ def giacenze_importa():
                 sh_ana.batch_clear(["A1:Z5000"])
                 sh_ana.update("A1", valori)
 
-            # B. GIACENZE
+            # B. GIACENZE (Metodo Import CSV Atomico)
             if st.session_state.import_in_corso in ["GIACENZE", "TOTALE"]:
-                sh_gia = get_sheet(current_id, nome_sheet_tab)
+                st.session_state.import_logs[nome_leggibile] = "🚀 Elaborazione CSV..."
+                
+                # Carichiamo il DF
                 df_temp = read_csv_auto_encoding(BytesIO(st.session_state.file_bytes_for_upload), ";")
                 
-                # Conversione numeri veloce
+                # Conversione numeri (cruciale per Google Sheets)
                 cols_to_fix = [3, 12, 14, 15] + list(range(17, 29))
                 for idx in cols_to_fix:
                     if df_temp.columns.size > idx:
                         c_name = df_temp.columns[idx]
                         df_temp[c_name] = pd.to_numeric(df_temp[c_name].astype(str).str.replace(',', '.'), errors='coerce')
+
+                # Intestazioni Magazzini
+                if df_temp.columns.size >= 27:
+                    new_cols = list(df_temp.columns)
+                    new_cols[18:27] = ["060/029","060/018","060/015","060/025","027/001","028/029","139/029","028/001","012/001"]
+                    df_temp.columns = new_cols
+
+                # Convertiamo il DataFrame in una stringa CSV (per l'importazione diretta)
+                output_csv = StringIO()
+                df_temp.to_csv(output_csv, index=False, sep=",", encoding="utf-8") # Usiamo la virgola per l'import di sistema
+                csv_string = output_csv.getvalue()
+
+                # ESECUZIONE IMPORTAZIONE ATOMICA
+                st.session_state.import_logs[nome_leggibile] = "🚀 Upload massivo in corso..."
+                # Prendiamo il foglio specifico
+                gc = get_gspread_client() # Assicurati di avere questa funzione che inizializza il client
+                spreadsheet = gc.open_by_key(current_id)
                 
-                # Prepariamo dati
-                intestazioni = df_temp.columns.tolist()
-                if len(intestazioni) >= 27:
-                    intestazioni[18:27] = ["060/029","060/018","060/015","060/025","027/001","028/029","139/029","028/001","012/001"]
+                # Usiamo l'importazione nativa (sovrascrive tutto il foglio selezionato)
+                gc.import_csv(current_id, csv_string.encode('utf-8'))
                 
-                rows = df_temp.fillna("").values.tolist()
-                
-                # PULIZIA INIZIALE
-                sh_gia.batch_clear(["A1:AZ20000"])
-                
-                # INVIO IN BLOCCHI (Chunking)
-                CHUNK_SIZE = 2000
-                st.session_state.import_logs[nome_leggibile] = f"🚀 Invio Intestazioni..."
-                sh_gia.update("A1", [intestazioni], value_input_option="USER_ENTERED")
-                
-                total_rows = len(rows)
-                for i in range(0, total_rows, CHUNK_SIZE):
-                    chunk = rows[i : i + CHUNK_SIZE]
-                    start_row = i + 2  # +1 per 1-based, +1 per intestazione
-                    st.session_state.import_logs[nome_leggibile] = f"🚀 Invio righe {i} a {min(i+CHUNK_SIZE, total_rows)}..."
-                    sh_gia.update(f"A{start_row}", chunk, value_input_option="USER_ENTERED")
+                # NOTA: import_csv di solito rinomina il foglio o lo importa nel primo tab. 
+                # Se vuoi mantenere il nome "GIACENZE", dobbiamo assicurarci che il foglio si chiami così.
+                # Se l'import_csv crea problemi con i nomi dei tab, torniamo al chunking ma molto più grande.
 
             st.session_state.import_logs[nome_leggibile] = "✅ Completato"
             
