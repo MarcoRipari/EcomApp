@@ -96,6 +96,7 @@ def giacenze_importa():
         st.session_state.target_rimanenti = targets_finali.copy()
         st.session_state.import_in_corso = tipo
         st.session_state.current_row_index = 0
+      st.session_state.anagrafica_data = None # Reset dati temporanei
         st.rerun()
 
     if col1.button("Anagrafica", use_container_width=True): start_process("ANAGRAFICA")
@@ -120,28 +121,47 @@ def giacenze_importa():
         
         try:
             # A. ANAGRAFICA
-            if st.session_state.import_in_corso in ["ANAGRAFICA", "TOTALE"] and st.session_state.current_row_index == 0:
-                st.session_state.import_logs[nome_leggibile] = "🚀 Copia Anagrafica..."
-                
-                # Esecuzione copia
+            if st.session_state.import_in_corso in ["ANAGRAFICA", "TOTALE"]:
+                # Se non abbiamo ancora scaricato i dati dell'anagrafica sorgente
+                if st.session_state.anagrafica_data is None:
+                    st.session_state.import_logs[nome_leggibile] = "⏳ Download Sorgente..."
+                    sh_src = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
+                    st.session_state.anagrafica_data = sh_src.get_all_values()
+                    st.rerun()
+
+                ana_rows = st.session_state.anagrafica_data
+                total_ana = len(ana_rows)
                 sh_ana = get_sheet(current_id, "ANAGRAFICA")
-                sh_src = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
-                valori_anagrafica = sh_src.get_all_values()
-                
-                sh_ana.batch_clear(["A1:Z5000"])
-                sh_ana.update("A1", valori_anagrafica)
-                
-                # --- PUNTO CRUCIALE PER ROMPERE IL LOOP ---
-                if st.session_state.import_in_corso == "ANAGRAFICA":
-                    # Se l'utente ha chiesto SOLO anagrafica, abbiamo finito il foglio
-                    st.session_state.import_logs[nome_leggibile] = "✅ Completato"
-                    st.session_state.target_rimanenti.pop(0)
-                    st.session_state.current_row_index = 0 # Reset per il prossimo foglio
+                ANA_CHUNK = 2000
+
+                # Inizio: Pulizia
+                if st.session_state.current_row_index == 0:
+                    st.session_state.import_logs[nome_leggibile] = "🧹 Pulizia Anagrafica..."
+                    sh_ana.batch_clear(["A1:Z6000"])
+                    st.session_state.current_row_index = 1
+                    st.rerun()
+
+                # Copia a pezzi
+                idx_start = st.session_state.current_row_index - 1
+                if idx_start < total_ana:
+                    idx_end = min(idx_start + ANA_CHUNK, total_ana)
+                    st.session_state.import_logs[nome_leggibile] = f"🚀 Anagrafica: {idx_end}/{total_ana}"
+                    chunk = ana_rows[idx_start : idx_end]
+                    sh_ana.update(f"A{idx_start + 1}", chunk)
+                    st.session_state.current_row_index = idx_end + 1
+                    st.rerun()
                 else:
-                    # Se è "TOTALE", passiamo alle Giacenze (indice 1)
-                    st.session_state.current_row_index = 1 
-                
-                st.rerun() # Forza il refresh e salva lo stato
+                    # Fine Anagrafica
+                    if st.session_state.import_in_corso == "ANAGRAFICA":
+                        st.session_state.import_logs[nome_leggibile] = "✅ Completato"
+                        st.session_state.target_rimanenti.pop(0)
+                        st.session_state.current_row_index = 0
+                        st.session_state.anagrafica_data = None
+                        st.rerun()
+                    else:
+                        # Passa a Giacenze (reset indice per la parte Giacenze dello stesso foglio)
+                        st.session_state.current_row_index = -1 # Segnale per iniziare Giacenze
+                        st.rerun()
 
             # B. GIACENZE
             if st.session_state.import_in_corso in ["GIACENZE", "TOTALE"]:
