@@ -14,3 +14,12 @@ def homepage():
         st.cache_resource.clear()
         st.success("Cache svuotata con successo!")
         st.rerun()
+
+
+    if st.sidebar.button("Svuota Memoria"):
+        st.cache_data.clear()
+        st.cache_resource.clear()
+        st.success("Cache svuotata con successo!")
+        st.rerun()
+
+
