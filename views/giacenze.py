@@ -129,6 +129,9 @@ def giacenze_importa():
                 sh_dest.clear()
                 sh_dest.update("A1", sh_src.get_all_values())
                 st.session_state.import_logs[nome_leggibile] = "✅ Anagrafica importata correttamente."
+                if st.session_state.import_in_corso == "ANAGRAFICA":
+                  st.session_state.target_rimanenti.pop(0)
+                  st.session_state.current_row_index = 0
                 st.rerun()
 
             # B. GIACENZE
