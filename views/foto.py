@@ -23,7 +23,7 @@ def foto_dashboard():
     
   st.session_state.df_foto_filtro = "Tutti"
   
-  st.title("Dashboard2")
+  st.title("Dashboard")
   col1, col2, col3, col4, col5 = st.columns(5)
   with col1:
       bordered_box("Da scattare", count_da_scattare(), "📸")
