@@ -123,45 +123,13 @@ def giacenze_importa():
             # A. ANAGRAFICA
             if st.session_state.import_in_corso in ["ANAGRAFICA", "TOTALE"]:
                 # Se non abbiamo ancora scaricato i dati dell'anagrafica sorgente
-                if st.session_state.anagrafica_data is None:
-                    st.session_state.import_logs[nome_leggibile] = "⏳ Download Sorgente..."
-                    sh_src = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
-                    st.session_state.anagrafica_data = sh_src.get_all_values()
-                    st.rerun()
-
-                ana_rows = st.session_state.anagrafica_data
-                total_ana = len(ana_rows)
-                sh_ana = get_sheet(current_id, "ANAGRAFICA")
-                ANA_CHUNK = 10000
-
-                # Inizio: Pulizia
-                if st.session_state.current_row_index == 0:
-                    st.session_state.import_logs[nome_leggibile] = "🧹 Pulizia Anagrafica..."
-                    sh_ana.batch_clear(["A1:Z6000"])
-                    st.session_state.current_row_index = 1
-                    st.rerun()
-
-                # Copia a pezzi
-                idx_start = st.session_state.current_row_index - 1
-                if idx_start < total_ana:
-                    idx_end = min(idx_start + ANA_CHUNK, total_ana)
-                    st.session_state.import_logs[nome_leggibile] = f"🚀 Anagrafica: {idx_end}/{total_ana}"
-                    chunk = ana_rows[idx_start : idx_end]
-                    sh_ana.update(f"A{idx_start + 1}", chunk)
-                    st.session_state.current_row_index = idx_end + 1
-                    st.rerun()
-                else:
-                    # Fine Anagrafica
-                    if st.session_state.import_in_corso == "ANAGRAFICA":
-                        st.session_state.import_logs[nome_leggibile] = "✅ Completato"
-                        st.session_state.target_rimanenti.pop(0)
-                        st.session_state.current_row_index = 0
-                        st.session_state.anagrafica_data = None
-                        st.rerun()
-                    else:
-                        # Passa a Giacenze (reset indice per la parte Giacenze dello stesso foglio)
-                        st.session_state.current_row_index = -1 # Segnale per iniziare Giacenze
-                        st.rerun()
+                st.session_state.import_logs[nome_leggibile] = "⏳ Import Anagrafica..."
+                sh_src = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
+                sh_dest = get_sheet(current_id, "ANAGRAFICA")
+                sh_dest.clear()
+                sh_dest.update("A1", sh_src.get_all_values())
+                st.session_state.import_logs[nome_leggibile] = "✅ Anagrafica importata correttamente."
+                st.rerun()
 
             # B. GIACENZE
             if st.session_state.import_in_corso in ["GIACENZE", "TOTALE"]:
