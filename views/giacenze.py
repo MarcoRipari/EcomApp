@@ -121,17 +121,25 @@ def giacenze_importa():
         
         try:
             # A. ANAGRAFICA
-            if st.session_state.import_in_corso in ["ANAGRAFICA", "TOTALE"]:
-                # Se non abbiamo ancora scaricato i dati dell'anagrafica sorgente
+            if st.session_state.import_in_corso in ["ANAGRAFICA", "TOTALE"] and not st.session_state.ana_completata_corrente:
                 st.session_state.import_logs[nome_leggibile] = "⏳ Import Anagrafica..."
+                
                 sh_src = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
                 sh_dest = get_sheet(current_id, "ANAGRAFICA")
+                
+                # Operazione massiccia
                 sh_dest.clear()
                 sh_dest.update("A1", sh_src.get_all_values())
-                st.session_state.import_logs[nome_leggibile] = "✅ Anagrafica importata correttamente."
+                
+                # MARCARE IL COMPLETAMENTO per evitare il loop
+                st.session_state.ana_completata_corrente = True
+                st.session_state.import_logs[nome_leggibile] = "✅ Anagrafica OK"
+                
                 if st.session_state.import_in_corso == "ANAGRAFICA":
-                  st.session_state.target_rimanenti.pop(0)
-                  st.session_state.current_row_index = 0
+                    st.session_state.target_rimanenti.pop(0)
+                    st.session_state.current_row_index = 0
+                    st.session_state.ana_completata_corrente = False # Reset per il prossimo foglio
+                
                 st.rerun()
 
             # B. GIACENZE
