@@ -151,11 +151,23 @@ def giacenze_importa():
                 
                 # Elaborazione dati
                 df_proc = df_input.copy()
-                cols_to_fix = [3, 12, 14, 15] + list(range(17, 29))
-                for idx in cols_to_fix:
-                    if df_proc.columns.size > idx:
-                        c_name = df_proc.columns[idx]
-                        df_proc[c_name] = pd.to_numeric(df_proc[c_name].astype(str).str.replace(',', '.'), errors='coerce')
+              
+                def to_number_safe(x):
+                    try:
+                        if pd.isna(x) or x == "": return ""
+                        return float(str(x).replace(',', '.'))
+                    except: return str(x)
+
+                numeric_cols_info = { "D": "0", "M": "000", "O": "0", "P": "0" }
+                for i in range(18, 30):
+                    col_letter = gspread.utils.rowcol_to_a1(1, i)[:-1]
+                    numeric_cols_info[col_letter] = "0"
+
+                for col_letter in numeric_cols_info.keys():
+                    col_idx = gspread.utils.a1_to_rowcol(f"{col_letter}1")[1] - 1
+                    if df_proc.columns.size > col_idx:
+                        col_name = df_proc.columns[col_idx]
+                        df_proc[col_name] = df_proc[col_name].apply(to_number_safe)
                 
                 intestazioni = df_proc.columns.tolist()
                 if len(intestazioni) >= 27:
