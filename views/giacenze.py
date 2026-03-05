@@ -72,6 +72,7 @@ def giacenze_importa():
         if st.session_state.file_bytes_for_upload != content:
             st.session_state.file_bytes_for_upload = content
             st.session_state.df_input = None 
+            st.session_state.ana_completata_corrente = False
             st.session_state.import_logs = {}
 
     if st.session_state.file_bytes_for_upload and st.session_state.df_input is None:
