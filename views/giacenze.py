@@ -35,7 +35,7 @@ def giacenze_importa():
 
     # --- 1. CONFIGURAZIONE CENTRALIZZATA ---
     # Inserisci qui tutti i fogli: "Nome Visualizzato": "ID_GSHEET"
-    SHEETS_CONFIG_backup = {
+    SHEETS_CONFIG = {
         "FOTO": "1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4",
         "VECCHIA STAGIONE": "13DnpAX7M9wymMR1YIH5IP28y_UaCPajBUIcoHca562U",
         "NUOVA STAGIONE": "1YbU9twZgJECIsbxhRft-7yGGuH37xzVdOkz7jJIL5aQ",
@@ -46,7 +46,7 @@ def giacenze_importa():
         "LISTA-SKUS-PE26": "1wvHZpS8Y45V4MWKgVv_WZx7t98p3Z83EXWc_e9vNFwc"
     }
 
-    SHEETS_CONFIG = {
+    SHEETS_CONFIG_TEST = {
         "FOTO": "1MFwBu5qcXwD0Hti1Su9KTxl3Z9OLGtQtp1d3HJNEiY4",
         "VECCHIA STAGIONE": "13DnpAX7M9wymMR1YIH5IP28y_UaCPajBUIcoHca562U",
         "NUOVA STAGIONE": "1YbU9twZgJECIsbxhRft-7yGGuH37xzVdOkz7jJIL5aQ"
