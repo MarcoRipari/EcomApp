@@ -64,6 +64,7 @@ def giacenze_importa():
     if "current_row_index" not in st.session_state: st.session_state.current_row_index = 0
     if "file_bytes_for_upload" not in st.session_state: st.session_state.file_bytes_for_upload = None
     if "df_input" not in st.session_state: st.session_state.df_input = None
+    if "ana_completata_corrente" not in st.session_state: st.session_state.ana_completata_corrente = False
 
     # --- 3. CARICAMENTO FILE ---
     uploaded_file = st.file_uploader("Carica un file CSV", type="csv", key="uploader_manual")
