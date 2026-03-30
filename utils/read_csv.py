@@ -5,43 +5,47 @@ import io
 import csv
 
 def read_csv(uploaded_file):
-    # 1. Leggi il contenuto binario
+    # 1. Leggi il contenuto binario (una volta sola)
     raw_data = uploaded_file.read()
+    text_data = None
     
-    # 2. Rileva l'encoding
-    result = chardet.detect(raw_data)
-    encoding = result['encoding']
+    # 2. SEQUENZA DI DECODIFICA (TRY CASCATA)
     
-    # Fallback se chardet non è sicuro (spesso succede con file piccoli)
-    if not encoding or result['confidence'] < 0.5:
-        encoding = 'utf-8'
-    
-    # 3. Decodifica in stringa per lo sniffing del separatore
-    # Usiamo errors='replace' per evitare crash se un singolo carattere è sporco
+    # TENTATIVO 1: Latin-1 (Il più comune per i tuoi CSV con caratteri speciali)
     try:
-        text_data = raw_data.decode(encoding, errors='replace')
+        # Usiamo 'strict' qui per capire se effettivamente è Latin-1 puro
+        text_data = raw_data.decode('latin-1', errors='strict')
     except Exception:
-        text_data = raw_data.decode('latin1', errors='replace')
-        encoding = 'latin1'
+        # TENTATIVO 2: UTF-8 (Standard universale)
+        try:
+            text_data = raw_data.decode('utf-8', errors='strict')
+        except Exception:
+            # TENTATIVO 3: Chardet (Rilevamento automatico se i precedenti falliscono)
+            result = chardet.detect(raw_data)
+            encoding_rilevato = result['encoding'] or 'utf-8'
+            # Qui usiamo errors='replace' come ultima spiaggia per non bloccare l'app
+            text_data = raw_data.decode(encoding_rilevato, errors='replace')
 
-    # 4. Sniffing del separatore
+    # Pulizia: Rimuoviamo il Byte Order Mark (BOM) se presente
+    text_data = text_data.lstrip('\ufeff')
+
+    # 3. LOGICA SNIFFER (Invariata per i separatori)
     try:
         sniffer = csv.Sniffer()
-        # Analizziamo una porzione significativa ma non eccessiva
+        # Analizziamo una porzione del testo decodificato
         dialect = sniffer.sniff(text_data[:8192], delimiters=";,|\t")
         separator = dialect.delimiter
     except Exception:
-        separator = ','  # Fallback standard
+        separator = ','  # Fallback
 
-    # 5. PASSA IL TESTO DECODIFICATO A PANDAS
-    # Invece di passare il file originale, passiamo un buffer di testo
-    # Questo evita che Pandas cerchi di ri-decodificare il file binario
+    # 4. PASSA IL TESTO A PANDAS
+    # Usiamo StringIO per passare la stringa già decodificata
     string_io = io.StringIO(text_data)
     
     return pd.read_csv(
         string_io, 
         sep=separator, 
         dtype=str, 
-        on_bad_lines='warn', # Non crashare se una riga è malformata
-        engine='python'      # Più tollerante con encoding complessi
+        on_bad_lines='warn', 
+        engine='python'
     )
