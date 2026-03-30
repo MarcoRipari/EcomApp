@@ -16,7 +16,6 @@ from PIL import Image
 import openai
 from openai import AsyncOpenAI
 import faiss
-from sentence_transformers import SentenceTransformer
 #from transformers import BlipProcessor, BlipForConditionalGeneration
 
 from utils import *
@@ -33,12 +32,12 @@ desc_sheet_id = st.secrets['DESC_GSHEET_ID']
 
 @st.cache_resource
 def load_model():
+    from sentence_transformers import SentenceTransformer
     model = SentenceTransformer("all-MiniLM-L6-v2", use_auth_token=st.secrets["HF_TOKEN"])
     return model.to("cpu")
 
-model = load_model()
-
 def embed_texts(texts: List[str], batch_size=32) -> List[List[float]]:
+    model = load_model()
     return model.encode(texts, show_progress_bar=False, batch_size=batch_size).tolist()
 
 def hash_dataframe_and_weights(df: pd.DataFrame, col_weights: Dict[str, float]) -> str:
@@ -247,6 +246,7 @@ def calcola_tokens(df_input, col_display_names, selected_langs, selected_tones, 
         simili = retrieve_similar(row, index_df, index, k=k_simili, col_weights=st.session_state.col_weights)
 
     #caption = get_blip_caption(row.get("Image 1", "")) if use_image and row.get("Image 1", "") else None
+    caption = None
 
     prompt = build_unified_prompt(
         row=row,
