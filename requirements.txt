@@ -6,7 +6,7 @@ requests
 
 # 🤖 AI Generation e Prompting
 openai>=1.30.1
-transformers
+#transformers
 torch
 torchvision
 huggingface_hub
