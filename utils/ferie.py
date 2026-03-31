@@ -20,6 +20,24 @@ def get_dipendenti():
   dipendenti = pd.DataFrame(sheet.get_all_records())
   dipendenti = dipendenti.sort_values(by='NOME', ascending=True)
   return dipendenti
+
+def update_dipendente_budget(nome, nuovo_budget):
+    sheet = get_sheet(ferie_sheet_id, "DIPENDENTI")
+    data = sheet.get_all_records()
+    df = pd.DataFrame(data)
+
+    # Trova la riga corrispondente
+    try:
+        idx = df[df['NOME'] == nome].index[0]
+        # In Google Sheets le righe iniziano da 1 e la riga 1 è l'intestazione
+        row_to_update = idx + 2
+        # Trova la colonna 'TOTALE'
+        col_idx = df.columns.get_loc('TOTALE') + 1
+        sheet.update_cell(row_to_update, col_idx, nuovo_budget)
+        return True
+    except Exception as e:
+        st.error(f"Errore durante l'aggiornamento: {e}")
+        return False
   
 def calcola_giorni_lavorativi_esatti(inizio, fine):
   # Inizializza le festività italiane per l'anno corrente e il successivo
@@ -100,7 +118,6 @@ def edit_budget_dialog(nome, budget_attuale):
     nuovo_budget = st.number_input("Nuovo Totale Giorni", value=int(budget_attuale), min_value=0)
     
     if st.button("Salva"):
-        # Qui devi implementare la logica per scrivere sul foglio Google "DIPENDENTI"
-        # Esempio: update_dipendente_budget(nome, nuovo_budget)
-        st.success(f"Budget per {nome} aggiornato a {nuovo_budget}!")
-        st.rerun()
+        if update_dipendente_budget(nome, nuovo_budget):
+            st.success(f"Budget per {nome} aggiornato a {nuovo_budget}!")
+            st.rerun()

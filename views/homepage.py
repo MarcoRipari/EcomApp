@@ -17,7 +17,9 @@ def homepage():
 
 
     if st.sidebar.button("Svuota Memoria"):
-        st.success("Cache svuotata con successo!")
+        for key in st.session_state.keys():
+            del st.session_state[key]
+        st.success("Memoria svuotata con successo!")
         st.rerun()
 
 

@@ -77,8 +77,7 @@ def giacenze_importa():
             st.session_state.import_logs = {}
 
     if st.session_state.file_bytes_for_upload and st.session_state.df_input is None:
-        buffer = BytesIO(st.session_state.file_bytes_for_upload)
-        st.session_state.df_input = read_csv_auto_encoding(buffer, ";")
+        st.session_state.df_input = read_csv_auto_encoding(st.session_state.file_bytes_for_upload, ";")
 
     df_input = st.session_state.df_input
 

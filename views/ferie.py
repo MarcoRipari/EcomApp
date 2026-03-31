@@ -146,10 +146,9 @@ def modifica_ferie_totali_modal(nome, ferie_attuale):
     nuovo_budget = st.number_input("Giorni totali annui", value=int(ferie_attuale), min_value=0)
     
     if st.button("Salva Modifiche"):
-        # Qui chiamerai la funzione per aggiornare Google Sheets
-        # update_budget_on_gsheet(nome, nuovo_budget)
-        st.success(f"Ferie totali aggiornate per {nome}!")
-        st.rerun() # Ricarica l'app per vedere i nuovi dati
+        if update_dipendente_budget(nome, nuovo_budget):
+            st.success(f"Ferie totali aggiornate per {nome}!")
+            st.rerun() # Ricarica l'app per vedere i nuovi dati
       
 def gestione_dipendenti():
   st.header("Gestione dipendenti")

@@ -48,6 +48,7 @@ with st.sidebar:
             login_button = st.form_submit_button("Accedi")
             
         if login_button:
+        # Tenta il login sia come username che come email (la funzione login internamente gestisce la logica)
             if login(email, password):
                 st.rerun()  # ricarica subito la pagina senza messaggio
     else:
@@ -166,8 +167,23 @@ elif page == "Catalogo - Aggiungi ordini stagione":
 elif page == "Catalogo - Genera descrizioni":
     genera_descrizioni()
 
+elif page == "Catalogo - Trova articolo":
+    st.info("Funzionalità 'Trova articolo' in fase di sviluppo.")
+
+elif page == "Ordini - Dashboard":
+    st.info("Dashboard Ordini in fase di sviluppo.")
+
+elif page == "Ordini - Importa":
+    st.info("Importazione Ordini in fase di sviluppo.")
+
 elif page == "Giacenze - Importa":
     giacenze_importa()
+
+elif page == "Giacenze - Per corridoio":
+    st.info("Giacenze per corridoio in fase di sviluppo.")
+
+elif page == "Giacenze - Per corridoio/marchio":
+    st.info("Giacenze per corridoio/marchio in fase di sviluppo.")
 
 elif page == "Giacenze - Aggiorna anagrafica":
     aggiorna_anagrafica()
@@ -177,6 +193,12 @@ elif page == "Foto - Dashboard":
 
 elif page == "Foto - Riscatta SKU":
     foto_riscattare()
+
+elif page == "Foto - Aggiungi SKUs":
+    st.info("Aggiunta SKUs Foto in fase di sviluppo.")
+
+elif page == "Foto - Storico":
+    st.info("Storico Foto in fase di sviluppo.")
 
 elif page == "Foto - Aggiungi prelevate":
     foto_aggiungi_prelevate()
@@ -189,3 +211,21 @@ elif page == "Ferie - Aggiungi ferie":
 
 elif page == "Ferie - Gestione dipendenti":
     gestione_dipendenti()
+
+elif page == "Admin - Aggiungi utente":
+    st.subheader("Aggiungi nuovo utente")
+    with st.form("reg_user"):
+        new_email = st.text_input("Email")
+        new_pass = st.text_input("Password", type="password")
+        new_name = st.text_input("Nome")
+        new_surname = st.text_input("Cognome")
+        new_username = st.text_input("Username")
+        new_role = st.selectbox("Ruolo", ["guest", "logistica", "customer care", "admin"])
+
+        reg_btn = st.form_submit_button("Registra")
+        if reg_btn:
+            if register_user(new_email, new_pass, nome=new_name, cognome=new_surname, username=new_username, role=new_role):
+                st.success("Utente creato correttamente")
+
+elif page == "Logout":
+    logout()
