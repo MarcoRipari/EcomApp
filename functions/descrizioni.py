@@ -153,30 +153,6 @@ def benchmark_faiss(df, col_weights, query_sample_size=10):
 
     os.remove("tmp_benchmark.index")
 
-# ---------------------------
-# 🎨 Visual Embedding
-# ---------------------------
-@st.cache_resource
-#def load_blip_model():
-#    processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
-#    model = BlipForConditionalGeneration.from_pretrained(
-#        "Salesforce/blip-image-captioning-base",
-#        use_auth_token=st.secrets["HF_TOKEN"]
-#    )
-#    return processor, model
-    
-#def get_blip_caption(image_url: str) -> str:
-#    try:
-#        processor, model = load_blip_model()
-#        raw_image = Image.open(requests.get(image_url, stream=True).raw).convert("RGB")
-#
-#        inputs = processor(raw_image, return_tensors="pt")
-#        output = model.generate(**inputs, max_new_tokens=30)
-#        caption = processor.decode(output[0], skip_special_tokens=True)
-#        return caption.strip()
-#    except Exception as e:
-#        # st.warning(f"⚠️ Errore nel captioning: {str(e)}")
-#        return ""
         
 # ---------------------------
 # 🧠 Prompting e Generazione
@@ -245,7 +221,6 @@ def calcola_tokens(df_input, col_display_names, selected_langs, selected_tones, 
         index, index_df = faiss_index
         simili = retrieve_similar(row, index_df, index, k=k_simili, col_weights=st.session_state.col_weights)
 
-    #caption = get_blip_caption(row.get("Image 1", "")) if use_image and row.get("Image 1", "") else None
     caption = None
 
     prompt = build_unified_prompt(

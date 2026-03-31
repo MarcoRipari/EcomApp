@@ -119,7 +119,7 @@ def register_user(email: str, password: str, **param) -> bool:
 
         supabase_admin.table("profiles").insert(profile).execute()
 
-        st.success(f"✅ Utente {username} creato correttamente")
+        st.success(f"✅ Utente {param.get('username', email)} creato correttamente")
         return True
 
     except Exception as e:

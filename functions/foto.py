@@ -49,7 +49,7 @@ def count_da_scattare(type="totale"):
 
 def get_da_riscattare():
   df = st.session_state.df_foto
-  df_da_riscattare = df[df["RISCATTARE"] == False]
+  df_da_riscattare = df[df["RISCATTARE"] == True]
   return df_da_riscattare
 
 def mostra_riscattare(sku_input):
@@ -88,9 +88,9 @@ def mostra_riscattare(sku_input):
         sheet.update(f"L{nriga}", val)
         load_df_foto()
         if riscatta:
-          df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] == "True"
+          df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] = "True"
         else:
-          df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] == "False"
+          df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] = "False"
 
 
 def aggiungi_da_riscattare(sku_input):

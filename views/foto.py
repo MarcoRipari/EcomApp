@@ -122,8 +122,7 @@ def foto_import_ordini():
   if uploaded_files:
     try:
       for file in uploaded_files:
-        output = read_csv_auto_encoding(file)
-        df = pd.DataFrame(output[1:].astype(str))
+        df = read_csv_auto_encoding(file)
         df["COD.CLIENTI"] = df["COD.CLIENTI"].map(map_cod_cli)
         df["SKU"] = df["Cod"] + df["Var."] + df["Col."]
         df_totale = pd.concat([df_totale, df], ignore_index=True)
