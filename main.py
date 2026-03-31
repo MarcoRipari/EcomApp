@@ -224,8 +224,7 @@ elif page == "Admin - Aggiungi utente":
 
         reg_btn = st.form_submit_button("Registra")
         if reg_btn:
-            if register_user(new_email, new_pass, nome=new_name, cognome=new_surname, username=new_username, role=new_role):
-                st.success("Utente creato correttamente")
+            register_user(new_email, new_pass, nome=new_name, cognome=new_surname, username=new_username, role=new_role)
 
 elif page == "Logout":
     logout()
