@@ -1,6 +1,7 @@
 import streamlit as st
 import gspread
 import holidays
+from datetime import datetime, timedelta
 
 from utils import *
 
@@ -109,6 +110,76 @@ def add_ferie(riga):
         return True
     except Exception as e:
         return f"🚨 Errore salvataggio: {e}"
+
+def sync_ferie_changes(nome_dipendente, edited_df):
+    """
+    Sincronizza le modifiche dello storico ferie con Google Sheets.
+    Ricalcola i giorni lavorativi per ogni riga modificata.
+    """
+    sheet = get_sheet(ferie_sheet_id, "FERIE")
+    try:
+        # 1. Recupera tutti i dati attuali
+        all_data = pd.DataFrame(sheet.get_all_records())
+
+        # 2. Rimuove tutte le righe del dipendente corrente dal dataframe globale
+        df_others = all_data[all_data['NOME'] != nome_dipendente].copy()
+
+        # 3. Prepara le nuove righe del dipendente ricalcolando i giorni lavorativi
+        new_rows = edited_df.copy()
+        new_rows['GIORNI LAVORATIVI'] = new_rows.apply(
+            lambda r: calcola_giorni_lavorativi_esatti(
+                pd.to_datetime(r['DATA INIZIO']).date() if not isinstance(r['DATA INIZIO'], datetime) else r['DATA INIZIO'],
+                pd.to_datetime(r['DATA FINE']).date() if not isinstance(r['DATA FINE'], datetime) else r['DATA FINE']
+            ),
+            axis=1
+        )
+
+        # Formattazione date per GSheet
+        new_rows['DATA INIZIO'] = pd.to_datetime(new_rows['DATA INIZIO']).dt.strftime('%d-%m-%Y')
+        new_rows['DATA FINE'] = pd.to_datetime(new_rows['DATA FINE']).dt.strftime('%d-%m-%Y')
+
+        # 4. Unisce i dati e riscrive il foglio
+        final_df = pd.concat([df_others, new_rows], ignore_index=True)
+
+        # Pulizia intestazioni e caricamento
+        sheet.clear()
+        sheet.update("A1", [final_df.columns.tolist()] + final_df.fillna("").values.tolist())
+        return True
+    except Exception as e:
+        st.error(f"Errore sincronizzazione: {e}")
+        return False
+
+def check_overlaps(inizio_nuovo, fine_nuovo, escludi_nome=None):
+    """
+    Controlla se ci sono altre persone in ferie nelle date selezionate.
+    Ritorna una lista di nomi che si sovrappongono.
+    """
+    sheet = get_sheet(ferie_sheet_id, "FERIE")
+    try:
+        data = sheet.get_all_records()
+        df = pd.DataFrame(data)
+        if df.empty:
+            return []
+
+        overlaps = []
+        for _, row in df.iterrows():
+            nome = row.get('NOME')
+            if escludi_nome and nome == escludi_nome:
+                continue
+
+            try:
+                inizio_es = datetime.strptime(str(row.get('DATA INIZIO')), '%d-%m-%Y').date()
+                fine_es = datetime.strptime(str(row.get('DATA FINE')), '%d-%m-%Y').date()
+
+                if inizio_nuovo <= fine_es and inizio_es <= fine_nuovo:
+                    overlaps.append(nome)
+            except:
+                continue
+
+        return list(set(overlaps))
+    except Exception as e:
+        st.error(f"Errore controllo sovrapposizioni: {e}")
+        return []
 
 
 # --- NUOVA FUNZIONE DIALOG PER MODIFICA BUDGET ---

@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import gspread
+from datetime import datetime, timedelta
 
 from utils import *
 
@@ -84,61 +85,141 @@ def ferie():
         dettaglio_utente = df_storico[df_storico['NOME'] == dipendente_scelto].copy()
         st.subheader(f"Dettaglio assenze: {dipendente_scelto}")
 
-        # Formattazione date per tabella
+        # Formattazione date
         dettaglio_utente['DATA INIZIO'] = pd.to_datetime(dettaglio_utente['DATA INIZIO'], dayfirst=True, errors='coerce')
         dettaglio_utente['DATA FINE'] = pd.to_datetime(dettaglio_utente['DATA FINE'], dayfirst=True, errors='coerce')
+
+        # Filtri avanzati
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            anni = ["Tutti"] + sorted(dettaglio_utente['DATA INIZIO'].dt.year.dropna().unique().astype(int).tolist(), reverse=True)
+            anno_scelto = st.selectbox("Filtra per anno:", anni)
+        with col_f2:
+            tipi = ["Tutti"] + sorted(dettaglio_utente['TIPO'].unique().tolist())
+            tipo_scelto = st.selectbox("Filtra per tipo:", tipi)
+
+        dettaglio_completo = dettaglio_utente.sort_values(by='DATA INIZIO', ascending=False)
+
+        if anno_scelto != "Tutti":
+            dettaglio_utente = dettaglio_utente[dettaglio_utente['DATA INIZIO'].dt.year == anno_scelto]
+        if tipo_scelto != "Tutti":
+            dettaglio_utente = dettaglio_utente[dettaglio_utente['TIPO'] == tipo_scelto]
+
         dettaglio_utente = dettaglio_utente.sort_values(by='DATA INIZIO', ascending=False)
 
         MESI_ITA = {1: "Gennaio", 2: "Febbraio", 3: "Marzo", 4: "Aprile", 5: "Maggio", 6: "Giugno",
                     7: "Luglio", 8: "Agosto", 9: "Settembre", 10: "Ottobre", 11: "Novembre", 12: "Dicembre"}
 
-        dettaglio_utente['DATA INIZIO_STR'] = dettaglio_utente['DATA INIZIO'].apply(lambda x: f"{x.day} {MESI_ITA[x.month]} {x.year}" if pd.notnull(x) else "")
-        dettaglio_utente['DATA FINE_STR'] = dettaglio_utente['DATA FINE'].apply(lambda x: f"{x.day} {MESI_ITA[x.month]} {x.year}" if pd.notnull(x) else "")
+        # Prepariamo i dati per l'editor (usiamo le date originali per facilità di editing)
+        df_editor = dettaglio_utente[['NOME', 'DATA INIZIO', 'DATA FINE', 'TIPO', 'GIORNI LAVORATIVI']].copy()
+        df_editor['DATA INIZIO'] = df_editor['DATA INIZIO'].dt.date
+        df_editor['DATA FINE'] = df_editor['DATA FINE'].dt.date
 
-        st.dataframe(
-            dettaglio_utente[['DATA INIZIO_STR', 'DATA FINE_STR', 'TIPO', 'GIORNI LAVORATIVI']],
+        edited_df = st.data_editor(
+            df_editor,
             column_config={
-                "DATA INIZIO_STR": "INIZIO",
-                "DATA FINE_STR": "FINE",
+                "NOME": st.column_config.TextColumn("DIPENDENTE", disabled=True),
+                "DATA INIZIO": st.column_config.DateColumn("INIZIO", format="DD/MM/YYYY", required=True),
+                "DATA FINE": st.column_config.DateColumn("FINE", format="DD/MM/YYYY", required=True),
+                "TIPO": st.column_config.SelectboxColumn("TIPO", options=["Ferie", "Malattia", "Permesso", "Altro"], required=True),
+                "GIORNI LAVORATIVI": st.column_config.NumberColumn("GG", disabled=True),
             },
             use_container_width=True,
-            hide_index=True
+            hide_index=True,
+            num_rows="dynamic",
+            key=f"editor_{dipendente_scelto}"
         )
 
-        # Riepilogo veloce usando i dati dell'anagrafica
+        col_s1, col_s2 = st.columns([1, 1])
+        with col_s1:
+            if st.button("Salva modifiche storiche", use_container_width=True):
+                with st.spinner("Sincronizzazione con GSheet..."):
+                    # Se i filtri sono attivi, dobbiamo unire i dati modificati con quelli non visibili
+                    if anno_scelto != "Tutti" or tipo_scelto != "Tutti":
+                        # Identifica le righe originali NON incluse nel filtro
+                        mask = (dettaglio_completo['DATA INIZIO'].dt.year == anno_scelto) if anno_scelto != "Tutti" else True
+                        if tipo_scelto != "Tutti":
+                            mask &= (dettaglio_completo['TIPO'] == tipo_scelto)
+
+                        df_non_visibili = dettaglio_completo[~mask].copy()
+                        df_final_sync = pd.concat([df_non_visibili, edited_df], ignore_index=True)
+                    else:
+                        df_final_sync = edited_df
+
+                    if sync_ferie_changes(dipendente_scelto, df_final_sync):
+                            st.success("Modifiche salvate!")
+                            st.rerun()
+        with col_s2:
+            # Esportazione CSV
+            csv_data = edited_df.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Esporta report (CSV)",
+                data=csv_data,
+                file_name=f"report_ferie_{dipendente_scelto}_{datetime.now().strftime('%Y%m%d')}.csv",
+                mime='text/csv',
+                use_container_width=True
+            )
+
+        # Riepilogo professionale usando i dati dell'anagrafica
         info_dip = df_dipendenti[df_dipendenti['NOME'] == dipendente_scelto].iloc[0]
-        st.info(f"Riepilogo {dipendente_scelto}: {info_dip.FATTE} giorni goduti, {info_dip.RESIDUO} residui su {info_dip.TOTALE} totali.")
+
+        st.markdown(f"""
+            <div style="background-color: #f0f7ff; border-left: 5px solid #1E88E5; padding: 15px; border-radius: 5px; margin-top: 20px;">
+                <h4 style="margin-top: 0; color: #1E88E5;">📋 Riepilogo {dipendente_scelto}</h4>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="padding: 5px 0;"><b>Giorni Totali Annui:</b></td>
+                        <td style="text-align: right;">{info_dip.TOTALE:g} gg</td>
+                    </tr>
+                    <tr>
+                        <td style="padding: 5px 0;"><b>Giorni Goduti:</b></td>
+                        <td style="text-align: right;">{info_dip.FATTE:g} gg</td>
+                    </tr>
+                    <tr style="border-top: 1px solid #ccc;">
+                        <td style="padding: 10px 0;"><b><span style="color: #d32f2f;">Residuo Attuale:</span></b></td>
+                        <td style="text-align: right; font-size: 1.2em; color: #d32f2f;"><b>{info_dip.RESIDUO:g} gg</b></td>
+                    </tr>
+                </table>
+            </div>
+        """, unsafe_allow_html=True)
 
 def aggiungi_ferie():
   st.header("Aggiungi ferie")
 
-  with st.form("form_ferie", clear_on_submit=True):
-    nome = st.text_input("Nome Dipendente")
+  dipendenti = get_dipendenti()
+  nomi_dipendenti = dipendenti['NOME'].tolist()
+
+  nome = st.selectbox("Nome Dipendente", options=nomi_dipendenti)
+
+  col1, col2 = st.columns(2)
+  with col1:
+      data_inizio = st.date_input("Data inizio", format="DD/MM/YYYY")
+  with col2:
+      data_fine = st.date_input("Data fine", format="DD/MM/YYYY")
+
+  if data_inizio <= data_fine:
+      sovrapposizioni = check_overlaps(data_inizio, data_fine, escludi_nome=nome)
+      if sovrapposizioni:
+          st.warning(f"⚠️ **Attenzione:** Nelle date selezionate sono già in ferie: {', '.join(sovrapposizioni)}")
+
+  tipo = st.selectbox("Tipo di assenza", ["Ferie", "Malattia", "Permesso", "Altro"])
+
+  if st.button("Inserisci ferie"):
     
-    col1, col2 = st.columns(2)
-    with col1:
-        data_inizio = st.date_input("Data inizio", format="DD/MM/YYYY")
-    with col2:
-        data_fine = st.date_input("Data fine", format="DD/MM/YYYY")
-        
-    tipo = st.selectbox("Tipo di assenza", ["Ferie", "Malattia", "Permesso", "Altro"])
-    
-    submit = st.form_submit_button("Inserisci")
-    
-    if submit:
-      if not nome:
-        st.error("Il campo 'Nome' è obbligatorio.")
-      elif tipo == "":
-        st.error("Seleziona un 'Tipo' di assenza.")
-      elif data_fine < data_inizio:
-        st.error("Errore: la data di fine non può essere precedente alla data di inizio.")
+    if not nome:
+      st.error("Il campo 'Nome' è obbligatorio.")
+    elif tipo == "":
+      st.error("Seleziona un 'Tipo' di assenza.")
+    elif data_fine < data_inizio:
+      st.error("Errore: la data di fine non può essere precedente alla data di inizio.")
+    else:
+      nuova_riga = [nome, data_inizio.strftime('%d-%m-%Y'), data_fine.strftime('%d-%m-%Y'), tipo]
+      upload = add_ferie(nuova_riga)
+      if upload is True:
+        st.success("Ferie inserite con successo!")
+        st.rerun()
       else:
-        nuova_riga = [nome, data_inizio.strftime('%d-%m-%Y'), data_fine.strftime('%d-%m-%Y'), tipo]
-        upload = add_ferie(nuova_riga)
-        if upload is True:
-          st.success("Ferie inserite con successo!")
-        else:
-          st.error(f"{upload}")
+        st.error(f"{upload}")
 
 @st.dialog("Modifica Budget Dipendente")
 def modifica_ferie_totali_modal(nome, ferie_attuale):

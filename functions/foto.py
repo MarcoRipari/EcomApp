@@ -88,9 +88,9 @@ def mostra_riscattare(sku_input):
         sheet.update(f"L{nriga}", val)
         load_df_foto()
         if riscatta:
-          df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] = "True"
+          df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] = True
         else:
-          df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] = "False"
+          df.loc[df["SKU"] == row['SKU'], "RISCATTARE"] = False
 
 
 def aggiungi_da_riscattare(sku_input):
