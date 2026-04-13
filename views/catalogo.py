@@ -36,6 +36,19 @@ def catalogo_import_ordini():
     data = df_totale.fillna("").astype(str).values.tolist()
     
     if st.button("Carica su GSheet"):
-      with st.spinner("Upload su GSheet in corso..."):
-        sheet_ordini.append_rows(data, value_input_option="RAW")
-        st.success("Caricati correttamente su GSheet")
+      if not df_totale.empty:
+          with st.spinner("Upload su GSheet in corso..."):
+              df_da_caricare = df_totale.fillna("").astype(str)
+              data = df_da_caricare.values.tolist()
+              
+              col_a = sheet_ordini.col_values(1)
+              prossima_riga = len(col_a) + 1
+              
+              riga_fine = prossima_riga + len(data) - 1
+              range_target = f"A{prossima_riga}:U{riga_fine}"
+              
+              sheet_ordini.update(range_target, data, value_input_option="USER_ENTERED")
+              
+              st.success(f"Caricati correttamente su GSheet a partire dalla riga {prossima_riga}")
+      else:
+          st.warning("Nessun dato da caricare.")
