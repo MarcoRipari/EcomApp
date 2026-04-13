@@ -21,60 +21,45 @@ def catalogo_import_ordini():
     uploaded_files = st.file_uploader("Carica i file CSV", type="csv", accept_multiple_files=True)
     
     if uploaded_files:
-        df_list = [] # Usiamo una lista per accumulare i DF (più efficiente)
-        
+        df_list = []
         try:
             for file in uploaded_files:
-                # 1. Leggi con la nuova funzione auto-encoding
                 df = read_csv_auto_encoding(file)
-                
-                # 2. Trasformazioni (Assicurati che Cod, Var e Col esistano)
-                # Usiamo fillna("") prima per evitare errori di concatenazione stringhe
                 df = df.fillna("")
                 df["COD.CLIENTI"] = df["COD.CLIENTI"].map(map_cod_cli)
                 df["SKU"] = df["Cod"].astype(str) + df["Var."].astype(str) + df["Col."].astype(str)
-                
-                # Prendi solo le prime 21 colonne per essere sicuro dell'allineamento
+                # Forza il numero di colonne a 21
                 df = df.iloc[:, :21]
                 df_list.append(df)
             
-            # Uniamo tutti i file
             df_totale = pd.concat(df_list, ignore_index=True)
-            st.success(f"Dati pronti: {len(df_totale)} righe totali da {len(uploaded_files)} file.")
-            
-            # Mostra anteprima per debug
-            st.dataframe(df_totale.head())
+            st.info(f"Totale righe da caricare: {len(df_totale)}")
 
             if st.button("Carica su GSheet"):
-                with st.spinner("Upload su GSheet in corso..."):
-                    # Trasformiamo in lista di liste
+                with st.spinner("Verifica spazio e upload in corso..."):
                     data = df_totale.fillna("").astype(str).values.tolist()
                     
-                    if not data:
-                        st.error("Nessun dato trovato nei file.")
-                        return
-
-                    # 3. Calcolo dinamico del Range
+                    # 1. Calcola la posizione di partenza
                     col_a = sheet_ordini.col_values(1)
                     prossima_riga = len(col_a) + 1
+                    num_righe_nuove = len(data)
+                    riga_finale_necessaria = prossima_riga + num_righe_nuove - 1
+
+                    # 2. CONTROLLO LIMITI GRIGLIA (La parte che mancava)
+                    # Verifichiamo quante righe ha attualmente il foglio
+                    righe_attuali = sheet_ordini.row_count
                     
-                    # Numero di righe e colonne dai dati reali
-                    num_righe = len(data)
-                    num_colonne = len(data[0]) if data else 0
+                    if riga_finale_necessaria > righe_attuali:
+                        righe_da_aggiungere = riga_finale_necessaria - righe_attuali
+                        sheet_ordini.add_rows(righe_da_aggiungere)
+                        st.write(f"Aggiunte {righe_da_aggiungere} righe al foglio per fare spazio.")
+
+                    # 3. Definizione Range (21 colonne = U)
+                    range_target = f"A{prossima_riga}:U{riga_finale_necessaria}"
                     
-                    # Determiniamo la lettera della colonna finale (21 = U)
-                    colonna_fine = "U" 
-                    riga_fine = prossima_riga + num_righe - 1
-                    
-                    range_target = f"A{prossima_riga}:{colonna_fine}{riga_fine}"
-                    
-                    # 4. Upload
-                    try:
-                        sheet_ordini.update(range_target, data, value_input_option="USER_ENTERED")
-                        st.success(f"✅ Caricate {num_righe} righe partendo da riga {prossima_riga}")
-                    except Exception as api_err:
-                        st.error(f"Errore API Google: {api_err}")
-                        st.info("Prova a ridurre il numero di file o a pulire le righe vuote nel foglio.")
+                    # 4. Upload finale
+                    sheet_ordini.update(range_target, data, value_input_option="USER_ENTERED")
+                    st.success(f"✅ Caricamento completato con successo fino alla riga {riga_finale_necessaria}")
 
         except Exception as e:
             st.error(f"Errore durante l'elaborazione: {e}")
