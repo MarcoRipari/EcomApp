@@ -174,7 +174,7 @@ def giacenze_importa():
                 
                 rows = df_proc.fillna("").values.tolist()
                 total_rows = len(rows)
-                CHUNK_SIZE = 10000
+                CHUNK_SIZE = 15000
 
                 # 1. Pulizia e Intestazioni
                 if st.session_state.current_row_index <= 1:
