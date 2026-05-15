@@ -22,7 +22,7 @@ def genera_descrizioni():
     if uploaded:
         df_input = read_csv(uploaded, ";")
         st.session_state["df_input"] = df_input
-         # ✅ Inizializza variabili di stato se non esistono
+        # ✅ Inizializza variabili di stato se non esistono
         if "col_weights" not in st.session_state:
             st.session_state.col_weights = {}
         if "col_display_names" not in st.session_state:
