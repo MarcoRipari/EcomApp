@@ -38,7 +38,6 @@ def genera_descrizioni():
     # 📊 Anteprima dati
     if "df_input" in st.session_state:
         st.write(df_input.columns.tolist())
-        
         df_input = st.session_state.df_input
         st.subheader("🧾 Anteprima CSV")
         st.dataframe(df_input.head())
