@@ -18,13 +18,13 @@ def read_csv(uploaded_file, separatore=None):
     text_data = None
     
     # 2. SEQUENZA DI DECODIFICA (TRY CASCATA)
-    # TENTATIVO 1: Latin-1 (Comune per CSV da Excel/gestionali italiani)
+    # TENTATIVO 1: UTF-8 con gestione automatica del BOM (Standard universale)
     try:
-        text_data = raw_data.decode('latin-1', errors='strict')
+        text_data = raw_data.decode('utf-8-sig', errors='strict')
     except Exception:
-        # TENTATIVO 2: UTF-8 (Standard universale)
+        # TENTATIVO 2: Latin-1 (Comune per CSV da Excel/gestionali italiani)
         try:
-            text_data = raw_data.decode('utf-8', errors='strict')
+            text_data = raw_data.decode('latin1', errors='strict')
         except Exception:
             # TENTATIVO 3: Chardet (Rilevamento automatico)
             result = chardet.detect(raw_data)
