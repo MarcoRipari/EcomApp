@@ -214,43 +214,65 @@ def genera_descrizioni():
                         for _, row in df_input_to_generate.iterrows():
                             simili = retrieve_similar(row, index_df, index, k=k_simili, col_weights=st.session_state.col_weights) if k_simili > 0 else pd.DataFrame([])
                             caption = get_blip_caption(row.get("Image 1", "")) if use_image and row.get("Image 1", "") else None
-                            prompt = build_unified_prompt(row, st.session_state.col_display_names, selected_langs, selected_tones, desc_lunga_length, desc_breve_length, image_caption=caption, simili=simili)
+                            #prompt = build_unified_prompt(row, st.session_state.col_display_names, selected_langs, selected_tones, desc_lunga_length, desc_breve_length, image_caption=caption, simili=simili)
+                            prompt = build_unified_prompt(
+                                row=row, 
+                                col_display_names=st.session_state.col_display_names, 
+                                selected_langs=selected_langs, 
+                                selected_tones=selected_tones, 
+                                desc_lunga_length=desc_lunga_length, 
+                                desc_breve_length=desc_breve_length, 
+                                image_caption=caption, 
+                                simili=simili
+                            )
                             all_prompts.append(prompt)
             
-                    with st.spinner("🚀 Generazione asincrona in corso..."):
-                        results = asyncio.run(generate_all_prompts(all_prompts))
-            
+                    # Esegui la generazione solo se ci sono effettivamente prompt da elaborare
+                    if all_prompts:
+                        with st.spinner("🚀 Generazione asincrona in corso..."):
+                            results = asyncio.run(generate_all_prompts(all_prompts))
+                    else:
+                        results = {}
+                    
                     # Parsing risultati
                     all_outputs = already_generated.copy()
                     logs = []
-            
+                    
+                    # Usiamo l'indice numerico `i` per mappare linearmente la lista `all_prompts` e il dizionario `results`
                     for i, (_, row) in enumerate(df_input_to_generate.iterrows()):
                         result = results.get(i, {})
+                        
                         if "error" in result:
                             logs.append({
                                 "sku": row.get("SKU", ""),
                                 "status": f"Errore: {result['error']}",
-                                "prompt": all_prompts[i],
+                                "prompt": all_prompts[i] if i < len(all_prompts) else "",
                                 "output": "",
                                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
                             })
                             continue
-            
+                    
+                        # Estraiamo l'output generato dall'AI
+                        ai_response = result.get("result", {})
+                    
                         for lang in selected_langs:
-                            lang_data = result.get("result", {}).get(lang.lower(), {})
-                            descr_lunga = lang_data.get("desc_lunga", "").strip()
-                            descr_breve = lang_data.get("desc_breve", "").strip()
-            
+                            # Gestiamo il recupero a prescindere se la chiave nel JSON sia minuscola o maiuscola
+                            lang_key = lang.lower()
+                            lang_data = ai_response.get(lang_key, ai_response.get(lang, {}))
+                            
+                            descr_lunga = str(lang_data.get("desc_lunga", "")).strip()
+                            descr_breve = str(lang_data.get("desc_breve", "")).strip()
+                    
                             output_row = row.to_dict()
                             output_row["Description"] = descr_lunga
                             output_row["Description2"] = descr_breve
                             all_outputs[lang].append(output_row)
-            
+                    
                         log_entry = {
                             "sku": row.get("SKU", ""),
                             "status": "OK",
-                            "prompt": all_prompts[i],
-                            "output": json.dumps(result["result"], ensure_ascii=False),
+                            "prompt": all_prompts[i] if i < len(all_prompts) else "",
+                            "output": json.dumps(ai_response, ensure_ascii=False),
                             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
                         }
                         if "usage" in result:
