@@ -1,5 +1,5 @@
 import streamlit as st
-
+import traceback
 from utils import *
 
 load_functions_from("functions", globals())
@@ -288,25 +288,40 @@ def genera_descrizioni():
                     # 🔄 Salvataggio solo dei nuovi risultati
                     with st.spinner("📤 Salvataggio nuovi dati..."):
                         for lang in selected_langs:
-                            df_out = pd.DataFrame(all_outputs[lang])
-                            df_new = df_out[df_out["SKU"].isin(df_input_to_generate["SKU"].astype(str))]
-                            if not df_new.empty:
-                                append_to_sheet(desc_sheet_id, lang, df_new)
-                        for log in logs:
-                            append_log(desc_sheet_id, log)
+                            if lang in all_outputs and all_outputs[lang]: # Verifica che la lista non sia vuota
+                                df_out = pd.DataFrame(all_outputs[lang])
+                                if not df_out.empty and "SKU" in df_out.columns:
+                                    df_new = df_out[df_out["SKU"].astype(str).isin(df_input_to_generate["SKU"].astype(str))]
+                                    if not df_new.empty:
+                                        append_to_sheet(desc_sheet_id, lang, df_new)
+                        
+                        if logs:
+                            for log in logs:
+                                append_log(desc_sheet_id, log)
             
-                    # 📦 ZIP finale
+                    # 📦 ZIP finale (Versione Corretta e Protetta)
                     with st.spinner("📦 Generazione ZIP..."):
                         mem_zip = BytesIO()
                         with zipfile.ZipFile(mem_zip, "w") as zf:
                             for lang in selected_langs:
-                                df_out = pd.DataFrame(all_outputs[lang])
-                                df_export = pd.DataFrame({
-                                    "SKU": df_out.get("SKU", ""),
-                                    "Descrizione lunga": df_out.get("Description", ""),
-                                    "Descrizione breve": df_out.get("Description2", "")
-                                })
-                                zf.writestr(f"descrizioni_{lang}.csv", df_export.to_csv(index=False).encode("utf-8"))
+                                if lang in all_outputs and all_outputs[lang]:
+                                    df_out = pd.DataFrame(all_outputs[lang])
+                                    
+                                    # Estrazione sicura delle colonne usando .get() di Pandas correttamente o fallback a serie vuota
+                                    sku_col = df_out["SKU"] if "SKU" in df_out.columns else pd.Series([], dtype=str)
+                                    desc_col = df_out["Description"] if "Description" in df_out.columns else pd.Series([], dtype=str)
+                                    desc2_col = df_out["Description2"] if "Description2" in df_out.columns else pd.Series([], dtype=str)
+                                    
+                                    df_export = pd.DataFrame({
+                                        "SKU": sku_col,
+                                        "Descrizione lunga": desc_col,
+                                        "Descrizione breve": desc2_col
+                                    })
+                                    zf.writestr(f"descrizioni_{lang}.csv", df_export.to_csv(index=False).encode("utf-8"))
+                                else:
+                                    # Crea un file vuoto se non ci sono dati per quella lingua
+                                    zf.writestr(f"descrizioni_{lang}.csv", "SKU,Descrizione lunga,Descrizione breve\n".encode("utf-8"))
+                        
                         mem_zip.seek(0)
             
                     st.success("✅ Tutto fatto!")
