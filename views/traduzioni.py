@@ -45,6 +45,9 @@ Alcune parole devono seguire regole fisse:
 - "sneakers" -> {"en": "sneakers", "fr": "sneakers", "es": "sneakers"}
 """
 
+client = AsyncOpenAI(api_key=openai.api_key)
+
+
 # =========================
 # UTILS
 # =========================
