@@ -314,8 +314,9 @@ def genera_descrizioni():
                                         append_to_sheet(desc_sheet_id, lang, df_new)
                         
                         if logs:
-                            for log in logs:
-                                append_log(desc_sheet_id, log)
+                            append_log(desc_sheet_id, logs)
+                            #for log in logs:
+                                #append_log(desc_sheet_id, log)
             
                     # 📦 ZIP finale (Versione Corretta e Protetta)
                     with st.spinner("📦 Generazione ZIP..."):
