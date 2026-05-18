@@ -110,7 +110,7 @@ def genera_descrizioni():
         with st.expander("🌍 Lingue, Tono e Modello"):
             c1, c2, c3 = st.columns(3)
             with c1:
-                marchio = st.radio("Marchio", ["NAT", "FAL", "VB", "FM", "WZ", "CC"])
+                marchio = st.radio("Marchio", ["NAT", "FAL", "FM JUNIOR", "WZ BIMBO", "VB", "FM", "WZ", "CC"])
                 use_simili = st.checkbox("Usa RAG (descrizioni simili)", value=True)
                 k_simili = 4 if use_simili else 0
                 use_model = st.selectbox("Modello OpenAI", ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"], index=0)
@@ -133,7 +133,13 @@ def genera_descrizioni():
             logs = []
             try:
                 with st.spinner("📚 Preparazione Indice FAISS..."):
-                    tab_storico = f"STORICO_{marchio}"
+                    if marchio = "FM JUNIOR":
+                        tab_storico = f"STORICO_FM_JUNIOR"
+                    elif marchio = "WZ BIMBO":
+                        tab_storico = f"STORICO_WZ_BIMBO"
+                    else:
+                        tab_storico = f"STORICO_{marchio}"
+                        
                     data_sheet = get_sheet(DESC_SHEET_ID, tab_storico)
                     df_storico = pd.DataFrame(data_sheet.get_all_records()).tail(500)
                     index, index_df = build_faiss_index(df_storico, st.session_state.col_weights)
