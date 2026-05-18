@@ -173,8 +173,14 @@ CONCEPT
   - fodera e soletta
   - fondo o suola
 - I materiali devono essere citati in modo chiaro e diretto
-- Vietati: effetto usato, effetto vissuto, trattato, lavorato, lavato, spazzolato, vintage, scarpa prima, prime scarpe
+- Vietati: effetto usato, effetto vissuto, trattato, lavorato, lavato, spazzolato, vintage, scarpa prima, prime scarpe, bicolori, bicolore
 - NON usare abbreviazioni, ellissi o forme contratte
+
+### VOCABOLI DA USARE ###
+- Special case slippers -> Pantofole
+- Velcro -> Strappo
+- First Shoe -> Scarpe primi passi
+
 
 ### OUTPUT ###
 Genera due testi:
