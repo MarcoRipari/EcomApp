@@ -117,7 +117,8 @@ def genera_descrizioni():
             with c2:
                 selected_labels = st.multiselect("Lingue", options=list(LANG_LABELS.keys()), default=["Italiano", "Inglese", "Francese", "Tedesco", "Spagnolo"])
                 selected_langs = [LANG_LABELS[l] for l in selected_labels]
-                selected_tones = st.multiselect("Tono", ["informale", "professionale", "SEO-optimized", "accattivante"], default=["informale", "SEO-optimized"])
+                #selected_tones = st.multiselect("Tono", ["informale", "professionale", "SEO-optimized", "accattivante"], default=["informale", "SEO-optimized"])
+                selected_tones = st.multiselect("Tono", ["informale", "conversazionale", "chiaro e diretto", "user friendly", "SEO-friendly", "SEO-optimized"], default=["informale", "conversazionale", "chiaro e diretto", "user friendly", "SEO-friendly", "SEO-optimized"])
             with c3:
                 desc_lunga_length = st.select_slider("Parole (Lunga)", options=["20", "40", "60", "80", "100"], value="60")
                 desc_breve_length = st.select_slider("Parole (Breve)", options=["10", "20", "30", "40", "50"], value="20")
