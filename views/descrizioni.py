@@ -16,6 +16,7 @@ from PIL import Image
 import openai
 from openai import AsyncOpenAI
 import faiss
+import zipfile
 
 from utils import *
 
