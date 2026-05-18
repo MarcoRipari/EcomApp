@@ -258,8 +258,8 @@ def genera_descrizioni():
                             df_export = pd.DataFrame({
                                 "skucolore": df_out.get("skucolore", ""),
                                 f"Modello ({lang.lower()})": df_out.get("Short_title", ""),
-                                f"Variante ({lang.lower()})": df_out.get("Subtitle_trad", ""),
-                                f"Colore ({lang.lower()})": df_out.get("Subtile2_trad", ""),
+                                f"Variante ({lang.lower()})": df_out.get("Subtitle", ""),
+                                f"Colore ({lang.lower()})": df_out.get("Subtile2", ""),
                                 f"Descrizione ({lang.lower()})": df_out.get("Description", ""),
                                 f"Descrizione 2 ({lang.lower()})": df_out.get("Description2", "")
                             })
