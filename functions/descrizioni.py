@@ -173,7 +173,7 @@ CONCEPT
   - fodera e soletta
   - fondo o suola
 - I materiali devono essere citati in modo chiaro e diretto
-- Vietati: effetto usato, effetto vissuto, trattato, lavorato, lavato, spazzolato, vintage
+- Vietati: effetto usato, effetto vissuto, trattato, lavorato, lavato, spazzolato, vintage, scarpa prima, prime scarpe
 - NON usare abbreviazioni, ellissi o forme contratte
 
 ### OUTPUT ###
