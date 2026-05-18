@@ -43,7 +43,7 @@ def append_to_sheet(sheet_id, tab, df):
     sheet.append_rows(values, value_input_option="RAW")  # ✅ chiamata unica
 
 def append_log(sheet_id, logs):
-    #sheet = get_sheet(sheet_id, "logs")
+    sheet = get_sheet(sheet_id, "logs")
     #sheet.append_row(list(log_data.values()), value_input_option="RAW")
     rows_to_append = []
     for log in logs:
@@ -59,4 +59,4 @@ def append_log(sheet_id, logs):
             log.get("estimated_cost_usd", 0)
         ])
 
-    log_sheet.append_rows(rows_to_append)
+    sheet.append_rows(rows_to_append)
