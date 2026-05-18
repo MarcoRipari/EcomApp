@@ -112,7 +112,7 @@ def genera_descrizioni():
             with c1:
                 marchio = st.radio("Marchio", ["NAT", "FAL", "VB", "FM", "WZ", "CC"])
                 use_simili = st.checkbox("Usa RAG (descrizioni simili)", value=True)
-                k_simili = 2 if use_simili else 0
+                k_simili = 4 if use_simili else 0
                 use_model = st.selectbox("Modello OpenAI", ["gpt-4o-mini", "gpt-4o", "gpt-3.5-turbo"], index=0)
             with c2:
                 selected_labels = st.multiselect("Lingue", options=list(LANG_LABELS.keys()), default=["Italiano", "Inglese", "Francese", "Tedesco", "Spagnolo"])
