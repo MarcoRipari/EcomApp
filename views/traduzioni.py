@@ -42,7 +42,8 @@ def genera_traduzioni():
         st.subheader("Seleziona colonne da tradurre")
         cols_to_translate = st.multiselect(
             "Colonne (it)",
-            df.columns.tolist()
+            df.columns.tolist(),
+            default=["Variante (it)", "Colore (it)", "Descrizione (it)", "Descrizione 2 (it)"]
         )
     
         st.subheader("Seleziona lingue")
