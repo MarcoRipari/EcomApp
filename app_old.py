@@ -1,0 +1,4473 @@
+import streamlit as st
+from streamlit_option_menu import option_menu
+import pandas as pd
+import openai
+from openai import OpenAI
+from openai import OpenAIError
+import faiss
+import numpy as np
+import time
+from datetime import datetime, timezone, timedelta
+from zoneinfo import ZoneInfo
+import os
+from io import BytesIO
+import zipfile
+import chardet
+import csv
+import hashlib
+import pickle
+from sentence_transformers import SentenceTransformer
+from typing import List, Dict, Any
+import pandas as pd
+import torch
+import logging
+import traceback
+from transformers import BlipProcessor, BlipForConditionalGeneration, InstructBlipProcessor, InstructBlipForConditionalGeneration, VisionEncoderDecoderModel, ViTImageProcessor, AutoTokenizer, AutoFeatureExtractor, AutoImageProcessor, pipeline
+from PIL import Image
+import requests
+import asyncio
+import aiohttp
+import json
+from openai import AsyncOpenAI
+from aiohttp import ClientTimeout
+from tenacity import retry, stop_after_attempt, wait_fixed
+import dropbox
+from dropbox.files import WriteMode
+import base64
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
+from reportlab.lib.styles import getSampleStyleSheet
+import re
+from st_aggrid import AgGrid, GridOptionsBuilder
+from st_aggrid.grid_options_builder import GridOptionsBuilder
+from reportlab.lib.pagesizes import landscape
+import html
+import io
+from dateutil import parser
+from dateutil.tz import tzlocal
+import locale
+from zoneinfo import ZoneInfo
+import pdfplumber
+import PyPDF2
+from geopy.geocoders import Nominatim
+from geopy.exc import GeocoderTimedOut, GeocoderUnavailable
+import zipfile
+from google.oauth2 import service_account
+import gspread
+from gspread_formatting import CellFormat, NumberFormat, format_cell_ranges
+from googleapiclient.http import MediaIoBaseDownload, MediaIoBaseUpload
+from googleapiclient.http import MediaInMemoryUpload
+from gspread.utils import rowcol_to_a1
+from gspread_formatting import CellFormat, NumberFormat, format_cell_ranges
+import gspread.utils
+from googleapiclient.discovery import build
+from pydrive2.auth import GoogleAuth
+from pydrive2.drive import GoogleDrive
+from collections import deque
+from deep_translator import GoogleTranslator
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import random
+import viste
+
+from functions.supabase_creds import *
+from functions.auth_system import *
+
+logging.basicConfig(level=logging.INFO)
+
+LANG_NAMES = {
+    "IT": "italiano",
+    "EN": "inglese",
+    "FR": "francese",
+    "DE": "tedesco",
+    "ES": "spagnolo"
+}
+LANG_LABELS = {v.capitalize(): k for k, v in LANG_NAMES.items()}
+
+
+# ---------------------------
+# GLOBAL VARS
+# ---------------------------
+desc_sheet_id = st.secrets['DESC_GSHEET_ID']
+foto_sheet_id = st.secrets['FOTO_GSHEET_ID']
+anagrafica_sheet_id = st.secrets['ANAGRAFICA_GSHEET_ID']
+ferie_sheet_id = st.secrets['FERIE_GSHEET_ID']
+ordini_sheet_id = st.secrets['ORDINI_GSHEET_ID']
+MISTRAL_API_KEY = st.secrets['MISTRAL_API_KEY']
+OPENROUTER_API_KEY = st.secrets['OPENROUTER_API_KEY']
+
+# ---------------------------
+# 🔐 Setup API keys and credentials
+# ---------------------------
+openai.api_key = st.secrets["OPENAI_API_KEY"]
+
+def check_openai_key():
+    try:
+        openai.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": "test"}],
+            max_tokens=1
+        )
+        return True, None
+    except Exception as e:
+        msg = str(e).lower()
+        return False, msg
+
+
+# ---------------------------
+# Github Repo
+# ---------------------------
+GITHUB_TOKEN = st.secrets["GITHUB_TOKEN"]  # Puoi usare st.secrets in Streamlit Cloud
+git_headers = {
+        "Authorization": f"token {GITHUB_TOKEN}",
+        "Accept": "application/vnd.github+json",
+    }
+git_data = {
+        "ref": "main",
+        "inputs": {}
+    }
+def get_last_run(owner, repo, file):
+    filename = f"{file}.yml"
+    url = f"https://api.github.com/repos/{owner}/{repo}/actions/workflows/{filename}/runs"
+    response = requests.get(url, headers=git_headers)
+    if response.status_code == 200:
+        runs = response.json()["workflow_runs"]
+        if runs:
+            return runs[0]  # L’ultima esecuzione
+    return None
+
+def run_workflow(owner, repo, file):
+    filename = f"{file}.yml"
+    url = f"https://api.github.com/repos/{owner}/{repo}/actions/workflows/{filename}/dispatches"
+
+    response = requests.post(url, headers=git_headers, json=git_data)
+    return response
+
+def get_workflow_logs(owner, repo, run_id, artifact_name="output.txt"):
+    # 1. Ottieni URL di download artifact
+    url = f"https://api.github.com/repos/{owner}/{repo}/actions/runs/{run_id}/artifacts"
+    r = requests.get(url, headers=git_headers)
+    artifacts = r.json()["artifacts"]
+    if not artifacts:
+        return "Nessun artifact trovato."
+
+    download_url = artifacts[0]["archive_download_url"]
+
+    # 2. Scarica il file zip
+    r = requests.get(download_url, headers=git_headers)
+    z = zipfile.ZipFile(io.BytesIO(r.content))
+
+    # 3. Leggi file .txt dentro lo zip
+    with z.open(artifact_name) as f:
+        content = f.read().decode("utf-8")
+        return content
+
+def workflow(owner, repo, file, interval=5, timeout=120):
+    run = run_workflow(owner, repo, file)
+    if run.status_code != 204:
+        return st.error(f"❌ Errore: {run.status_code} - {run.text}")
+
+    time.sleep(10)
+
+    run = get_last_run(owner, repo, file)
+    run_id = run["id"]
+
+    with st.spinner("Controllo in corso..."):
+        start_time = time.time()
+        while True:
+            url = f"https://api.github.com/repos/{owner}/{repo}/actions/runs/{run_id}"
+            response = requests.get(url, headers=git_headers)
+            if response.status_code == 200:
+                data = response.json()
+                status = data["status"]
+                conclusion = data["conclusion"]
+                if status == "completed":
+                    logs = get_workflow_logs(owner, repo, run_id)
+                    st.write(logs)
+                    return
+            if time.time() - start_time > timeout:
+                return "timeout"
+            time.sleep(interval)
+
+# ---------------------------
+# 📦 Embedding & FAISS Setup
+# ---------------------------
+@st.cache_resource
+def load_model():
+    model = SentenceTransformer("all-MiniLM-L6-v2", use_auth_token=st.secrets["HF_TOKEN"])
+    return model.to("cpu")
+
+model = load_model()
+
+def embed_texts(texts: List[str], batch_size=32) -> List[List[float]]:
+    return model.encode(texts, show_progress_bar=False, batch_size=batch_size).tolist()
+
+def hash_dataframe_and_weights(df: pd.DataFrame, col_weights: Dict[str, float]) -> str:
+    df_bytes = pickle.dumps((df.fillna("").astype(str), col_weights))
+    return hashlib.md5(df_bytes).hexdigest()
+
+def build_faiss_index(df: pd.DataFrame, col_weights: Dict[str, float], cache_dir="faiss_cache"):
+    os.makedirs(cache_dir, exist_ok=True)
+    cache_key = hash_dataframe_and_weights(df, col_weights)
+    cache_path = os.path.join(cache_dir, f"{cache_key}.index")
+
+    if os.path.exists(cache_path):
+        index = faiss.read_index(cache_path)
+        return index, df
+
+    texts = []
+    for _, row in df.iterrows():
+        parts = []
+        for col in df.columns:
+            if pd.notna(row[col]):
+                weight = col_weights.get(col, 1)
+                if weight > 0:
+                    parts.append((f"{col}: {row[col]} ") * int(weight))
+        texts.append(" ".join(parts))
+
+    vectors = embed_texts(texts)
+    index = faiss.IndexFlatL2(len(vectors[0]))
+    index.add(np.array(vectors).astype("float32"))
+    faiss.write_index(index, cache_path)
+
+    return index, df
+
+def retrieve_similar(query_row: pd.Series, df: pd.DataFrame, index, k=5, col_weights: Dict[str, float] = {}):
+    parts = []
+    for col in df.columns:
+        if pd.notna(query_row[col]):
+            weight = col_weights.get(col, 1)
+            if weight > 0:
+                parts.append((f"{col}: {query_row[col]} ") * int(weight))
+    query_text = " ".join(parts)
+
+    query_vector = embed_texts([query_text])[0]
+    D, I = index.search(np.array([query_vector]).astype("float32"), k)
+
+    # 🔍 DEBUG
+    logging.info(f"QUERY TEXT: {query_text[:300]} ...")
+    logging.info(f"INDICI trovati: {I[0]}")
+    logging.info(f"Distanze: {D[0]}")
+
+    return df.iloc[I[0]]
+
+def estimate_embedding_time(df: pd.DataFrame, col_weights: Dict[str, float], sample_size: int = 10) -> float:
+    """
+    Stima il tempo totale per embeddare tutti i testi del dataframe.
+    """
+    texts = []
+    for _, row in df.head(sample_size).iterrows():
+        parts = []
+        for col in df.columns:
+            if pd.notna(row[col]):
+                weight = col_weights.get(col, 1)
+                if weight > 0:
+                    parts.append((f"{col}: {row[col]} ") * int(weight))
+        texts.append(" ".join(parts))
+
+    start = time.time()
+    _ = embed_texts(texts)
+    elapsed = time.time() - start
+    avg_time_per_row = elapsed / sample_size
+    total_estimated_time = avg_time_per_row * len(df)
+
+    return total_estimated_time
+
+def benchmark_faiss(df, col_weights, query_sample_size=10):
+    import os
+
+    st.markdown("### ⏱️ Benchmark FAISS + Embedding")
+
+    start_embed = time.time()
+    texts = []
+    for _, row in df.iterrows():
+        parts = [f"{col}: {row[col]}" * int(col_weights.get(col, 1))
+                 for col in df.columns if pd.notna(row[col])]
+        texts.append(" ".join(parts))
+    vectors = embed_texts(texts)
+    embed_time = time.time() - start_embed
+
+    start_faiss = time.time()
+    index = faiss.IndexFlatL2(len(vectors[0]))
+    index.add(np.array(vectors).astype("float32"))
+    faiss.write_index(index, "tmp_benchmark.index")
+    index_time = time.time() - start_faiss
+
+    index_size = os.path.getsize("tmp_benchmark.index")
+
+    # Test query
+    query_times = []
+    for i in range(min(query_sample_size, len(df))):
+        qtext = texts[i]
+        start_q = time.time()
+        _ = index.search(np.array([vectors[i]]).astype("float32"), 5)
+        query_times.append(time.time() - start_q)
+
+    avg_query_time = sum(query_times) / len(query_times)
+
+    st.write({
+        "🚀 Tempo embedding totale (s)": round(embed_time, 2),
+        "📄 Tempo medio per riga (ms)": round(embed_time / len(df) * 1000, 2),
+        "🏗️ Tempo costruzione FAISS (s)": round(index_time, 2),
+        "💾 Dimensione index (KB)": round(index_size / 1024, 1),
+        "🔍 Tempo medio query (ms)": round(avg_query_time * 1000, 2),
+    })
+
+    os.remove("tmp_benchmark.index")
+
+# ---------------------------
+# 🎨 Visual Embedding
+# ---------------------------
+@st.cache_resource
+def load_blip_model():
+    #processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
+    #model = BlipForConditionalGeneration.from_pretrained(
+    #    "Salesforce/blip-image-captioning-base",
+    #    use_auth_token=st.secrets["HF_TOKEN"]
+    #)
+    # Carica modello, tokenizer e processor
+    processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
+    model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large")
+    return processor, model
+
+def get_blip_caption(image_url: str) -> str:
+    try:
+        processor, model = load_blip_model()
+
+        raw_image = Image.open(requests.get(image_url, stream=True).raw).convert("RGB")
+        prompt = "Raccogli informazioni descrittive della scarpa nella foto"
+
+        inputs = processor(raw_image, return_tensors="pt")
+        output = model.generate(**inputs, max_new_tokens=30)
+
+        caption = processor.decode(output[0], skip_special_tokens=True)
+        return caption
+    except Exception as e:
+        # st.warning(f"⚠️ Errore nel captioning: {str(e)}")
+        return ""
+
+
+
+def get_blip_caption_new(image_url: str) -> str:
+    try:
+        processor, model = load_blip_model()
+        raw_image = Image.open(requests.get(image_url, stream=True).raw).convert('RGB')
+        inputs = processor(raw_image, return_tensors="pt")
+        out = model.generate(**inputs)
+        caption = processor.decode(out[0], skip_special_tokens=True)
+    except Exception as e:
+        caption = f"Errore: {e}"
+
+    return caption
+
+# ---------------------------
+# 🧠 Prompting e Generazione
+# ---------------------------
+def build_function_schema(selected_langs):
+    lang_block = {}
+
+    for lang in selected_langs:
+        lang_block[lang] = {
+            "type": "object",
+            "properties": {
+                "desc_lunga": {"type": "string"},
+                "desc_breve": {"type": "string"}
+            },
+            "required": ["desc_lunga", "desc_breve"]
+        }
+
+    return [
+        {
+            "name": "generate_product_descriptions",
+            "description": "Genera descrizioni prodotto per una calzatura e-commerce",
+            "parameters": {
+                "type": "object",
+                "properties": lang_block,
+                "required": selected_langs
+            }
+        }
+    ]
+
+def build_unified_prompt(row, col_display_names, selected_langs, image_caption=None, simili=None, marchio=None):
+    # Costruzione scheda tecnica
+    fields = []
+    for col in col_display_names:
+        if col in row and pd.notna(row[col]):
+            label = col_display_names[col]
+            if label != "Codice Articolo":
+                fields.append(f"- {label}: {row[col]}")
+    product_info = "\n".join(fields)
+
+    # Divisione marchi
+    adulto = ["VB", "FM", "CC", "WZ"]
+    bambino = ["NAT", "FAL"]
+
+    # Elenco lingue in stringa
+    lang_list = ", ".join([LANG_NAMES.get(lang, lang) for lang in selected_langs])
+
+    # Caption immagine
+    image_line = f"\nAspetto visivo: {image_caption}" if image_caption else ""
+
+    # Descrizioni simili
+    sim_text = ""
+    if simili is not None and not simili.empty:
+        sim_lines = []
+        for _, ex in simili.iterrows():
+            dl = ex.get("Description", "").strip()
+            db = ex.get("Description2", "").strip()
+            if dl and db:
+                sim_lines.append(f"- {dl}\n  {db}")
+        if sim_lines:
+            sim_text = "\nDescrizioni simili:\n" + "\n".join(sim_lines)
+
+    concept = row["Concept"]
+    incipit_seeds = ["SEO-oriented", "Descrittivo", "Pratico", "Classico", "Informativo", "Accattivante"]
+
+    if pd.notna(row["Description"]) and pd.notna(row["Description2"]):
+        prompt = "SaltaRiga"
+    else:
+        if marchio in bambino:
+            prompt = f"""Scrivi due descrizioni per una calzatura da vendere online (e-commerce), coerenti con le INFO ARTICOLO, in ciascuna delle seguenti lingue: {lang_list}.
+
+Le descrizioni devono riprendere tono, struttura e naturalezza delle descrizioni catalogo tradizionali, con un linguaggio semplice, fluido e descrittivo.
+
+### INFO PRODOTTO ###
+{product_info}
+{image_line}
+CONCEPT
+{concept}
+
+*** Regole del concept ***
+- può ispirare l’apertura del testo
+- non deve essere citato
+- non deve introdurre abbinamenti o stili di abbigliamento
+
+### STILE ###
+- Apertura: {random.choice(incipit_seeds)}
+- Tono: {", ".join(selected_tones)}
+- Linguaggio naturale, editoriale
+- Frasi complete e scorrevoli
+- Nessuna formattazione
+
+### CONTENUTO ###
+- Usa esclusivamente le informazioni presenti nelle INFO ARTICOLO
+- Usa il tipo di calzatura fornito
+- Descrivi:
+  - forma o costruzione
+  - tomaia
+  - eventuali dettagli visibili
+  - chiusura
+  - fodera e soletta
+  - fondo o suola
+- I materiali devono essere citati in modo chiaro e diretto
+- Gli aggettivi possono essere usati se comuni e descrittivi
+- Vietati: effetto usato, effetto vissuto, trattato, lavorato, lavato, spazzolato, vintage
+- Non inserire la stagionalità del prodotto (il riferimento può essere solo sui sandali)
+- NON usare abbreviazioni, ellissi o forme contratte (es. niente “-sohle”, “-lining”, ecc.)
+
+### TERMINI VIETATI (NON DEVONO MAI COMPARIRE) ###
+È vietato usare, anche in forma simile, parafrasata o con sinonimi diretti, i seguenti concetti o formulazioni:
+
+- piedi freschi
+- traspirazione / traspirante / traspirabilità
+- respiro al piede / lascia respirare il piede
+- tomaia sofisticata
+- vellutato velour / velour vellutato
+- indossamento eccellente / indossabilità eccellente
+- aspetto distintivo
+- durabilità
+
+Se un concetto non è descrivibile senza usare uno dei termini vietati, deve essere **omesso**.
+
+### STRUTTURA CONSIGLIATA (NON RIGIDA) ###
+- Frase introduttiva
+- Descrizione del modello
+- Tomaia
+- Dettagli
+- Chiusura
+- Fodera e soletta
+- Fondo
+
+### NORMALIZZAZIONE TIPO DI CALZATURA ###
+- "first shoe", "first shoes" → SEMPRE trasformato in "scarpe"
+- "special case slippers" → SEMPRE trasformato in "pantofole"
+- Non usare derivati: prime scarpe, scarpa da primi passi, first shoes, first shoe
+- Usare solo termine generico "scarpe"
+
+### OUTPUT ###
+Genera due testi:
+- desc_lunga: {desc_lunga_length} parole
+- desc_breve: {desc_breve_length} parole
+
+### DESCRIZIONI DI RIFERIMENTO ###
+{sim_text}
+
+*** Uso delle descrizioni di riferimento ***
+- tono
+- ritmo
+- ordine narrativo
+
+### CONTROLLO FINALE ###
+Il testo deve:
+- sembrare scritto da un redattore catalogo
+- non contenere tecnicismi
+- non sembrare regolamentato o artificiale
+- descrivere solo ciò che è visibile o dichiarato
+"""
+        elif marchio == "VB":
+            prompt = f"""
+Scrivi due descrizioni per una calzatura da vendere online (catalogo e-commerce),
+coerenti con le INFO ARTICOLO, in ciascuna delle seguenti lingue: {lang_list}.
+
+Le descrizioni devono riprodurre tono, ritmo e naturalezza delle descrizioni
+storiche del catalogo Voile Blanche: editoriale, fluido, contemporaneo.
+
+### INFO ARTICOLO ###
+{product_info}
+{image_line}
+
+CONCEPT
+{concept}
+
+*** Regole del concept ***
+- può ispirare l’apertura del testo
+- non deve essere citato
+- non deve diventare storytelling
+- non deve introdurre abbinamenti di stile o outfit
+
+### STILE E TONO ###
+- Apertura: editoriale, interpretativa
+- Tono: fashion contemporaneo
+- Registro: medio-alto
+- Linguaggio naturale, non tecnico
+- Frasi complete, scorrevoli
+- Nessuna formattazione, nessun elenco
+- Il testo deve sembrare scritto da un redattore catalogo
+
+### LINEE GUIDA DI SCRITTURA ###
+- Descrivi il modello come una reinterpretazione contemporanea
+- Introduci mood, ispirazione o attitudine nella frase iniziale
+- Passa poi alla descrizione del modello e dei materiali
+- I dettagli vanno suggeriti, non spiegati
+- Il comfort non va mai argomentato o dimostrato
+- Usa un lessico moda coerente con il catalogo storico
+- Evita razionalizzazioni, cause-effetto, spiegazioni funzionali
+
+### CONTENUTO ###
+- Usa esclusivamente le informazioni presenti nelle INFO ARTICOLO
+- Usa il tipo di calzatura fornito (normalizzato)
+- Descrivi, in modo fluido e narrativo:
+  - linee e costruzione
+  - tomaia e materiali
+  - dettagli estetici visibili
+  - chiusura
+  - fodera e soletta
+  - fondo o suola
+- I materiali devono essere citati in modo chiaro ma non tecnico
+- Gli aggettivi devono essere comuni, descrittivi, editoriali
+- Evita qualsiasi affermazione non visibile o non dichiarata
+- Non inserire la stagionalità del prodotto (il riferimento può essere solo sui sandali)
+- NON usare abbreviazioni, ellissi o forme contratte (es. niente “-sohle”, “-lining”, ecc.)
+
+### TERMINI E CONCETTI VIETATI ###
+È vietato usare, anche in forma parafrasata:
+
+- benefici fisiologici o prestazionali
+- affermazioni misurabili o dimostrative
+- linguaggio tecnico o ingegneristico
+- claim esplicativi (es. “garantisce”, “assicura”, “offre il massimo di”)
+- spiegazioni funzionali del comfort
+- Allure
+- Freschezza urbana
+- Charme contemporaneo
+- Spirito disinvolto
+- Dinamismo urbano
+- Semplicità contemporanea
+- Una rivisitazione contemporanea del classico
+- Emerge come un'icona di stile
+- Armonie metriche
+
+Se un concetto non è descrivibile senza usare questi approcci, deve essere omesso.
+
+### STRUTTURA NARRATIVA (NON RIGIDA) ###
+- Frase editoriale introduttiva
+- Definizione del modello
+- Tomaia e materiali
+- Dettagli iconici
+- Chiusura
+- Interni
+- Fondo
+
+### NORMALIZZAZIONE TIPO DI CALZATURA ###
+- "low shoe" → SEMPRE trasformato in "mocassini"
+
+### OUTPUT ###
+Genera due testi distinti:
+- desc_lunga: {desc_lunga_length} parole
+- desc_breve: {desc_breve_length} parole
+
+### DESCRIZIONI DI RIFERIMENTO ###
+{sim_text}
+
+*** Uso delle descrizioni di riferimento ***
+- imitare tono, ritmo e ordine narrativo
+- non copiare strutture sintattiche
+- non ripetere formulazioni
+
+### CONTROLLO FINALE ###
+Il testo deve:
+- sembrare scritto da un redattore catalogo
+- non contenere tecnicismi
+- non sembrare regolamentato o artificiale
+- descrivere solo ciò che è visibile o dichiarato
+"""
+        elif marchio == "FM":
+            prompt = f"""
+Scrivi due descrizioni per una calzatura da vendere online (e-commerce), coerenti con le INFO ARTICOLO, in ciascuna delle seguenti lingue: {lang_list}.
+
+Le descrizioni devono riprodurre il linguaggio di un catalogo ufficiale Flower Mountain: tecnico, descrittivo, con struttura riconoscibile e lessico ricorrente.
+
+### INFO PRODOTTO ###
+{product_info}
+{image_line}
+
+CONCEPT
+{concept}
+
+*** Regole del concept ***
+- Serve esclusivamente come orientamento interno
+- Non deve tradursi in formule testuali ricorrenti
+- Non deve generare riferimenti espliciti a ispirazione
+- Deve emergere indirettamente da materiali, costruzione e utilizzo
+
+### STILE ###
+- Apertura: descrittiva e assertiva
+- Vietato aprire il testo con riferimenti a “ispirazione”
+- Tono: tecnico–editoriale, brand–driven
+- Linguaggio chiaro e dichiarativo
+- Ammesse valutazioni soft (es. “ideale”, “perfetta”, “assicura”)
+- Ammessi riferimenti a:
+  - mondo outdoor
+  - utilizzo urbano
+  - capsule collection e collaborazioni (se presenti nelle INFO)
+- Frasi complete
+- Nessuna formattazione
+
+### CONTENUTO ###
+- Usa esclusivamente le informazioni presenti nelle INFO ARTICOLO
+- Usa il tipo di calzatura fornito
+Descrivi, seguendo l’ordine tipico Flower Mountain:
+    - carattere del modello e destinazione d’uso (senza usare il termine “ispirazione”)
+    - tomaia (materiali e costruzione overlapping se presente)
+    - dettagli iconici (occhielli, nastri, loop, traforature)
+    - chiusura (lacci trekking, quick stop se presente)
+    - fodera e soletta (specificare materiali e trattamento se dichiarato)
+    - fondo o suola (gomma ultra leggera, Vibram, megagrip, battistrada)
+
+- I materiali devono essere citati in modo esplicito
+- È ammessa la ripetizione di formule lessicali consolidate
+- Non inserire la stagionalità del prodotto (il riferimento può essere solo sui sandali)
+- NON usare abbreviazioni, ellissi o forme contratte (es. niente “-sohle”, “-lining”, ecc.)
+
+### TERMINI E CONCETTI VIETATI ###
+È vietato usare, anche in forma parafrasata:
+- Vocazione
+- La chiusura è affidata a
+- costruzione minimale
+- classici lacci
+- lacci tradizionali
+- sapientemente
+- assicura proprietà antibatteriche
+- bicolori
+- "bicolore", utilizzabile solamente per il fondo se indicato.
+- ispirazione
+- ispirata / ispirato
+- ispira / ispirare
+- riferimenti espliciti al marchio
+- Flower Mountain
+- Stagione del prodotto (il riferimento può essere solo sui sandali/ciabatte)
+
+### LESSICO GUIDA (AMMESSO E INCORAGGIATO) ###
+- mondo outdoor
+- utilizzo outdoor
+- carattere outdoor
+- vocazione sportiva
+- design
+- performance
+- comfort e benessere
+- costruzione overlapping
+- lacci trekking / stringhe tecniche
+- occhielli sagomati a fiore
+- soletta in sughero naturale antibatterico / anatomica
+- fondo in gomma ultra leggera
+- battistrada dentellato
+- Vibram / megagrip (se presente)
+
+### LIMITI ###
+- Non introdurre informazioni non presenti nelle INFO ARTICOLO
+- Non inventare certificazioni o trattamenti
+- Non usare metafore o storytelling emozionale
+- Non descrivere abbinamenti di abbigliamento
+- Non usare linguaggio lifestyle generico
+
+### NORMALIZZAZIONE TIPO DI CALZATURA ###
+- Usa esclusivamente il tipo di calzatura fornito.
+- Mantieni la terminologia coerente con Flower Mountain
+- Ammessi: sneaker, hiking shoe, stivaletto, slip on, ecc. se presenti nelle INFO
+- "special case slippers" → SEMPRE trasformato in "ciabatte"
+
+### OUTPUT ###
+Genera due testi per ciascuna lingua:
+- desc_lunga: {desc_lunga_length} parole
+- desc_breve: {desc_breve_length} parole
+
+### DESCRIZIONI DI RIFERIMENTO ###
+{sim_text}
+
+*** Uso delle descrizioni di riferimento ***
+- Replicare struttura sintattica e ritmo
+- Riutilizzare formule verbali consolidate
+- Privilegiare costruzioni già presenti nello storico
+- In caso di conflitto, lo stile delle descrizioni di riferimento ha priorità
+
+### CONTROLLO FINALE ###
+> Verifica che “ispirazione” e derivati NON siano presenti
+    Se presenti, riscrivere la frase mantenendo il contenuto tecnico
+
+> Il testo deve:
+    - sembrare scritto per un catalogo ufficiale Flower Mountain
+    - essere coerente con altri modelli simili
+    - poter essere riutilizzato su più varianti colore
+    - privilegiare coerenza e riconoscibilità rispetto all’unicità
+    In caso contrario, riscrivere il testo mantenendo contenuto e ordine degli elementi.
+"""
+        elif marchio == "CC":
+            prompt = f"""
+Scrivi due descrizioni per una calzatura da vendere online (e-commerce), coerenti con le INFO ARTICOLO, in ciascuna delle seguenti lingue: {lang_list}.
+
+Le descrizioni devono riprodurre il linguaggio di un catalogo ufficiale Candice Cooper: fashion–editoriale, metropolitano, raffinato, con struttura riconoscibile e lessico ricorrente.
+
+### INFO PRODOTTO ###
+{product_info}
+{image_line}
+
+CONCEPT
+{concept}
+
+*** Regole del concept ***
+- Serve esclusivamente come orientamento interno
+- Non deve tradursi in formule testuali ricorrenti
+- Non deve generare riferimenti espliciti a ispirazioni, epoche o storytelling
+- Deve emergere indirettamente da materiali, costruzione, dettagli e posizionamento del modello
+- Il posizionamento urbano deve emergere indirettamente
+  attraverso materiali, proporzioni, finiture e utilizzo quotidiano
+- Evitare l’uso esplicito e ripetuto dei termini “metropolitano” e derivati
+
+### STILE ###
+- Apertura: evocativa e dichiarativa
+- Vietato aprire il testo con riferimenti a “ispirazione”
+- Tono: fashion–editoriale, premium, urbano
+- Linguaggio fluido e descrittivo
+- Ammesse valutazioni soft (es. “raffinata”, “essenziale”, “intramontabile”, “ideale”)
+- Ammessi riferimenti a:
+  - contesto urbano
+  - glamour metropolitano
+  - rilettura contemporanea di modelli iconici
+- Frasi complete
+- Nessuna formattazione
+
+### CONTENUTO ###
+- Usa esclusivamente le informazioni presenti nelle INFO ARTICOLO
+- Usa il tipo di calzatura fornito
+
+Descrivi, seguendo l’ordine tipico Candice Cooper:
+    - carattere del modello e posizionamento estetico
+    - tomaia (materiali, lavorazioni, finiture)
+    - dettagli distintivi (rinforzi, bordo, impunture, piping, traforature, inserti)
+    - chiusura (lacci, fibbia, zip, slip on se presente)
+    - fodera e soletta (materiali, estraibilità, comfort)
+    - fondo o suola (gomma, profilo che risale il tallone, disegno se dichiarato)
+
+- I materiali devono essere citati in modo esplicito
+- È ammessa la ripetizione di formule lessicali consolidate
+- Non inserire stagionalità del prodotto
+- NON usare abbreviazioni, ellissi o forme contratte
+
+### TERMINI E CONCETTI VIETATI ###
+È vietato usare, anche in forma parafrasata:
+- vocazione
+- performance
+- mondo outdoor
+- utilizzo outdoor
+- tecnico / tecnicità
+- costruzione minimale
+- sapientemente
+- assicura proprietà antibatteriche (se non esplicitamente dichiarate)
+- ispirazione
+- ispirata / ispirato
+- ispira / ispirare
+- riferimenti espliciti ad altri marchi
+- Candice Cooper
+- stagionalità del prodotto
+
+### LESSICO GUIDA (AMMESSO E INCORAGGIATO) ###
+- design intramontabile
+- raffinatezza
+- essenziale
+- urbano
+- city chic
+- glamour
+- vintage reinterpretato
+- materiali sofisticati
+- pelle / suede / velour / vitello
+- pelle tamponata / invecchiata / metallizzata / laminata (se presenti)
+- comfort
+- calzata confortevole
+- soletta interna estraibile / ergonomica (se dichiarato)
+- suola in gomma
+- profilo che risale il tallone
+- bordo avvolgente
+- impunture a vista
+- rinforzi su punta e tallone
+
+### LIMITI ###
+- Non introdurre informazioni non presenti nelle INFO ARTICOLO
+- Non inventare trattamenti, lavorazioni o certificazioni
+- Non usare metafore o storytelling emozionale
+- Non descrivere abbinamenti di abbigliamento
+- Non usare linguaggio lifestyle generico
+
+### NORMALIZZAZIONE TIPO DI CALZATURA ###
+- Usa esclusivamente il tipo di calzatura fornito
+- Mantieni terminologia coerente con Candice Cooper
+- Ammessi: sneaker, sneaker low rise, sneaker mid rise, sandalo, ballerina, mocassino, stivaletto, slip on se presenti nelle INFO
+- “special case slippers” → SEMPRE trasformato in “ciabatte”
+
+### OUTPUT ###
+Genera due testi per ciascuna lingua:
+- desc_lunga: {desc_lunga_length} parole
+- desc_breve: {desc_breve_length} parole
+
+### DESCRIZIONI DI RIFERIMENTO ###
+{sim_text}
+
+*** Uso delle descrizioni di riferimento ***
+- Replicare struttura sintattica e ritmo
+- Riutilizzare formule verbali consolidate
+- Privilegiare costruzioni già presenti nello storico
+- In caso di conflitto, lo stile delle descrizioni di riferimento ha priorità
+
+### CONTROLLO FINALE ###
+> Verifica che “ispirazione” e derivati NON siano presenti
+  Se presenti, riscrivere la frase mantenendo il contenuto descrittivo
+
+> Il testo deve:
+    - sembrare scritto per un catalogo ufficiale Candice Cooper
+    - risultare coerente con altri modelli della collezione
+    - poter essere riutilizzato su più varianti colore
+    - privilegiare coerenza editoriale e riconoscibilità rispetto all’unicità
+    In caso contrario, riscrivere il testo mantenendo contenuto e ordine degli elementi.
+"""
+    return prompt
+
+client = AsyncOpenAI(api_key=openai.api_key)
+
+# Configurazione per il piano gratuito
+RPS_LIMIT = 1  # 1 richiesta al secondo per il piano gratuito
+RPS_LIMIT_DEEPSEEK = 20 # Prova per deepseek
+MAX_RETRIES = 3  # Numero massimo di tentativi per ogni richiesta
+DELAY_BETWEEN_REQUESTS = 1  # 1 secondo tra una richiesta e l'altra
+TOKEN_WINDOW = deque()  # (timestamp, token_count)
+MAX_TOKENS_PER_MINUTE = 500000
+
+def check_token_limit(tokens: int) -> bool:
+    current_time = time.time()
+    # Rimuovi i record più vecchi di 60 secondi
+    while TOKEN_WINDOW and current_time - TOKEN_WINDOW[0][0] > 60:
+        TOKEN_WINDOW.popleft()
+
+    total_tokens = sum(count for _, count in TOKEN_WINDOW)
+    if total_tokens + tokens > MAX_TOKENS_PER_MINUTE:
+        return False  # Limite superato
+
+    TOKEN_WINDOW.append((current_time, tokens))
+    return True
+
+# -----------------------------
+# RATE LIMITER (20 richieste/min)
+# -----------------------------
+MAX_REQUESTS_PER_MIN = RPS_LIMIT_DEEPSEEK
+request_times = deque()
+
+async def rate_limiter():
+    """Assicura che non vengano fatte più di MAX_REQUESTS_PER_MIN richieste in 60s."""
+    now = time.time()
+    # Rimuove timestamp più vecchi di 60s
+    while request_times and now - request_times[0] > 60:
+        request_times.popleft()
+
+    if len(request_times) >= MAX_REQUESTS_PER_MIN:
+        sleep_for = 60 - (now - request_times[0])
+        st.warning(f"⏳ Rate limit raggiunto. Attendo {sleep_for:.1f}s...")
+        await asyncio.sleep(sleep_for)
+        # Dopo l'attesa, aggiorna il deque
+        now = time.time()
+        while request_times and now - request_times[0] > 60:
+            request_times.popleft()
+
+    # Registra questa richiesta
+    request_times.append(time.time())
+
+
+async def async_generate_description(prompt: str, idx: int, use_model: str, lang):
+    temperature = random.uniform(0.9, 1.2)
+    presence_penalty = random.uniform(0.4, 0.8)
+    functions = build_function_schema(lang)
+
+    if prompt == "SaltaRiga":
+        return idx, {"Continuativo": "Si"}
+
+    if len(prompt) < 50:
+        return idx, {
+            "result": prompt,
+            "usage": {
+                "prompt_tokens": 0,
+                "completion_tokens": 0,
+                "total_tokens": 0}
+        }
+
+    try:
+        response = await client.chat.completions.create(
+            model=use_model,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=temperature,
+            top_p=0.95,
+            frequency_penalty=0.4,
+            presence_penalty=presence_penalty,
+            max_tokens=3000,
+            functions=functions,
+            function_call={"name": "generate_product_descriptions"},
+        )
+
+        content = response.choices[0].message.content
+        message = response.choices[0].message
+        usage = response.usage
+
+        if message.function_call:
+            data = json.loads(message.function_call.arguments)
+
+        return idx, {"result": data, "usage": usage.model_dump()}
+    except Exception as e:
+        return idx, {"error": str(e)}
+
+async def async_generate_description_mistral(
+    session: aiohttp.ClientSession,
+    prompt: str,
+    idx: int,
+    use_model: str,
+    semaphore: asyncio.Semaphore
+):
+    if len(prompt) < 50:
+        return idx, {"result": prompt, "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}}
+
+    if use_model not in ["mistral-medium", "deepseek-chimera"]:
+        # Gestione per altri modelli (es. OpenAI)
+        try:
+            response = await client.chat.completions.create(
+                model=use_model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7,
+                max_tokens=3000
+            )
+            content = response.choices[0].message.content
+            usage = response.usage
+            data = json.loads(content)
+            return idx, {"result": data, "usage": usage.model_dump()}
+        except Exception as e:
+            return idx, {"error": str(e)}
+
+    if use_model == "deepseek-chimera":
+        for attempt in range(MAX_RETRIES):
+            try:
+                async with semaphore:  # Limita richieste concorrenti
+                    await rate_limiter()  # ⏱️ Controlla limite 20/min
+
+                    headers = {
+                        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                        "Content-Type": "application/json",
+                    }
+
+                    data = {
+                        "model": "tngtech/deepseek-r1t2-chimera:free",
+                        "messages": [{"role": "user", "content": prompt}],
+                    }
+
+                    async with session.post(
+                        "https://openrouter.ai/api/v1/chat/completions",
+                        headers=headers,
+                        json=data
+                    ) as response:
+                        if response.status == 429:
+                            st.warning("🚫 Rate limit API raggiunto. Attendo 60s...")
+                            await asyncio.sleep(60)
+                            continue
+
+                        if response.status != 200:
+                            error_msg = await response.text()
+                            st.write(f"{error_msg}")
+                            raise Exception(f"API Error: {error_msg}")
+
+                        response_json = await response.json()
+                        content = response_json["choices"][0]["message"]["content"]
+                        content = content.replace("**", "")
+                        json_match = re.search(r'\{.*\}', content, re.DOTALL)
+
+                        if json_match:
+                            content = json.loads(json_match.group(0))
+                        else:
+                            raise Exception("No valid JSON found in response")
+
+                        usage = response_json.get("usage", {})
+                        return idx, {"result": content, "usage": usage}
+
+            except Exception as e:
+                if attempt == MAX_RETRIES - 1:
+                    return idx, {"error": f"Failed after {MAX_RETRIES} attempts: {str(e)}"}
+                await asyncio.sleep(DELAY_BETWEEN_REQUESTS * (attempt + 1))  # Attesa esponenziale
+
+
+    # Gestione per Mistral
+    if use_model == "mistral-medium":
+        for attempt in range(MAX_RETRIES):
+            try:
+                async with semaphore:  # Limita le richieste concorrenti
+                    headers = {
+                        "Authorization": f"Bearer {MISTRAL_API_KEY}",
+                        "Content-Type": "application/json"
+                    }
+                    data = {
+                        "model": use_model,
+                        "messages": [{"role": "user", "content": prompt}]
+                    }
+
+                    async with session.post("https://api.mistral.ai/v1/chat/completions", headers=headers, json=data) as response:
+                        if response.status != 200:
+                            error_msg = await response.text()
+                            st.write(f"{error_msg}")
+                            raise Exception(f"API Error: {error_msg}")
+
+                        response_json = await response.json()
+                        content = response_json["choices"][0]["message"]["content"]
+                        content = content.replace("**", "")  # Rimuovi eventuali **
+                        json_match = re.search(r'\{.*\}', content, re.DOTALL)
+
+                        if json_match:
+                            content = json.loads(json_match.group(0))
+                        else:
+                            raise Exception("No valid JSON found in response")
+
+                        usage = response_json.get("usage", {})
+                        total_tokens = usage.get("total_tokens", 0)
+
+                        # Controlla il limite dei token al minuto
+                        if not check_token_limit(total_tokens):
+                            raise Exception("Token limit per minute exceeded")
+
+                        return idx, {"result": content, "usage": usage}
+            except Exception as e:
+                if attempt == MAX_RETRIES - 1:
+                    return idx, {"error": f"Failed after {MAX_RETRIES} attempts: {str(e)}"}
+                await asyncio.sleep(DELAY_BETWEEN_REQUESTS * (attempt + 1))  # Attesa esponenziale
+
+
+
+async def generate_all_prompts(prompts: list[str], model: str, langs) -> dict:
+    tasks = [async_generate_description(prompt, idx, model, langs) for idx, prompt in enumerate(prompts)]
+    results = await asyncio.gather(*tasks)
+    return dict(results)
+
+async def generate_all_prompts_mistral(prompts: list[str], model: str) -> dict:
+    semaphore = asyncio.Semaphore(RPS_LIMIT)  # Limita a 1 richiesta al secondo
+
+    async with aiohttp.ClientSession() as session:
+        tasks = [
+            async_generate_description_mistral(session, prompt, idx, model, semaphore)
+            for idx, prompt in enumerate(prompts)
+        ]
+        results = await asyncio.gather(*tasks)
+        return dict(results)
+
+async def generate_all_prompts_deepseek(prompts: list[str], model: str) -> dict:
+    semaphore = asyncio.Semaphore(5)  # Limita a X richieste al secondo
+
+    async with aiohttp.ClientSession() as session:
+        tasks = [
+            async_generate_description_mistral(session, prompt, idx, model, semaphore)
+            for idx, prompt in enumerate(prompts)
+        ]
+        results = await asyncio.gather(*tasks)
+        return dict(results)
+
+def calcola_tokens(df_input, col_display_names, selected_langs, selected_tones, desc_lunga_length, desc_breve_length, k_simili, use_image, marchio, faiss_index, DEBUG=False):
+    if df_input.empty:
+        return None, None, "❌ Il CSV è vuoto"
+
+    row = df_input.iloc[0]
+
+    simili = pd.DataFrame([])
+    if k_simili > 0 and faiss_index:
+        index, index_df = faiss_index
+        simili = retrieve_similar(row, index_df, index, k=k_simili, col_weights=st.session_state.col_weights)
+
+    if use_image:
+        try:
+            sku = row["SKU"]
+            sku = sku[3:].replace(".", "").upper()
+            url = f"https://repository.falc.biz/samples/{sku}-5.JPG"
+            #caption = get_blip_caption(url)
+            caption = get_blip_caption_new(url)
+
+        except Exception as e:
+            caption = None
+    else:
+        caption = None
+
+    #caption = get_blip_caption(row.get("Image 1", "")) if use_image and row.get("Image 1", "") else None
+
+    prompt = build_unified_prompt(
+        row=row,
+        col_display_names=col_display_names,
+        selected_langs=selected_langs,
+        image_caption=caption,
+        simili=simili,
+        marchio=marchio
+    )
+
+    # Token estimation (~4 chars per token)
+    num_chars = len(prompt)
+    token_est = num_chars // 4
+    cost_est = round(token_est / 1000 * 0.001, 6)
+
+    if DEBUG:
+        st.code(prompt)
+        st.markdown(f"📊 **Prompt Length**: {num_chars} caratteri ≈ {token_est} token")
+        st.markdown(f"💸 **Costo stimato per riga**: ${cost_est:.6f}")
+
+    return token_est, cost_est, prompt
+
+# ---------------------------
+# DropBox
+# ---------------------------
+
+def get_dropbox_access_token():
+    refresh_token = st.secrets["DROPBOX_REFRESH_TOKEN"]
+    client_id = st.secrets["DROPBOX_CLIENT_ID"]
+    client_secret = st.secrets["DROPBOX_CLIENT_SECRET"]
+
+    auth_header = base64.b64encode(f"{client_id}:{client_secret}".encode()).decode()
+
+    response = requests.post(
+        "https://api.dropbox.com/oauth2/token",
+        headers={
+            "Authorization": f"Basic {auth_header}",
+            "Content-Type": "application/x-www-form-urlencoded"
+        },
+        data={
+            "grant_type": "refresh_token",
+            "refresh_token": refresh_token
+        },
+    )
+    response.raise_for_status()
+    return response.json()["access_token"]
+
+def get_dropbox_client():
+    access_token = get_dropbox_access_token()
+    return dropbox.Dropbox(access_token)
+
+def upload_to_dropbox(dbx, folder_path: str, file_name: str, file_bytes: bytes):
+    dbx_path = f"{folder_path}/{file_name}"
+    try:
+        dbx.files_create_folder_v2(folder_path)
+    except dropbox.exceptions.ApiError:
+        pass  # cartella già esiste
+    try:
+        dbx.files_upload(file_bytes, dbx_path, mode=WriteMode("overwrite"))
+
+        st.success(f"✅ File caricato su Dropbox: {dbx_path}")
+    except Exception as e:
+        st.error(f"❌ Errore upload su Dropbox: {e}")
+
+def upload_csv_to_dropbox(dbx, folder_path: str, file_name: str, file_bytes: bytes):
+    dbx_path = f"{folder_path}/{file_name}"
+    try:
+        dbx.files_create_folder_v2(folder_path)
+    except dropbox.exceptions.ApiError:
+        pass  # cartella già esiste
+    try:
+        dbx.files_upload(file_bytes, dbx_path, mode=WriteMode("overwrite"))
+
+        st.success(f"✅ CSV caricato su Dropbox: {dbx_path}")
+    except Exception as e:
+        st.error(f"❌ Errore caricando CSV su Dropbox: {e}")
+
+def download_csv_from_dropbox(dbx, folder_path: str, file_name: str) -> io.BytesIO:
+    file_path = f"{folder_path}/{file_name}"
+
+    try:
+        metadata, res = dbx.files_download(file_path)
+        return io.BytesIO(res.content), metadata
+    except dropbox.exceptions.ApiError as e:
+        # Se l'errore è 'path/not_found' -> file mancante
+        if (hasattr(e.error, "is_path") and e.error.is_path()
+                and e.error.get_path().is_not_found()):
+            return None, None
+        else:
+            # altri errori (permessi, connessione, ecc.)
+            st.error(f"Errore scaricando da Dropbox: {e}")
+            return None, None
+
+def format_dropbox_date(dt):
+    if dt is None:
+        return "Data non disponibile"
+
+    # Dropbox restituisce sempre datetime tz-aware in UTC, ma nel dubbio gestiamo anche i naïve
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=ZoneInfo("UTC"))
+
+    # Convertiamo in fuso orario italiano
+    dt_italy = dt.astimezone(ZoneInfo("Europe/Rome"))
+
+    # Data odierna in Italia
+    oggi = datetime.now(ZoneInfo("Europe/Rome")).date()
+
+    mesi_it = [
+        "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+        "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"
+    ]
+
+    if dt_italy.date() == oggi:
+        return f"Oggi alle {dt_italy.strftime('%H:%M')}"
+    else:
+        mese = mesi_it[dt_italy.month - 1]
+        return f"{dt_italy.day:02d} {mese} {dt_italy.year} - {dt_italy.strftime('%H:%M')}"
+
+# ---------------------------
+# Funzioni varie
+# ---------------------------
+AVAILABLE_LANGS = ["en", "fr", "de", "es"]
+OPENAI_MODEL = "gpt-4o-mini"
+SAVE_TRANSLATE_EVERY = 25  # batch size consigliato
+
+# =========================
+# MANUAL OVERRIDES
+# =========================
+MANUAL_TRANSLATIONS = {
+    "strappo": {
+        "es": "cierre adherente",
+        "fr": "scratch",
+        "en": "strap",
+        "de": "klettverschluss"
+    }
+}
+MANUAL_TRANSLATIONS_PROMPT = """
+IMPORTANTE:
+Alcune parole devono seguire regole fisse:
+- "strappo" -> {"en": "strap", "fr": "scratch", "es": "cierre adherente", "de": "klettverschluss"}
+- "sneakers" -> {"en": "sneakers", "fr": "sneakers", "es": "sneakers"}
+"""
+
+# =========================
+# UTILS
+# =========================
+def normalize(text: str) -> str:
+    return text.strip().lower()
+
+def run_async(coro):
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    else:
+        return loop.create_task(coro)
+
+def safe_json_loads(text):
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        # cerca il primo blocco JSON {...}
+        match = re.search(r"\{.*\}", text, re.DOTALL)
+        if match:
+            return json.loads(match.group())
+        # se non trova JSON valido, fallback con traduzione originale in tutte le lingue
+        return {lang: text for lang in ["en", "fr", "de", "es"]}
+
+def format_time(seconds):
+    m, s = divmod(int(seconds), 60)
+    return f"{m:02d}:{s:02d}"
+
+def vocab_to_rows(vocab):
+    rows = []
+    for it_key, langs in vocab.items():
+        row = [
+            it_key,
+            langs.get("en", ""),
+            langs.get("fr", ""),
+            langs.get("de", ""),
+            langs.get("es", "")
+        ]
+        rows.append(row)
+    return rows
+
+def append_vocab_rows(ws, rows):
+    """
+    rows = lista di dict {"it": ..., "en": ..., "fr": ..., "de": ..., "es": ...}
+    """
+    values = []
+    for r in rows:
+        values.append([
+            r.get("it", ""),
+            r.get("en", ""),
+            r.get("fr", ""),
+            r.get("de", ""),
+            r.get("es", ""),
+            r.get("source_col", "")
+        ])
+
+    if values:
+        ws.append_rows(values, value_input_option="RAW")
+
+# =========================
+# VOCABULARY
+# =========================
+def worksheet_to_df(ws):
+    records = ws.get_all_records()
+    if not records:
+        return pd.DataFrame()
+    return pd.DataFrame(records)
+
+def load_vocab(sheet_id, tab):
+    ws = get_sheet(sheet_id, tab)
+    df = worksheet_to_df(ws)
+    df.columns = [c.strip().lower() for c in df.columns]
+
+    vocab = {}
+
+    if df.empty:
+        return vocab, ws
+
+    for _, row in df.iterrows():
+        it = str(row["it"]).strip()
+
+        vocab[it] = {
+            lang: row.get(lang)
+            for lang in row.index
+            if lang != "it" and pd.notna(row.get(lang))
+        }
+
+    return vocab, ws
+
+
+def vocab_to_df(vocab):
+    rows = []
+    for it, langs in vocab.items():
+        row = {"it": it}
+        row.update(langs)
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+
+# =========================
+# OPENAI TRANSLATION
+# =========================
+async def translate_term(client, term, target_langs, col_name):
+    important_note = ""
+    if col_name and "colore" in col_name.lower():
+        important_note = (
+            "IMPORTANTE: Il termine è un colore o una combinazione di colori, se contiene un trattino, "
+            "traduci ciascuna parte separatamente e mantieni il trattino.\n"
+        )
+
+    messages = [
+        {"role": "user", "content": f"""
+        Traduci questo testo italiano nelle lingue: {', '.join(target_langs)}.
+        Mantieni maiuscole e punteggiatura come nell'originale.
+        NON usare abbreviazioni, ellissi o forme contratte (es. niente “-sohle”, “-lining”, ecc.)
+        {important_note}
+
+        Testo da tradurre:
+        \"\"\"{term}\"\"\"
+
+        {MANUAL_TRANSLATIONS_PROMPT}
+
+        Rispondi SOLO in JSON valido nel formato:
+        {{
+          "en": "...",
+          "fr": "...",
+          "de": "...",
+          "es": "..."
+        }}
+        """}
+    ]
+
+    functions = [
+        {
+            "name": "translate_text",
+            "description": "Traduci il testo italiano nelle lingue specificate, mantenendo maiuscole, punteggiatura e nomi propri",
+            "parameters": {
+                "type": "object",
+                "properties": {lang: {"type": "string"} for lang in target_langs},
+                "required": target_langs
+            }
+        }
+    ]
+
+    response = await client.chat.completions.create(
+        model=OPENAI_MODEL,
+        messages=messages,
+        functions=functions,
+        function_call={"name": "translate_text"},
+        temperature=0
+    )
+
+    message = response.choices[0].message  # ChatCompletionMessage object
+
+    # Accesso corretto a function_call
+    func_call = getattr(message, "function_call", None)
+    if func_call and hasattr(func_call, "arguments"):
+        return json.loads(func_call.arguments)
+
+    # fallback in caso di errore
+    return {lang: term for lang in target_langs}
+
+
+async def enrich_vocab_with_ui(
+    client,
+    vocab,
+    missing_terms,
+    target_langs,
+    progress_bar,
+    status_text,
+    timer_text,
+    ws,
+    saved_badge
+):
+    total = len(missing_terms)
+    start_time = time.time()
+    buffer = []
+    saved_count = 0
+
+    #for i, term in enumerate(missing_terms, start=1):
+    for i, (term, col_name) in enumerate(missing_terms.items(), start=1):
+        #key = term.strip().lower()  # normalizzazione chiave
+        key = term.strip()
+
+        # TIMER E PROGRESS BAR
+        elapsed = time.time() - start_time
+        avg_time = elapsed / i
+        remaining = avg_time * (total - i)
+
+        progress_bar.progress(i / total)
+        saved_badge.markdown(f"💾 **Salvate su Google:** {saved_count}")
+        status_text.text(f"🔤 Traduzione: {term} ({i}/{total})")
+        timer_text.text(
+            f"⏱️ Trascorso: {format_time(elapsed)} | "
+            f"Stimato: {format_time(remaining)}"
+        )
+
+        # OVERRIDE MANUALE
+        if key in MANUAL_TRANSLATIONS:
+            vocab[key] = {lang: MANUAL_TRANSLATIONS[key].get(lang, term) for lang in target_langs}
+            continue
+
+        # CHIAMATA GPT FUNCTION CALL
+        try:
+            translations = await translate_term(client, term, target_langs, col_name)
+            vocab[key] = translations
+        except Exception as e:
+            st.warning(f"Errore traduzione '{term}': {e}")
+            # fallback: testo originale in tutte le lingue
+            #vocab[key] = {lang: term for lang in target_langs}
+            vocab[key] = {lang: "" for lang in target_langs}
+
+        buffer.append({
+            "it": key,
+            **vocab[key],
+            "source_col": col_name
+        })
+
+        if len(buffer) >= SAVE_TRANSLATE_EVERY:
+            append_vocab_rows(ws, buffer)
+            saved_count += len(buffer)
+            saved_badge.markdown(f"💾 **Salvate su Google:** {saved_count}")
+            buffer.clear()
+
+    if buffer:
+        append_vocab_rows(ws, buffer)
+        saved_count += len(buffer)
+        saved_badge.markdown(f"💾 **Salvate su Google:** {saved_count}")
+
+# =========================
+# CSV TRANSLATION
+# =========================
+def extract_missing_terms(df, columns, vocab):
+    #missing = set()
+    missing = {}
+
+    for col in columns:
+        for value in df[col].dropna():
+            key = str(value).strip()  # ✅ NON più .lower()
+            if key not in vocab and key not in MANUAL_TRANSLATIONS:
+                missing[key] = col
+
+    return missing
+
+LANG_RE = re.compile(r"\(([^)]+)\)$")
+
+def get_base_name(col):
+    # "Variante (it)" -> "Variante"
+    return LANG_RE.sub("", col).strip()
+
+def get_lang(col):
+    m = LANG_RE.search(col)
+    return m.group(1).lower() if m else None
+
+def apply_translations(df, columns, langs, vocab):
+    """
+    Ritorna dict {lang: df}
+    - Esclude righe che nel CSV originale hanno valore popolato nella colonna dopo
+      una colonna selezionata (it)
+    """
+    dfs_by_lang = {}
+
+    # colonne base selezionate (Variante, Colore, ecc.)
+    selected_bases = {get_base_name(c) for c in columns}
+
+    # ------------------------
+    # TROVA RIGHE DA ESCLUDERE
+    # ------------------------
+    rows_to_drop = set()
+    col_list = list(df.columns)
+    for idx, col in enumerate(col_list):
+        base = get_base_name(col)
+        lang = get_lang(col)
+
+        # solo colonne selezionate (it)
+        if base in selected_bases and lang == "it":
+            # colonna successiva
+            if idx + 1 < len(col_list):
+                next_col = col_list[idx + 1]
+                next_lang = get_lang(next_col)
+                # se la colonna successiva NON-it e popolata → scarta riga
+                if next_lang != "it":
+                    populated_rows = df[next_col].notna() & (df[next_col].astype(str).str.strip() != "")
+                    rows_to_drop.update(df.index[populated_rows])
+
+    # ------------------------
+    # CREAZIONE CSV PER OGNI LINGUA
+    # ------------------------
+    for lang in langs:
+        df_lang = df.copy()
+
+        # elimina righe da scartare
+        if rows_to_drop:
+            df_lang.drop(index=list(rows_to_drop), inplace=True)
+
+        # traduzioni e rinomina colonne
+        for col in df_lang.columns:
+            col_lang = get_lang(col)
+            base = get_base_name(col)
+
+            # colonne senza lingua o colonne (it) → lasciale così
+            if not col_lang or col_lang == "it":
+                continue
+
+            # colonne selezionate → traduci
+            if base in selected_bases:
+                it_col = col.replace(f"({col_lang})", "(it)")
+                if it_col in df_lang.columns:
+                    def translate_cell(val):
+                        if pd.isna(val):
+                            return ""
+                        key = str(val).strip()
+                        return vocab.get(key, {}).get(lang, key)
+                    df_lang[col] = df_lang[it_col].apply(translate_cell)
+                else:
+                    df_lang[col] = df_lang[col].fillna("")
+            else:
+                df_lang[col] = df_lang[col]
+
+            # rinomina colonna con lingua corrente
+            new_col = re.sub(LANG_RE, f"({lang})", col)
+            df_lang.rename(columns={col: new_col}, inplace=True)
+
+        dfs_by_lang[lang] = df_lang
+
+    return dfs_by_lang
+
+def read_csv_auto_encoding(uploaded_file, separatore=None):
+    raw_data = uploaded_file.read()
+    result = chardet.detect(raw_data)
+    encoding = result['encoding'] or 'utf-8'
+
+    text_data = raw_data.decode(encoding, errors='replace')
+    sniffer = csv.Sniffer()
+    try:
+        dialect = sniffer.sniff(text_data[:4096], delimiters=";,|\t")
+        separator = dialect.delimiter
+    except csv.Error:
+        separator = ','  # fallback
+
+    uploaded_file.seek(0)  # Rewind after read
+    return pd.read_csv(uploaded_file, sep=separator, encoding=encoding, dtype=str)
+    #if separatore:
+    #    return pd.read_csv(uploaded_file, sep=separator, encoding=encoding, dtype=str)
+    #else:
+    #    return pd.read_csv(uploaded_file, encoding=encoding, dtype=str)
+
+def not_in_array(array, list):
+    missing = not all(col in array for col in list)
+    return missing
+
+def genera_pdf(df_disp, **param):
+    # --- Parametri ---
+    truncate_map = param.get("truncate_map", None)  # se None = niente troncamento
+
+    # --- Copia DF per non modificare l'originale ---
+    df_proc = df_disp.copy()
+
+    # --- Applico troncamento solo se truncate_map è definito ---
+    if truncate_map:
+        for col, max_len in truncate_map.items():
+            if col in df_proc.columns:
+                df_proc[col] = df_proc[col].astype(str).apply(
+                    lambda x: x if len(x) <= max_len else x[:max_len-3]
+                )
+
+    # --- Altri parametri ---
+    font_size = param.get("font_size", 12)
+    header_bg_color = param.get("header_bg_color", colors.grey)
+    header_text_color = param.get("header_text_color", colors.whitesmoke)
+    row_bg_color = param.get("row_bg_color", colors.beige)
+    header_align = param.get("header_align", "CENTER")
+    text_align = param.get("text_align", "CENTER")
+    valign = param.get("valign", "MIDDLE")
+    margins = param.get("margins", (20, 20, 30, 20))
+    row_height_factor = param.get("row_height_factor", 2.2)
+    repeat_header = param.get("repeat_header", True)
+    col_widths = param.get("col_widths", {})
+    align_map = param.get("align_map", {})
+
+    row_height_default = font_size * row_height_factor
+    row_heights = [row_height_default] * (len(df_proc) + 1)
+
+    # --- PDF ---
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=A4,
+        leftMargin=margins[0],
+        rightMargin=margins[1],
+        topMargin=margins[2],
+        bottomMargin=margins[3],
+    )
+
+    data = [list(df_proc.columns)] + df_proc.values.tolist()
+    table = Table(
+        data,
+        repeatRows=1 if repeat_header else 0,
+        hAlign='CENTER',
+        rowHeights=row_heights
+    )
+
+    if col_widths:
+        table._argW = [col_widths.get(col, 60) for col in df_proc.columns]
+
+    style = TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), header_bg_color),
+        ("TEXTCOLOR", (0, 0), (-1, 0), header_text_color),
+        ("ALIGN", (0, 0), (-1, 0), header_align),
+        ("ALIGN", (0, 1), (-1, -1), text_align),
+        ("VALIGN", (0, 0), (-1, -1), valign),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, -1), font_size),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 6),
+        ("BACKGROUND", (0, 1), (-1, -1), row_bg_color),
+        ("GRID", (0, 0), (-1, -1), 0.25, colors.black),
+        ("TOPPADDING", (0,0), (-1,-1), 4),
+        ("BOTTOMPADDING", (0,0), (-1,-1), 4),
+    ])
+
+    for col_name, align in align_map.items():
+        if col_name in df_proc.columns:
+            idx = df_proc.columns.get_loc(col_name)
+            style.add("ALIGN", (idx, 0), (idx, -1), align)
+
+    table.setStyle(style)
+
+    elements = [table]
+    doc.build(elements)
+    buffer.seek(0)
+    return buffer
+
+def process_csv_and_update(sheet, uploaded_file, batch_size=100):
+    st.text("1️⃣ Leggo CSV...")
+    df = read_csv_auto_encoding(uploaded_file)
+
+    expected_cols = [
+        "Anno","Stag.","Clz.","Descr.","Serie","Descriz1","Annullato",
+        "Campionato","Cat","Cod","Descr2","Var.","DescrizVar","Col.",
+        "DescrCol","TAGLIA","QUANTIA","DATA_CREAZIONE","N=NOOS"
+    ]
+
+    if df.shape[1] != len(expected_cols):
+        st.error(f"⚠️ CSV ha {df.shape[1]} colonne invece di {len(expected_cols)}. Controlla separatore o formato!")
+        st.dataframe(df.head())
+        return 0, 0
+
+    df.columns = expected_cols
+    df["SKU"] = df["Cod"].astype(str) + df["Var."].astype(str) + df["Col."].astype(str)
+
+    # Porta SKU come prima colonna
+    cols = ["SKU"] + [c for c in df.columns if c != "SKU"]
+    df = df[cols]
+
+    st.text("2️⃣ Carico dati esistenti dal foglio...")
+    existing_values = sheet.get("A:U")
+    if not existing_values:
+        header = df.columns.tolist()
+        existing_df = pd.DataFrame(columns=header)
+    else:
+        header = existing_values[0]
+        data = existing_values[1:]
+        existing_df = pd.DataFrame(data, columns=header)
+
+    existing_df = existing_df.fillna("").astype(str)
+    existing_dict = {row["SKU"]: row for _, row in existing_df.iterrows()}
+
+    st.text("3️⃣ Identifico nuove righe e aggiornamenti...")
+    new_rows = []
+    updates = []
+
+    total = len(df)
+    progress = st.progress(0)
+
+    for i, row in df.iterrows():
+        sku = row["SKU"]
+        new_year_stage = (int(row["Anno"]), int(row["Stag."]))
+        single_row = ["" if pd.isna(x) else str(x) for x in row]
+
+        if sku not in existing_dict:
+            new_rows.append(single_row)
+        else:
+            existing_row = existing_dict[sku]
+            existing_year_stage = (int(existing_row["Anno"]), int(existing_row["Stag."]))
+            if new_year_stage[0] > existing_year_stage[0] or \
+               (new_year_stage[0] == existing_year_stage[0] and new_year_stage[1] > existing_year_stage[1]):
+                idx = existing_df.index[existing_df["SKU"] == sku][0] + 2  # +2 per header e base 1
+                updates.append((idx, single_row))
+
+        if i % 50 == 0:
+            progress.progress(i / total)
+    progress.progress(1.0)
+
+    st.text(f"✅ Nuove righe da aggiungere: {len(new_rows)}")
+    st.text(f"✅ Aggiornamenti da effettuare: {len(updates)}")
+
+    # =======================
+    # Aggiornamenti batch
+    # =======================
+    st.text("4️⃣ Aggiorno righe esistenti in batch...")
+    for start in range(0, len(updates), batch_size):
+        batch = updates[start:start+batch_size]
+        ranges = [f"A{idx}:U{idx}" for idx, _ in batch]
+        values = [row for _, row in batch]
+        body = [{"range": r, "values": [v]} for r, v in zip(ranges, values)]
+        if body:
+            sheet.batch_update(body)
+
+    # =======================
+    # Aggiunta nuove righe
+    # =======================
+    st.text("5️⃣ Aggiungo nuove righe in fondo...")
+    if new_rows:
+        # pulizia valori
+        new_rows_clean = [[str(cell) if cell is not None else "" for cell in row] for row in new_rows]
+
+        start_row = len(existing_df) + 2  # +2 per header e base 1
+        end_row = start_row + len(new_rows_clean) - 1
+        missing_rows = end_row - sheet.row_count
+        if missing_rows > 0:
+            sheet.add_rows(missing_rows)
+        cell_range = f"A{start_row}:U{end_row}"
+
+        sheet.update(cell_range, new_rows_clean, value_input_option="RAW")
+
+    st.text("✅ Operazione completata!")
+    return len(new_rows), len(updates)
+
+# =========================================================
+# ⚙️ CONFIGURAZIONE FILE DB + GITHUB
+# =========================================================
+
+GITHUB_REPO = "MarcoRipari/Gestione-Ecom"
+GITHUB_PATH = "data/translations_db.json"
+GITHUB_BRANCH = "main"
+
+
+# =========================================================
+# 🌐 FUNZIONI DI GESTIONE SU GITHUB
+# =========================================================
+
+def download_translation_db_from_github():
+    """Scarica il file JSON delle traduzioni da GitHub e lo restituisce come oggetto Python"""
+    github_token = os.getenv("GITHUB_TOKEN")
+    if not github_token:
+        print("⚠️ Nessun GITHUB_TOKEN trovato tra i secrets.")
+        return []
+
+    url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{GITHUB_PATH}"
+    headers = {"Authorization": f"token {github_token}"}
+
+    try:
+        r = requests.get(url, headers=headers)
+        if r.status_code == 200:
+            data = r.json()
+            if "content" in data:
+                content = base64.b64decode(data["content"]).decode("utf-8")
+                print("✅ DB traduzioni caricato da GitHub.")
+                return json.loads(content)
+            else:
+                print("⚠️ Nessun contenuto trovato nel file GitHub.")
+                return []
+        elif r.status_code == 404:
+            print("⚠️ File delle traduzioni non trovato su GitHub. Creerò un nuovo DB.")
+            return []
+        else:
+            print(f"⚠️ Errore scaricando DB da GitHub: {r.status_code} - {r.text}")
+            return []
+    except Exception as e:
+        print(f"❌ Errore durante il download del DB: {e}")
+        return []
+
+
+def upload_translation_db_to_github(db, original_db_json):
+    """Carica o aggiorna il file delle traduzioni su GitHub solo se ci sono modifiche"""
+    github_token = os.getenv("GITHUB_TOKEN")
+    if not github_token:
+        print("⚠️ Nessun GITHUB_TOKEN trovato tra i secrets. Upload annullato.")
+        return
+
+    # 🔍 Confronto con il contenuto originale
+    new_db_json = json.dumps(db, ensure_ascii=False, indent=2)
+    if new_db_json == original_db_json:
+        print("ℹ️ Nessuna nuova traduzione aggiunta: nessun upload necessario.")
+        return  # Non aggiorna GitHub se identico
+
+    url = f"https://api.github.com/repos/{GITHUB_REPO}/contents/{GITHUB_PATH}"
+    headers = {"Authorization": f"token {github_token}"}
+
+    try:
+        content = base64.b64encode(new_db_json.encode("utf-8")).decode("utf-8")
+
+        # Ottieni SHA del file esistente (necessario per aggiornamento)
+        sha = None
+        r = requests.get(url, headers=headers)
+        if r.status_code == 200:
+            sha = r.json().get("sha")
+
+        message = "Aggiornamento automatico del DB traduzioni"
+        data = {
+            "message": message,
+            "content": content,
+            "branch": GITHUB_BRANCH,
+        }
+        if sha:
+            data["sha"] = sha  # necessario se il file esiste già
+
+        r = requests.put(url, headers=headers, json=data)
+
+        if r.status_code in (200, 201):
+            print("✅ File delle traduzioni aggiornato su GitHub!")
+        else:
+            print(f"❌ Errore aggiornando su GitHub: {r.status_code} - {r.text}")
+
+    except Exception as e:
+        print(f"❌ Errore durante l'upload su GitHub: {e}")
+
+
+# =========================================================
+# 🧩 FUNZIONI DI GESTIONE DEL DB (IN MEMORIA)
+# =========================================================
+
+def find_translation(db, text_it, target_lang):
+    """Cerca una traduzione esistente nel DB"""
+    text_it = str(text_it).strip().lower()
+    for entry in db:
+        if entry.get("it", "").strip().lower() == text_it:
+            return entry.get(target_lang)
+    return None
+
+
+def add_translation(db, text_it, lang, translated_text):
+    """Aggiunge o aggiorna una traduzione nel DB (solo in memoria)"""
+    text_it = str(text_it).strip()
+    for entry in db:
+        if entry.get("it", "").strip().lower() == text_it.lower():
+            entry[lang] = translated_text
+            break
+    else:
+        db.append({"it": text_it, lang: translated_text})
+
+
+# =========================================================
+# 🧠 FUNZIONI DI TRADUZIONE
+# =========================================================
+
+def create_translator(source, target):
+    return GoogleTranslator(source=source, target=target)
+
+
+def safe_translate(text, translator, db):
+    """Traduci testo con gestione errori e uso del DB GitHub"""
+    time.sleep(0.1)
+    try:
+        if not text or str(text).strip() == "":
+            return ""
+
+        text_it = str(text).strip()
+        target_lang = translator.target
+
+        # 1️⃣ Controlla se esiste già nel DB
+        cached = find_translation(db, text_it, target_lang)
+        if cached:
+            return cached
+
+        # 2️⃣ Se non esiste → traduci e aggiungi
+        translated = translator.translate(text_it)
+        add_translation(db, text_it, target_lang, translated)
+        return translated
+
+    except Exception as e:
+        print(f"❌ Errore durante la traduzione: {e}")
+        return str(text)
+
+
+def translate_column_parallel(col_values, source, target, db, max_workers=5):
+    """Traduci una colonna mantenendo l'ordine originale"""
+    translator = create_translator(source, target)
+    results = [None] * len(col_values)
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(safe_translate, text, translator, db): i for i, text in enumerate(col_values)}
+        for future in as_completed(futures):
+            idx = futures[future]
+            try:
+                results[idx] = future.result()
+            except Exception as e:
+                print(f"Errore riga {idx}: {e}")
+                results[idx] = str(col_values[idx])
+
+    return results
+
+# --- Funzione per generare PDF ---
+def genera_pdf_aggrid(df_table, file_path="giac_corridoio.pdf"):
+    doc = SimpleDocTemplate(file_path, pagesize=landscape(A4))
+    elements = []
+
+    # --- Estrazione marchi ---
+    brands = [c.replace("_VECCHIO", "") for c in df_table.columns if "_VECCHIO" in c]
+
+    # --- Header multi-riga ---
+    header_row1 = ["CORR"] + [brand for brand in brands for _ in range(2)]
+    header_row2 = [""] + ["VECCHIO" if i % 2 == 0 else "NUOVO" for i in range(len(brands)*2)]
+    data = [header_row1, header_row2]
+
+    # --- Righe dati ---
+    for _, row in df_table.iterrows():
+        row_data = [int(row.get("CORR", 0))]
+        for brand in brands:
+            row_data.append(int(row.get(f"{brand}_VECCHIO", 0)))
+            row_data.append(int(row.get(f"{brand}_NUOVO", 0)))
+        data.append(row_data)
+
+    # --- Larghezza colonne ---
+    col_widths = [40] + [60] * len(brands) * 2
+    t = Table(data, colWidths=col_widths)
+
+    # --- Stile tabella ---
+    style = TableStyle([
+        ('GRID', (0,0), (-1,-1), 0.5, colors.black),
+        ('ALIGN', (0,0), (-1,-1), 'CENTER'),
+        ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
+        ('BACKGROUND', (0,0), (-1,0), colors.lightgrey),
+        ('BACKGROUND', (0,1), (-1,1), colors.whitesmoke),
+        ('SPAN', (0,0), (0,1)),
+    ])
+
+    # --- SPAN per i brand ---
+    col_start = 1
+    for _ in brands:
+        style.add('SPAN', (col_start,0), (col_start+1,0))
+        col_start += 2
+
+    # --- Colori alternati VECCHIO/NUOVO ---
+    for i in range(len(brands)):
+        col_vecchio = 1 + i*2
+        col_nuovo = col_vecchio + 1
+        style.add('BACKGROUND', (col_vecchio,2), (col_vecchio,-1), colors.beige)
+        style.add('BACKGROUND', (col_nuovo,2), (col_nuovo,-1), colors.lavender)
+
+    t.setStyle(style)
+    elements.append(t)
+    doc.build(elements)
+
+    return open(file_path, "rb").read()
+
+# ---------------------------
+# Funzioni gestione foto
+# ---------------------------
+def genera_lista_sku(sheet_id: str, tab_names: list[str]):
+    sheet_lista = get_sheet(sheet_id, "LISTA")
+    sku_dict = {}
+
+    for tab in tab_names:
+        all_values = get_sheet(sheet_id, tab).get_all_values()
+        if len(all_values) <= 2:
+            continue
+
+        headers = all_values[1]
+        data = all_values[2:]
+        df = pd.DataFrame(data)
+
+        for _, row in df.iterrows():
+            codice = str(row.get(df.columns[7], "")).zfill(7)
+            variante = str(row.get(df.columns[8], "")).zfill(2)
+            colore = str(row.get(df.columns[9], "")).zfill(4)
+
+            if codice and variante and colore:
+                sku = f"{codice}{variante}{colore}"
+                sku_dict.setdefault(sku, set()).add(tab)
+
+    new_rows = []
+    for sku in sorted(sku_dict.keys()):
+        provenienza = ", ".join(sorted(sku_dict[sku]))
+        new_rows.append([sku, provenienza])
+
+    # Scrivi solo colonne A e B da riga 3
+    range_update = f"A3:B{len(new_rows)+2}"
+    sheet_lista.update(range_update, new_rows, value_input_option="RAW")
+
+def aggiungi_sku(sheet_id: str, sku: str):
+    sheet_lista = get_sheet(sheet_id, "LISTA")
+    lastRow = sheet_lista.row_count
+    row = [sku,
+           st.session_state.user["username"],
+           f"=SE.ERRORE(CERCA.VERT($A{lastRow+1};ANAGRAFICA!A:C;2;0)&\"/\"&CERCA.VERT($A{lastRow+1};ANAGRAFICA!A:C;3;0);)",
+           f"=SE.ERRORE(CERCA.VERT($A{lastRow+1};ANAGRAFICA!A:E;5;0);)",
+           f"=SE($C$1=\"X\";CERCA.VERT($A{lastRow+1};Foglio22!$A:$L;12;0);SE.ERRORE(CERCA.VERT($A{lastRow+1};ANAGRAFICA!A:I;9;0);))",
+           f"=SE.ERRORE(STRINGA.ESTRAI($A{lastRow+1};1;7);)",
+           f"=SE.ERRORE(STRINGA.ESTRAI($A{lastRow+1};8;2);)",
+           f"=SE.ERRORE(STRINGA.ESTRAI($A{lastRow+1};10;4);)",
+           f"=SE.ERRORE(CERCA.VERT($A{lastRow+1};ANAGRAFICA!$A:$J;10;0);)",
+           f"=IFNA(SE(E(O($K{lastRow+1}=\"True\";$P{lastRow+1}=\"True\");$Q{lastRow+1}=\"False\");SE(MIN(ARRAYFORMULA(SE(GIACENZE!$I:$I=$A{lastRow+1};GIACENZE!$D:$D;\"\")))=0;\"\";SE(MIN(ARRAYFORMULA(SE(GIACENZE!$I:$I=$A{lastRow+1};GIACENZE!$D:$D;\"\")))<$I{lastRow+1};SE(SE.ERRORE(CERCA.VERT(CONCATENA($A{lastRow+1};$I{lastRow+1});GIACENZE!$H:$Q;10;0);0)>0;$I{lastRow+1};MIN(ARRAYFORMULA(SE(GIACENZE!$I:$I=$A{lastRow+1};GIACENZE!$D:$D;\"\"))));MIN(ARRAYFORMULA(SE(GIACENZE!$I:$I=$A{lastRow+1};GIACENZE!$D:$D;\"\")))));\"\");$I{lastRow+1})",
+           "'False",
+           "",
+           f"=SE(E(O($K{lastRow+1}=\"True\";$P{lastRow+1}=\"True\");MIN(ARRAYFORMULA(SE(GIACENZE!$I:$I=$A{lastRow+1};GIACENZE!$D:$D;\"\")))>0);SE($Q{lastRow+1}=\"False\";\"True\";\"False\");SE(O($K{lastRow+1}=\"True\";$P{lastRow+1}=\"True\");SE(SINISTRA($A{lastRow+1};1)=\"6\";SE(SE.ERRORE(CERCA.VERT($A{lastRow+1};GIACENZE!$I:$Q;9;0);-1)>0;\"True\";\"False\");\"False\");\"False\"))",
+           f"=SE(E(O($K{lastRow+1}=\"True\";$P{lastRow+1}=\"True\");$Q{lastRow+1}=\"False\";$M{lastRow+1}=\"False\";MIN(ARRAYFORMULA(SE(PIM!$I:$I=$A{lastRow+1};PIM!$D:$D;\"\")))>0);SE(SE.ERRORE(CERCA.VERT(CONCATENA($A{lastRow+1};$I{lastRow+1});PIM!$H:$V;15;0);0)>0;\"True\";\"False\");\"False\")",
+           f"=SE(E(O($K{lastRow+1}=\"True\";$P{lastRow+1}=\"True\");$Q{lastRow+1}=\"False\";$M{lastRow+1}=\"False\";MIN(ARRAYFORMULA(SE(PIM!$I:$I=$A{lastRow+1};PIM!$D:$D;\"\")))>0);SE(SE.ERRORE(CERCA.VERT(CONCATENA($A{lastRow+1};$I{lastRow+1});PIM!$H:$Y;18;0);0)>0;\"True\";\"False\");\"False\")",
+           "",
+           f"=SE(VAL.ERRORE(CONFRONTA($A{lastRow+1};PRELEVATE!$A:$A;0));\"False\";\"True\")",
+           f"=SE(O($M{lastRow+1}=\"True\";$N{lastRow+1}=\"True\";$O{lastRow+1}=\"True\");SE(VAL.NON.DISP(CONFRONTA($D{lastRow+1};SPLIT(SETTINGS(\"brandMatias\");\",\");0));SE(VAL.NON.DISP(CONFRONTA($D{lastRow+1};SPLIT(SETTINGS(\"brandMatteo\");\",\");0));\"\";\"MATTEO\");\"MATIAS\");\"\")",
+           f"=SE($M{lastRow+1}=\"True\";SE(SINISTRA($A{lastRow+1};1)=\"6\";CERCA.VERT($A{lastRow+1};GIACENZE!$I:$O;4;0);TESTO(CERCA.VERT(CONCATENA($A{lastRow+1};$J{lastRow+1});GIACENZE!$H:$O;5;0);\"000\"));\"\")",
+           f"=SE($M{lastRow+1}=\"True\";SE(SINISTRA($A{lastRow+1};1)=\"6\";CERCA.VERT($A{lastRow+1};GIACENZE!$I:$O;5;0);TESTO(CERCA.VERT(CONCATENA($A{lastRow+1};$J{lastRow+1});GIACENZE!$H:$O;6;0);\"000\"));\"\")",
+           f"=SE($M{lastRow+1}=\"True\";SE(SINISTRA($A{lastRow+1};1)=\"6\";CERCA.VERT($A{lastRow+1};GIACENZE!$I:$O;6;0);TESTO(CERCA.VERT(CONCATENA($A{lastRow+1};$J{lastRow+1});GIACENZE!$H:$O;7;0);\"0\"));\"\")",
+           f"=SE($M{lastRow+1}=\"True\";SE(SINISTRA($A{lastRow+1};1)=\"6\";CERCA.VERT($A{lastRow+1};GIACENZE!$I:$O;7;0);TESTO(CERCA.VERT(CONCATENA($A{lastRow+1};$J{lastRow+1});GIACENZE!$H:$O;8;0);\"0\"));\"\")",
+           f"=SE($N{lastRow+1}=\"True\";ArrayFormula(TEXTJOIN(\" - \";1;unique(SE('UBICAZIONI 027'!$A:$A=$A{lastRow+1};'UBICAZIONI 027'!$F:$J;\"\"));\"\"));SE($O{lastRow+1}=\"True\";ArrayFormula(TEXTJOIN(\" - \";1;unique(SE('UBICAZIONI 028'!$A:$A=$A{lastRow+1};'UBICAZIONI 028'!$F:$J;\"\"));\"\"));\"\"))",
+           f"=REPO($A{lastRow+1})",
+           "."
+          ]
+    sheet_lista.append_row(row, value_input_option="USER_ENTERED")
+    #sheet_lista.append_row([sku, st.session_state.user["username"]])
+
+@st.cache_data(ttl=300)
+def carica_lista_foto(sheet_id: str, cache_key: str = "") -> pd.DataFrame:
+    try:
+        sheet = get_sheet(sheet_id, "LISTA")
+        values = sheet.get("A3:Y5000")
+        if not values:
+            return pd.DataFrame()
+
+        # ✅ Definizione corretta: 24 intestazioni per colonne A–V
+        headers = ["SKU", "CANALE", "STAGIONE", "COLLEZIONE", "DESCRIZIONE", "COD", "VAR", "COL", "TG CAMP", "TG PIC", "SCATTARE", "CONTROLLO", "DISP", "DISP 027", "DISP 028", "RISCATTARE", "CONSEGNATA", "FOTOGRAFO", "COR", "LAT", "X", "Y", "UBI", "REPO", "END"]
+        df = pd.DataFrame(values, columns=headers)
+        df = df[df["SKU"].notna() & (df["SKU"].str.strip() != "")]
+
+        # 🧹 Normalizza booleani
+        def normalize_bool(col):
+            return col.astype(str).str.strip().str.lower().map({"true": True, "false": False}).fillna(False)
+
+        df["SCATTARE"] = normalize_bool(df["SCATTARE"])
+        df["CONSEGNATA"] = normalize_bool(df["CONSEGNATA"])
+        df["RISCATTARE"] = normalize_bool(df["RISCATTARE"])
+        df["DISP"] = normalize_bool(df["DISP"])
+        df["DISP 027"] = normalize_bool(df["DISP 027"])
+        df["DISP 028"] = normalize_bool(df["DISP 028"])
+
+        return df[["SKU", "STAGIONE", "CANALE", "COLLEZIONE", "DESCRIZIONE", "SCATTARE", "RISCATTARE", "CONSEGNATA", "DISP", "DISP 027", "DISP 028", "COD", "VAR", "COL", "TG PIC", "TG CAMP", "FOTOGRAFO", "COR", "LAT", "X", "Y", "UBI"]]
+    except Exception as e:
+        st.error(f"Errore durante il caricamento: {str(e)}")
+        return pd.DataFrame()
+
+# ---------------------------
+# Funzioni Dashboard
+# ---------------------------
+# Funzione per estrarre i dati da una pagina PDF
+def extract_data_from_page(page_text):
+    data = {}
+
+    # Marketplace
+    # Ricerca separata per essere più robusti alle variazioni di layout
+    marketplace_match = re.search(r"Taglia(.*)Marketplace:", page_text, re.IGNORECASE)
+    mp = None
+    if marketplace_match:
+        if "Naturino" in marketplace_match.group(1).strip():
+            mp = "Naturino"
+        elif "Candice" in marketplace_match.group(1).strip():
+            mp = "Candice Cooper"
+        elif "Flowermountain" in marketplace_match.group(1).strip():
+            mp = "Flower Mountain"
+        elif "Voile" in marketplace_match.group(1).strip():
+            mp = "Voile Blanche"
+        elif "Falcotto" in marketplace_match.group(1).strip():
+            mp = "Falcotto"
+        elif "falcotto" in marketplace_match.group(1).strip():
+            mp = "Falcotto"
+        elif "W6YZ" in marketplace_match.group(1).strip():
+            mp = "W6YZ"
+        elif "zalando" in marketplace_match.group(1).strip():
+            mp = "Zalando"
+        elif "amazon" in marketplace_match.group(1).strip():
+            mp = "Amazon"
+        elif "la_redoute" in marketplace_match.group(1).strip():
+            mp = "LaRedoute"
+        elif "privalia" in marketplace_match.group(1).strip():
+            mp = "Privalia"
+        elif "venteprivee" in marketplace_match.group(1).strip():
+            mp = "VentePrivee"
+        elif "sarenza" in marketplace_match.group(1).strip():
+            mp = "Sarenza"
+        elif "vertbaudet" in marketplace_match.group(1).strip():
+            mp = "Vertbaudet"
+        elif "miinto" in marketplace_match.group(1).strip():
+            mp = "Miinto"
+        else:
+            mp = marketplace_match.group(1).strip()
+
+        data['Marketplace'] = mp
+    else:
+        data['Marketplace'] = "N/A"
+
+    # Numero Ordine
+    #order_match = re.search(r"Marketplace order\s*([a-zA-Z0-9-]+)", page_text, re.IGNORECASE)
+    order_match = re.search(r"Marketplace order\s*(.*)\sUbicazioneData vendita", page_text, re.IGNORECASE)
+
+    if order_match:
+        data['Numero Ordine'] = order_match.group(1).strip()
+    else:
+        data['Numero Ordine'] = "N/A"
+
+    # Data
+    date_match = re.search(r"Data vendita:\s*(\d{2}/\d{2}/\d{4})", page_text)
+    if date_match:
+        data['Data'] = date_match.group(1)
+    else:
+        data['Data'] = "N/A"
+
+    # Nazione
+    #country_match = re.search(r"\n[0-9]{3}.*([A-Z]{2})\s*$", page_text.strip(), re.MULTILINE)
+
+    nazione = None
+    marketplace = marketplace_match.group(1).strip()
+    order = order_match.group(1).strip()
+    if order.startswith("101") or order.startswith("CC16") or order.startswith("DE_") or "DE" in order or "de" in order:
+        nazione = "DE"
+    elif order.startswith("103") or order.startswith("CC15") or order.startswith("FR_") or "FR" in order or "fr" in order:
+        nazione = "FR"
+    elif order.startswith("104") or order.startswith("CC101") or order.startswith("IT_") or "IT" in order or "it" in order:
+        nazione = "IT"
+    elif order.startswith("CC11"):
+        nazione = "WE"
+    elif order.startswith("ES_") or "ES" in order:
+        nazione = "ES"
+    elif order.startswith("BE_"):
+        nazione = "BE"
+    elif order.startswith("NL_"):
+        nazione = "NL"
+    elif order.startswith("SW_"):
+        nazione = "SE"
+    elif "WE" in order:
+        nazione = "WE"
+    elif "GB" in order:
+        nazione = "GB"
+    elif "US" in order:
+        nazione = "US"
+    else:
+        if "DE" in marketplace or "de" in marketplace:
+            nazione = "DE"
+        elif "FR" in marketplace or "fr" in marketplace or "sarenza" in marketplace:
+            nazione = "FR"
+        elif "IT" in marketplace or "it" in marketplace:
+            nazione = "IT"
+        elif "ES" in marketplace or "es" in marketplace:
+            nazione = "ES"
+        else:
+            nazione = "N/A"
+
+    data['Nazione'] = nazione
+
+    #if country_match:
+    #    data['Nazione'] = country_match.group(1).strip()
+    #else:
+    #    data['Nazione'] = "N/A"
+
+    # Articoli, quantità e taglia
+    items = []
+    items_section = re.search(r"Articolo\s+Quantità\s+Descrizione articolo\s+Taglia(.*?)ISTRUZIONI IMBALLO", page_text, re.DOTALL)
+    if not items_section:
+        items_section = re.search(r"Articolo\s+Taglia\s+Quantità\s+Descrizione articolo(.*?)ISTRUZIONI IMBALLO", page_text, re.DOTALL)
+
+    if items_section:
+        items_text = items_section.group(1).strip()
+        item_lines = items_text.split('\n')
+        for line in item_lines:
+            if line.strip():
+                # Adjusted regex to handle different formats and include size
+                # Case 1: Quantity Code Size Description
+                #item_match = re.search(r"^\s*(\d+)\s+([^\s]+)\s+(\d+)\s+(.*)", line)
+                item_match = re.search(r"^\s*(\d+)\s+001([a-zA-Z0-9]{7})\.([a-zA-Z0-9]{2})\.([a-zA-Z0-9]{4})\s+(\d+)\s+(.*)", line)
+                if item_match:
+                    item_data = {
+                        'quantita': item_match.group(1).strip(),
+                        'codice': item_match.group(2).strip() + item_match.group(3).strip() + item_match.group(4).strip(),
+                        'taglia': item_match.group(5).strip(),
+                        'descrizione': item_match.group(6).strip()
+                    }
+                    items.append(item_data)
+                else:
+                    # Case 2: Code Size Quantity Description
+                    #item_match = re.search(r"^\s*([^\s]+)\s+(\d+)\s+(\d+)\s+(.*)", line)
+                    item_match = re.search(r"^\s*001(.*)\.(.*)\.(.*){4}\s+(\d+)\s+(\d+)\s+(.*)", line)
+                    if item_match:
+                        item_data = {
+                            'codice': item_match.group(1).strip() + item_match.group(2).strip() + item_match.group(3).strip(),
+                            'taglia': item_match.group(4).strip(),
+                            'quantita': item_match.group(5).strip(),
+                            'descrizione': item_match.group(6).strip()
+                        }
+                        items.append(item_data)
+
+    data['Articoli'] = items
+
+    return data
+
+def get_country_from_address(address):
+    """
+    Tenta di estrarre il nome del paese da una stringa di indirizzo utilizzando il geocoding.
+
+    Args:
+        address (str): L'indirizzo da analizzare.
+
+    Returns:
+        str: Il nome del paese o "N/A" se non è stato trovato.
+    """
+    try:
+        # Crea un geocoder con un timeout per evitare che il programma si blocchi
+        geolocator = Nominatim(user_agent="my-app", timeout=5)
+
+        # Tenta di geocodificare l'indirizzo
+        location = geolocator.geocode(address)
+
+        if location and location.address:
+            # L'indirizzo geocodificato restituisce una stringa strutturata.
+            # Esempio: 'Via Roma 1, 00100 Roma RM, Italia'
+            # Usiamo una regex per trovare il nome del paese alla fine della stringa.
+            country_match = re.search(r"([^,]+)\s*$", location.address)
+            if country_match:
+                return country_match.group(1)
+
+    except (GeocoderTimedOut, GeocoderUnavailable) as e:
+        print(f"Errore di geocoding: {e}")
+
+    return "N/A"
+
+
+# ---------------------------
+# 📦 Streamlit UI
+# ---------------------------
+st.set_page_config(page_title="Gestione ECOM", layout="wide")
+
+st.markdown(
+    """
+    <style>
+        section[data-testid="stSidebar"] {
+            width: 300px !important; # Set the width to your desired value
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ---------------------------
+# 📊 Google Sheets
+# ---------------------------
+credentials = service_account.Credentials.from_service_account_info(
+    st.secrets["GCP_SERVICE_ACCOUNT"],
+    scopes=[
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+    ]
+)
+gsheet_client = gspread.authorize(credentials)
+drive_service = build('drive', 'v3', credentials=credentials)
+
+def get_sheet(sheet_id, tab):
+    spreadsheet = gsheet_client.open_by_key(sheet_id)
+    worksheets = spreadsheet.worksheets()
+
+    # Confronto case-insensitive per maggiore robustezza
+    for ws in worksheets:
+        if ws.title.strip().lower() == tab.strip().lower():
+            return ws
+
+    # Se non trovato, lo crea
+    return spreadsheet.add_worksheet(title=tab, rows="10000", cols="50")
+
+def append_to_sheet(sheet_id, tab, df):
+    sheet = get_sheet(sheet_id, tab)
+    df = df.fillna("").astype(str)
+    values = df.values.tolist()
+    sheet.append_rows(values, value_input_option="RAW")  # ✅ chiamata unica
+
+def append_logs(sheet_id, logs_data):
+    sheet = get_sheet(sheet_id, "logs")
+    values = [list(log.values()) for log in logs]
+    sheet.append_rows(values, value_input_option="RAW")
+
+def append_log(sheet_id, log_data):
+    sheet = get_sheet(sheet_id, "logs")
+    sheet.append_row(list(log_data.values()), value_input_option="RAW")
+
+
+# 📁 Caricamento dati
+# Sidebar: menu
+with st.sidebar:
+    DEBUG = st.checkbox("🪛 Debug")
+    # Togliere per riattivare password e nome
+    #st.session_state["logged_as"] = "GUEST"
+    if DEBUG:
+        st.session_state.user = {
+            "data": "data",
+            "email": "test@test.it",
+            "nome": "GUEST",
+            "cognome": "Test2",
+            "username": "Username",
+            "role": "admin"
+        }
+
+    if "user" not in st.session_state or st.session_state.user is None:
+        page = "Home"
+        st.markdown("## 🔑 Login")
+        with st.form("login_user"):
+            email = st.text_input("Username")
+            password = st.text_input("Password", type="password")
+
+            login_button = st.form_submit_button("Accedi")
+
+        if login_button:
+            if login(email, password):
+                st.rerun()  # ricarica subito la pagina senza messaggio
+    else:
+        user = st.session_state.user
+        st.write(f"Accesso eseguito come: {user["nome"]}")
+
+        menu_item_list = [{"name":"Home", "icon":"house", "role":["guest","logistica","customer care","admin"]},
+                          {"name":"Catalogo", "icon":"list", "role":["logistica","customer care","admin"]},
+                          {"name":"Ordini", "icon":"truck", "role":["logistica","customer care","admin"]},
+                          {"name":"Descrizioni", "icon":"list", "role":["customer care","admin"]},
+                          {"name":"Traduci", "icon":"list", "role":["customer care","admin"]},
+                          {"name":"Foto", "icon":"camera", "role":["logistica","customer care","admin"]},
+                          {"name":"Giacenze", "icon":"box", "role":["logistica","customer care","admin"]},
+                          {"name":"Ferie", "icon":"palm", "role":["admin"]},
+                          {"name":"Admin", "icon":"gear", "role":["admin"]},
+                          {"name":"Test", "icon":"gear", "role":["admin"]},
+                          {"name":"Logout", "icon":"key", "role":["guest","logistica","customer care","admin"]}
+                         ]
+
+        submenu_item_list = [{"main":"Catalogo", "name":"Trova articolo", "icon":"search", "role":["logistica","customer care","admin"]},
+                             {"main":"Catalogo", "name":"Aggiungi ordini stagione", "icon":"plus", "role":["logistica","customer care","admin"]},
+                             {"main":"Ordini", "name":"Dashboard", "icon":"bar-chart", "role":["admin"]},
+                             {"main":"Ordini", "name":"Importa", "icon":"plus", "role":["admin"]},
+                             {"main":"Foto", "name":"Gestione", "icon":"gear", "role":["guest","logistica","customer care","admin"]},
+                             {"main":"Foto", "name":"Riscatta SKU", "icon":"repeat", "role":["guest","logistica","customer care","admin"]},
+                             {"main":"Foto", "name":"Aggiungi SKUs", "icon":"plus", "role":["guest","logistica","customer care","admin"]},
+                             {"main":"Foto", "name":"Storico", "icon":"book", "role":["guest","logistica","customer care","admin"]},
+                             {"main":"Foto", "name":"Aggiungi prelevate", "icon":"hand-index", "role":["guest","logistica","customer care","admin"]},
+                             {"main":"Giacenze", "name":"Importa", "icon":"download", "role":["guest","logistica","customer care","admin"]},
+                             {"main":"Giacenze", "name":"Per corridoio", "icon":"1-circle", "role":["guest","logistica","admin"]},
+                             {"main":"Giacenze", "name":"Per corridoio/marchio", "icon":"2-circle", "role":["guest","logistica","admin"]},
+                             {"main":"Giacenze", "name":"Aggiorna anagrafica", "icon":"refresh", "role":["guest","logistica","customer care","admin"]},
+                             {"main":"Giacenze", "name":"Old import", "icon":"download", "role":["admin"]},
+                             {"main":"Ferie", "name":"Report", "icon":"list", "role":["admin"]},
+                             {"main":"Ferie", "name":"Aggiungi ferie", "icon":"plus", "role":["admin"]},
+                             {"main":"Admin", "name":"Aggiungi utente", "icon":"plus", "role":["admin"]}
+                            ]
+
+        menu_items = []
+        icon_items = []
+        for item in menu_item_list:
+            if user["role"] in item["role"]:
+                menu_items.append(item["name"])
+                icon_items.append(item["icon"])
+
+
+        st.markdown("## 📋 Menu")
+        # --- Menu principale verticale ---
+        main_page = option_menu(
+            menu_title=None,
+            options=menu_items,
+            icons=icon_items,
+            default_index=0,
+            orientation="vertical",
+            styles={
+                "container": {"padding": "0!important", "background-color": "#f0f0f0"},
+                "nav-link": {
+                    "font-size": "16px",
+                    "text-align": "left",
+                    "margin": "2px",
+                    "padding": "5px 10px",
+                    "border-radius": "5px",
+                    "--hover-color": "#e0e0e0",
+                },
+                "nav-link-selected": {
+                    "background-color": "#4CAF50",
+                    "color": "white",
+                    "border-radius": "5px",
+                },
+            },
+        )
+
+        # Rimuovo icone/emoji per gestire page name
+        main_page_name = main_page
+
+        page = main_page_name  # default
+
+        submenu_items = []
+        submenu_icons = []
+        for item in submenu_item_list:
+            if main_page == item["main"] and user["role"] in item["role"]:
+                submenu_items.append(item["name"])
+                submenu_icons.append(item["icon"])
+
+        if submenu_items:
+            sub_page = option_menu(
+                menu_title=None,
+                options=submenu_items,
+                icons=submenu_icons,
+                default_index=0,
+                orientation="vertical",
+                styles={
+                    "container": {"padding": "0!important", "background-color": "#f0f0f0"},
+                    "nav-link": {
+                        "font-size": "15px",
+                        "text-align": "left",
+                        "margin": "2px",
+                        "padding": "5px 15px",
+                        "border-radius": "5px",
+                        "--hover-color": "#e0e0e0",
+                    },
+                    "nav-link-selected": {
+                        "background-color": "#4CAF50",
+                        "color": "white",
+                        "border-radius": "5px",
+                    },
+                },
+            )
+            page = f"{main_page_name} - {sub_page}"
+
+
+
+# ---------------------------
+# 🏠 HOME
+# ---------------------------
+if page == "Home":
+    prompt = st.text_input("Inserisci il tuo prompt:")
+    if st.button("Invia"):
+        result = test_mistral(prompt)
+        st.write("Risposta:", result["choices"][0]["message"]["content"])
+    viste.homepage.view()
+
+# ---------------------------
+# 🏠 LOGIN
+# ---------------------------
+if page == "🔑 Login":
+    st.subheader("📌 Login")
+    st.markdown("""
+    Inserisci il nome per poter eseguire azioni.
+    """)
+
+    if not st.session_state.get("password_ok"):
+        password = st.text_input("Password", key="password_input", type="password", on_change=None)
+        if password:
+            if password != "Supr3m4@00":
+                st.warning("Password errata!")
+            else:
+                st.session_state["password_ok"] = True
+                st.rerun()
+    else:
+        st.success("Password corretta")
+        login = st.text_input("Nome", key="login_input")
+        if login:
+            login_as(login)
+
+
+# ---------------------------
+# 📝 GENERAZIONE DESCRIZIONI
+# ---------------------------
+elif page == "Descrizioni":
+    st.header("📥 Caricamento CSV dei prodotti")
+
+    uploaded = st.file_uploader("Carica un file CSV", type="csv")
+
+    if uploaded:
+        df_input = read_csv_auto_encoding(uploaded, ";")
+        df_input["skucolore"] = df_input["skucolore"].astype(str)
+        st.session_state["df_input"] = df_input
+         # ✅ Inizializza variabili di stato se non esistono
+        if "col_weights" not in st.session_state:
+            st.session_state.col_weights = {}
+        if "col_display_names" not in st.session_state:
+            st.session_state.col_display_names = {}
+        if "selected_cols" not in st.session_state:
+            st.session_state.selected_cols = []
+        if "config_ready" not in st.session_state:
+            st.session_state.config_ready = False
+        if "generate" not in st.session_state:
+            st.session_state.generate = False
+        st.success("✅ File caricato con successo!")
+
+    # 📊 Anteprima dati
+    if "df_input" in st.session_state:
+        df_input = st.session_state.df_input
+        st.subheader("🧾 Anteprima CSV")
+        st.dataframe(df_input.head())
+
+        # 🧩 Configurazione colonne
+        with st.expander("⚙️ Configura colonne per il prompt", expanded=True):
+            st.markdown("### 1. Seleziona colonne")
+            available_cols = [col for col in df_input.columns if col not in ["Description", "Description2"]]
+
+            def_column = ["SKU famille", "Saison",
+                          "Silouhette",
+                          "sole_material_zalando",
+                          "shoe_fastener_zalando",
+                          "upper_material_zalando",
+                          "futter_zalando",
+                          "Sp.feature"
+                         ]
+            trans_def_colum = {"Saison": "Stagione",
+                               "Silouhette": "Tipo di calzatura",
+                               "sole_material_zalando": "Soletta interna",
+                               "shoe_fastener_zalando": "Chiusura",
+                               "upper_material_zalando": "Tomaia",
+                               "futter_zalando": "Fodera interna",
+                               "Sp.feature": "Caratteristica",
+                               "SKU famille": "Codice Articolo"
+                              }
+            def_col_weights = {"SKU famille": 5,
+                               "Saison": 4,
+                               "Silouhette": 4,
+                               "sole_material_zalando": 3,
+                               "shoe_fastener_zalando": 1,
+                               "upper_material_zalando": 3,
+                               "futter_zalando": 3,
+                               "Sp.feature": 1
+                              }
+
+            missing = not_in_array(df_input.columns, def_column)
+            if missing:
+                def_column = []
+
+            st.session_state.selected_cols = st.multiselect("Colonne da includere nel prompt", options=available_cols, default=def_column)
+
+            if st.session_state.selected_cols:
+                if st.button("▶️ Procedi alla configurazione colonne"):
+                    st.session_state.config_ready = True
+
+            if st.session_state.get("config_ready"):
+                st.markdown("### 2. Configura pesi ed etichette")
+                for col in st.session_state.selected_cols:
+                    st.session_state.col_weights.setdefault(col, def_col_weights[col])
+                    st.session_state.col_display_names.setdefault(col, col)
+
+                    cols = st.columns([2, 3])
+                    with cols[0]:
+                        st.session_state.col_weights[col] = st.slider(
+                            f"Peso: {col}", 0, 5, st.session_state.col_weights[col], key=f"peso_{col}"
+                        )
+                    with cols[1]:
+                        st.session_state.col_display_names[col] = st.text_input(
+                            #f"Etichetta: {col}", value=st.session_state.col_display_names[col], key=f"label_{col}"
+                            f"Etichetta: {col}", value=trans_def_colum[col], key=f"label_{col}"
+                        )
+
+        # 🌍 Lingue e parametri
+        with st.expander("🌍 Selezione Lingue & Parametri"):
+            settings_col1, settings_col2, settings_col3 = st.columns(3)
+            with settings_col1:
+                marchio = st.radio(
+                    "Seleziona il marchio",
+                    ["NAT", "FAL", "VB", "FM", "WZ", "CC"],
+                    horizontal = False
+                )
+                use_simili = st.checkbox("Usa descrizioni simili (RAG)", value=True)
+                k_simili = 2 if use_simili else 0
+
+                use_image = st.checkbox("Usa immagine per descrizioni accurate", value=False)
+
+                use_model = st.radio("Seleziona modello GPT", ["gpt-4o-mini", "gpt-4o", "gpt-5", "gpt-3.5-turbo", "gpt-4.1-nano", "gpt-5-nano", "mistral-medium", "deepseek-chimera"], index=1, horizontal = True)
+
+            with settings_col2:
+                selected_labels = st.multiselect(
+                    "Lingue di output",
+                    options=list(LANG_LABELS.keys()),
+                    default=["Italiano", "Inglese", "Francese", "Tedesco", "Spagnolo"]
+                )
+                selected_langs = [LANG_LABELS[label] for label in selected_labels]
+
+                selected_tones = st.multiselect(
+                    "Tono desiderato",
+                    ["informale", "conversazionale", "chiaro e diretto", "professionale", "amichevole", "accattivante", "descrittivo", "tecnico", "ironico", "minimal", "user friendly", "SEO-friendly", "SEO-optimized"],
+                    default=["informale", "conversazionale", "chiaro e diretto", "user friendly", "SEO-friendly", "SEO-optimized"]
+                )
+
+            with settings_col3:
+                desc_lunga_length = st.selectbox("Lunghezza descrizione lunga", ["10", "20", "30", "40", "50", "60", "70", "80", "90", "100"], index=5)
+                desc_breve_length = st.selectbox("Lunghezza descrizione breve", ["10", "20", "30", "40", "50", "60", "70", "80", "90", "100"], index=1)
+
+        # 💵 Stima costi
+        if st.button("💰 Stima costi generazione"):
+            token_est, cost_est, prompt = calcola_tokens(
+                df_input=df_input,
+                col_display_names=st.session_state.col_display_names,
+                selected_langs=selected_langs,
+                selected_tones=selected_tones,
+                desc_lunga_length=desc_lunga_length,
+                desc_breve_length=desc_breve_length,
+                k_simili=k_simili,
+                use_image=use_image,
+                marchio=marchio,
+                faiss_index=st.session_state.get("faiss_index"),
+                DEBUG=True
+            )
+            if token_est:
+                st.info(f"""
+                📊 Token totali: ~{token_est}
+                💸 Costo stimato: ${cost_est:.6f}
+                """)
+
+        # 🪄 Generazione descrizioni
+        openai_check, openai_check_msg = check_openai_key()
+        if not openai_check:
+            st.error("❌ La chiave OpenAI non è valida o mancante. Inserisci una chiave valida prima di generare descrizioni.")
+            st.error(openai_check_msg)
+        else:
+            if st.button("🚀 Genera Descrizioni"):
+                st.session_state["generate"] = True
+
+            if st.session_state.get("generate"):
+                logs = []
+                try:
+                    with st.spinner("📚 Carico storico e indice FAISS..."):
+                        tab_storico = f"STORICO_{marchio}"
+                        data_sheet = get_sheet(desc_sheet_id, tab_storico)
+                        df_storico = pd.DataFrame(data_sheet.get_all_records()).tail(500)
+
+                        if "faiss_index" not in st.session_state:
+                            index, index_df = build_faiss_index(df_storico, st.session_state.col_weights)
+                            st.session_state["faiss_index"] = (index, index_df)
+                        else:
+                            index, index_df = st.session_state["faiss_index"]
+
+                    # ✅ Recupera descrizioni già esistenti su GSheet
+                    st.info("🔄 Verifico se alcune righe sono già state generate...")
+                    existing_data = {}
+                    already_generated = {lang: [] for lang in selected_langs}
+                    rows_to_generate = []
+
+                    for lang in selected_langs:
+                        try:
+                            tab_df = pd.DataFrame(get_sheet(desc_sheet_id, lang).get_all_records())
+                            tab_df = tab_df[["SKU", "Description", "Description2"]].dropna(subset=["SKU"])
+                            tab_df["SKU"] = tab_df["SKU"].astype(str)
+                            existing_data[lang] = tab_df.set_index("SKU")
+                        except:
+                            existing_data[lang] = pd.DataFrame(columns=["Description", "Description2"])
+
+                    unique_sku_prefixes = {}
+                    for i, row in df_input.iterrows():
+                        sku = str(row.get("SKU", "")).strip()
+                        if not sku:
+                            rows_to_generate.append(i)
+                            continue
+
+                        all_present = True
+                        for lang in selected_langs:
+                            df_lang = existing_data.get(lang)
+                            if df_lang is None or sku not in df_lang.index:
+                                all_present = False
+                                break
+                            desc = df_lang.loc[sku]
+                            if not desc["Description"] or not desc["Description2"]:
+                                all_present = False
+                                break
+
+                        if all_present:
+                            # ✅ SKU già presente in tutti i fogli
+                            for lang in selected_langs:
+                                desc = existing_data[lang].loc[sku]
+                                output_row = row.to_dict()
+                                output_row["Description"] = desc["Description"]
+                                output_row["Description2"] = desc["Description2"]
+                                already_generated[lang].append(output_row)
+                        else:
+                            prefix = sku[:13]
+
+                            # 🔍 Cerca se esiste già una SKU con questo prefisso in existing_data
+                            found_existing = False
+                            for lang in selected_langs:
+                                df_lang = existing_data.get(lang)
+                                if df_lang is not None:
+                                    # Controlla se esiste uno SKU con lo stesso prefisso
+                                    match = [s for s in df_lang.index if s.startswith(prefix)]
+                                    if match:
+                                        desc = df_lang.loc[match[0]]
+                                        output_row = row.to_dict()
+                                        output_row["Description"] = desc["Description"]
+                                        output_row["Description2"] = desc["Description2"]
+                                        already_generated[lang].append(output_row)
+                                        found_existing = True
+
+                            # Se nessuna SKU con quel prefisso è già presente → generala ora
+                            if not found_existing:
+                                if prefix not in unique_sku_prefixes:
+                                    unique_sku_prefixes[prefix] = i
+                                    rows_to_generate.append(i)
+
+                    df_input_to_generate = df_input.iloc[rows_to_generate]
+
+                    # Costruzione dei prompt
+                    all_prompts = []
+                    with st.spinner("✍️ Costruisco i prompt..."):
+                        for _, row in df_input_to_generate.iterrows():
+                            simili = retrieve_similar(row, index_df, index, k=k_simili, col_weights=st.session_state.col_weights) if k_simili > 0 else pd.DataFrame([])
+                            if use_image:
+                                try:
+                                    sku = row.get("SKU", "")
+                                    sku = sku[3:].replace(".", "").upper()
+                                    url = f"https://repository.falc.biz/samples/{sku}-5.JPG"
+                                    #caption = get_blip_caption(url)
+                                    caption = get_blip_caption_new(url)
+                                except Exception as e:
+                                    caption = None
+                            else:
+                                caption = None
+                            prompt = build_unified_prompt(row, st.session_state.col_display_names, selected_langs, image_caption=caption, simili=simili, marchio=marchio)
+                            all_prompts.append(prompt)
+
+                    with st.spinner("🚀 Generazione asincrona in corso..."):
+                        if use_model == "mistral-medium":
+                            results = asyncio.run(generate_all_prompts_mistral(all_prompts, use_model))
+                        elif use_model == "deepseek-chimera":
+                            results = asyncio.run(generate_all_prompts_deepseek(all_prompts, use_model))
+                        else:
+                            results = asyncio.run(generate_all_prompts(all_prompts, use_model, selected_langs))
+
+                    # Parsing risultati
+                    all_outputs = already_generated.copy()
+                    prefix_to_output = {lang: {} for lang in selected_langs}
+
+                    for i, (_, row) in enumerate(df_input_to_generate.iterrows()):
+                        result = results.get(i, {})
+
+                        if "Continuativo" in result:
+                            continue
+
+                        sku = str(row.get("SKU", "")).strip()
+                        prefix = sku[:13]
+                        if "error" in result:
+                            logs.append({
+                                "utente": st.session_state.user["username"],
+                                "sku": row.get("SKU", ""),
+                                "status": f"Errore: {result['error']}",
+                                "prompt": all_prompts[i],
+                                "output": "",
+                                "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+                            })
+                            continue
+
+                        sku_generate_lista = []
+                        result_data = result.get("result", {})
+                        result_data_norm = {k.lower(): v for k, v in result_data.items()}
+
+                        for lang in selected_langs:
+                            output_row = row.to_dict()
+                            lang_data = result_data_norm.get(lang.lower(), {})
+                            descr_lunga = lang_data.get("desc_lunga", "").strip()
+                            descr_breve = lang_data.get("desc_breve", "").strip()
+                            output_row["Description"] = descr_lunga
+                            output_row["Description2"] = descr_breve
+                            all_outputs[lang].append(output_row)
+                            prefix_to_output[lang][prefix] = output_row
+
+                        log_entry = {
+                            "utente": st.session_state.user["username"],
+                            "sku": row.get("SKU", ""),
+                            "status": "OK",
+                            "prompt": all_prompts[i],
+                            "output": json.dumps(result["result"], ensure_ascii=False),
+                            "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
+                        }
+                        if "usage" in result:
+                            usage = result["usage"]
+                            log_entry.update({
+                                "prompt_tokens": usage.get("prompt_tokens", 0),
+                                "completion_tokens": usage.get("completion_tokens", 0),
+                                "total_tokens": usage.get("total_tokens", 0),
+                                "estimated_cost_usd": round(usage.get("total_tokens", 0) / 1000 * 0.001, 6)
+                            })
+                        logs.append(log_entry)
+                    for i, row in df_input.iterrows():
+                        sku = str(row.get("SKU", "")).strip()
+                        prefix = sku[:13]
+                        if prefix in prefix_to_output[selected_langs[0]] and i not in rows_to_generate:
+                            for lang in selected_langs:
+                                copied_row = prefix_to_output[lang][prefix].copy()
+                                new_row = row.copy()
+                                #copied_row["SKU"] = sku  # sostituisci con lo SKU corrente
+                                new_row["Description"] = copied_row.get("Description", "")
+                                new_row["Description2"] = copied_row.get("Description2", "")
+                                all_outputs[lang].append(new_row)
+                                #all_outputs[lang].append(copied_row)
+
+
+                    # 🔄 Salvataggio solo dei nuovi risultati
+                    with st.spinner("📤 Salvataggio nuovi dati..."):
+                        try:
+                            for lang in selected_langs:
+                                df_out = pd.DataFrame(all_outputs[lang])
+
+                                #df_new = df_out[df_out["SKU"].isin(df_input_to_generate["SKU"].astype(str))]
+                                # Recupera gli SKU già presenti nello sheet
+                                try:
+                                    sheet_df = pd.DataFrame(get_sheet(desc_sheet_id, lang).get_all_records())
+                                    sheet_df["SKU"] = sheet_df["SKU"].astype(str)
+                                    existing_skus = set(sheet_df["SKU"].tolist())
+                                except:
+                                    existing_skus = set()
+
+                                df_new = df_out[~df_out["SKU"].astype(str).isin(existing_skus)]
+
+                                if not df_new.empty:
+                                    append_to_sheet(desc_sheet_id, lang, df_new)
+
+                            append_logs(desc_sheet_id, logs)
+                        except Exception as e:
+                            st.warning(f"Errore: {e}")
+
+
+                    # 📦 ZIP finale
+                    with st.spinner("📦 Generazione ZIP..."):
+                        translation_db = download_translation_db_from_github()
+                        original_db_json = json.dumps(translation_db, ensure_ascii=False, indent=2)
+
+                        mem_zip = BytesIO()
+                        with zipfile.ZipFile(mem_zip, "w") as zf:
+                            for lang in selected_langs:
+                                df_out = pd.DataFrame(all_outputs[lang])
+                                df_out["Code langue"] = lang.lower()
+                                df_out['Subtitle_trad'] = translate_column_parallel(df_out['Subtitle'].fillna("").tolist(),source='it', target=lang.lower(), db=translation_db, max_workers=5)
+                                df_out['Subtile2_trad'] = translate_column_parallel(df_out['Subtile2'].fillna("").tolist(),source='it', target=lang.lower(), db=translation_db, max_workers=5)
+
+                                df_export = pd.DataFrame({
+                                    "skucolore": df_out.get("skucolore", ""),
+                                    f"Modello ({lang.lower()})": df_out.get("Short_title", ""),
+                                    f"Variante ({lang.lower()})": df_out.get("Subtitle_trad", ""),
+                                    f"Colore ({lang.lower()})": df_out.get("Subtile2_trad", ""),
+                                    f"Descrizione ({lang.lower()})": df_out.get("Description", ""),
+                                    f"Descrizione 2 ({lang.lower()})": df_out.get("Description2", "")
+                                })
+                                zf.writestr(f"descrizioni_{lang}.csv", df_export.to_csv(index=False).encode("utf-8"))
+                        mem_zip.seek(0)
+
+                        # Aggiorno il file della traduzioni
+                        upload_translation_db_to_github(translation_db, original_db_json)
+
+                        now = datetime.now(ZoneInfo("Europe/Rome"))
+                        file_name = f"descrizioni_{now.strftime('%d-%m-%Y_%H-%M-%S')}.zip"
+                        # Carico il file su dropbox
+                        try:
+                            file_bytes = mem_zip.getvalue()
+                            folder_path = "/CATALOGO/DESCRIZIONI"  # cartella su Dropbox
+                            access_token = get_dropbox_access_token()
+                            dbx = dropbox.Dropbox(access_token)
+                            upload_to_dropbox(dbx, folder_path, file_name, file_bytes)
+                        except Exception as e:
+                            st.error(f"❌ Errore durante l'upload su Dropbox: {e}")
+
+                    st.success("✅ Tutto fatto!")
+                    st.download_button("📥 Scarica descrizioni (ZIP)", mem_zip, file_name=file_name)
+                    st.session_state["generate"] = False
+
+                except Exception as e:
+                    st.error(f"Errore durante la generazione: {str(e)}")
+                    st.text(traceback.format_exc())
+
+        # 🔍 Prompt Preview & Benchmark
+        with st.expander("🔍 Strumenti di debug & Anteprima"):
+            row_index = st.number_input("Indice riga per anteprima", 0, len(df_input) - 1, 0)
+            test_row = df_input.iloc[row_index]
+
+            if st.button("💬 Mostra Prompt di Anteprima"):
+                with st.spinner("Generazione..."):
+                    try:
+                        if desc_sheet_id:
+                            tab_storico = f"STORICO_{marchio}"
+                            data_sheet = get_sheet(desc_sheet_id, tab_storico)
+                            df_storico = pd.DataFrame(data_sheet.get_all_records()).tail(500)
+                            if "faiss_index" not in st.session_state:
+                                index, index_df = build_faiss_index(df_storico, st.session_state.col_weights)
+                                st.session_state["faiss_index"] = (index, index_df)
+                            else:
+                                index, index_df = st.session_state["faiss_index"]
+                            simili = (
+                                retrieve_similar(test_row, index_df, index, k=k_simili, col_weights=st.session_state.col_weights)
+                                if k_simili > 0 else pd.DataFrame([])
+                            )
+                        else:
+                            simili = pd.DataFrame([])
+
+                        image_url = test_row.get("Image 1", "")
+                        if use_image:
+                            #caption = get_blip_caption(image_url) if image_url else None
+                            try:
+                                sku = row.get("SKU", "")
+                                sku = sku[3:].replace(".", "").upper()
+                                url = f"https://repository.falc.biz/samples/{sku}-5.JPG"
+                                #caption = get_blip_caption(url)
+                                caption = get_blip_caption_new(url)
+                            except Exception as e:
+                                caption = None
+                        else:
+                            caption = None
+                        prompt_preview = build_unified_prompt(test_row, st.session_state.col_display_names, selected_langs, image_caption=caption, simili=simili, marchio=marchio)
+                        st.expander("📄 Prompt generato").code(prompt_preview, language="markdown")
+                    except Exception as e:
+                        st.error(f"Errore: {str(e)}")
+
+            if st.button("🧪 Esegui Benchmark FAISS"):
+                with st.spinner("In corso..."):
+                    benchmark_faiss(df_input, st.session_state.col_weights)
+
+elif page == "Foto - Gestione":
+    st.header("📸 Gestione Foto")
+    tab_names = ["ECOM", "ZFS", "AMAZON"]
+
+    selected_ristampe = st.session_state.get("ristampe_selezionate", set())
+
+    # 🔽 Caricamento dati con chiave cache dinamica
+    cache_token = str(st.session_state.get("refresh_foto_token", "static"))
+    df = carica_lista_foto(foto_sheet_id, cache_key=cache_token)
+    st.session_state["df_lista_foto"] = df
+
+    # 1️⃣ Genero le liste per i fotografi
+    df_disp = df[df["DISP"] == True]
+    df_disp_027 = df[df["DISP 027"] == True]
+    df_disp_028 = df[df["DISP 028"] == True]
+
+    df_disp["X"] = df_disp["X"].astype(int)
+    df_disp["Y"] = df_disp["Y"].astype(int)
+
+    #df_disp = df_disp[["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y","FOTOGRAFO"]]
+    df_disp = df_disp.sort_values(by=["COR", "X", "Y", "LAT"])
+    df_disp_027 = df_disp_027.sort_values(by=["UBI"])
+    df_disp_028 = df_disp_028.sort_values(by=["UBI"])
+
+    df_matias = df_disp[df_disp["FOTOGRAFO"] == "MATIAS"]
+    df_matias_027 = df_disp_027[df_disp_027["FOTOGRAFO"] == "MATIAS"]
+    df_matias_028 = df_disp_028[df_disp_028["FOTOGRAFO"] == "MATIAS"]
+
+    df_matteo = df_disp[df_disp["FOTOGRAFO"] == "MATTEO"]
+    df_matteo_027 = df_disp_027[df_disp_027["FOTOGRAFO"] == "MATTEO"]
+    df_matteo_028 = df_disp_028[df_disp_028["FOTOGRAFO"] == "MATTEO"]
+
+
+    df_matias = df_matias[["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
+    df_matias_027 = df_matias_027[["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
+    df_matias_028 = df_matias_028[["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
+
+    df_matteo = df_matteo[["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
+    df_matteo_027 = df_matteo_027[["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
+    df_matteo_028 = df_matteo_028[["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
+
+    # 📊 Riepilogo
+    total = len(df)
+    consegnate = df["CONSEGNATA"].sum()
+    da_scattare = df["SCATTARE"].sum() - consegnate
+    scattate = total - da_scattare
+    #matias = df[df["FOTOGRAFO"] == "MATIAS"].shape[0]
+    matias = df_matias.shape[0]
+    matias_027 = df_matias_027.shape[0]
+    matias_028 = df_matias_028.shape[0]
+
+    #matteo = df[df["FOTOGRAFO"] == "MATTEO"].shape[0]
+    matteo = df_matteo.shape[0]
+    matteo_027 = df_matteo_027.shape[0]
+    matteo_028 = df_matteo_028.shape[0]
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("Avvia workflow"):
+            workflow("MarcoRipari", "Gestione-Ecom", "check_photos")
+
+        if st.button("📦 Genera lista SKU"):
+            try:
+                genera_lista_sku(foto_sheet_id, tab_names)
+                st.toast("✅ Lista SKU aggiornata!")
+            except Exception as e:
+                st.error(f"Errore: {str(e)}")
+        if st.button("🔄 Refresh"):
+            st.session_state["refresh_foto_token"] = str(time.time())
+
+        if st.button("Esegui controllo2"):
+            url = f"https://api.github.com/repos/{OWNER}/{REPO}/actions/workflows/{WORKFLOW_FILENAME}/dispatches"
+
+            headers = {
+                "Authorization": f"token {GITHUB_TOKEN}",
+                "Accept": "application/vnd.github+json",
+            }
+
+            data = {
+                "ref": REF,
+                "inputs": {}
+            }
+
+            response = requests.post(url, headers=headers, json=data)
+
+            if response.status_code == 204:
+                st.success("✅ Workflow avviato con successo!")
+            else:
+                st.error(f"❌ Errore: {response.status_code} - {response.text}")
+
+    with col2:
+        c1, c2, c3, c4, c5 = st.columns([0.35,1,1,1,1])
+        c2.metric('📝 Totale SKU', total)
+        c3.metric("✅ Già scattate", scattate)
+        c4.metric("🚚 Dal fotografo", consegnate)
+        c5.metric("📸 Da scattare", da_scattare)
+        st.divider()
+
+
+    col_dati1, col_dati2, col_dati3 = st.columns(3)
+    with col_dati1:
+        t1, t2, t3 = st.columns(3)
+        with t2:
+            st.subheader("MATIAS")
+
+        m1, m2, m3 = st.columns(3)
+        with m1:
+            st.metric("ECOM", matias)
+            if df_disp.empty:
+                st.download_button(
+                    label="📥",
+                    data=genera_pdf(df_matias),
+                    file_name="lista_disp_matias.pdf",
+                    mime="application/pdf",
+                    disabled=True,
+                    width="content",
+                    key="1"
+                )
+            else:
+                st.download_button(
+                    label="📥",
+                    data=genera_pdf(df_matias),
+                    file_name="lista_disp_matias.pdf",
+                    mime="application/pdf",
+                    width="content",
+                    key="2"
+                )
+        with m2:
+            st.metric("027", matias_027)
+            if df_disp_027.empty:
+                st.download_button(
+                    label="📥",
+                    data=genera_pdf(df_matias_027),
+                    file_name="lista_disp_matias_027.pdf",
+                    mime="application/pdf",
+                    disabled=True,
+                    width="content",
+                    key="3"
+                )
+            else:
+                st.download_button(
+                    label="📥",
+                    data=genera_pdf(df_matias_027),
+                    file_name="lista_disp_matias_027.pdf",
+                    mime="application/pdf",
+                    width="content",
+                    key="4"
+                )
+        with m3:
+            st.metric("028", matias_028)
+            if df_disp_028.empty:
+                st.download_button(
+                    label="📥",
+                    data=genera_pdf(df_matias_028),
+                    file_name="lista_disp_matias_028.pdf",
+                    mime="application/pdf",
+                    disabled=True,
+                    width="content",
+                    key="5"
+                )
+            else:
+                st.download_button(
+                    label="📥",
+                    data=genera_pdf(df_matias_028),
+                    file_name="lista_disp_matias_028.pdf",
+                    mime="application/pdf",
+                    width="content",
+                    key="6"
+                )
+
+    with col_dati3:
+        t4, t5, t6 = st.columns(3)
+        with t5:
+            st.subheader("MATTEO")
+
+        m4, m5, m6 = st.columns(3)
+        with m4:
+            m4.metric("ECOM", matteo)
+            if df_disp.empty:
+                st.download_button(
+                    label="📥",
+                    data=genera_pdf(df_matteo),
+                    file_name="lista_disp_matteo.pdf",
+                    mime="application/pdf",
+                    disabled=True,
+                    width="content",
+                    key="7"
+                )
+            else:
+                st.download_button(
+                    label="📥",
+                    data=genera_pdf(df_matteo),
+                    file_name="lista_disp_matteo.pdf",
+                    mime="application/pdf",
+                    width="content",
+                    key="8"
+                )
+
+        with m5:
+            m5.metric("027", matteo_027)
+            if df_disp_027.empty:
+                st.download_button(
+                    label="📥",
+                    data=genera_pdf(df_matteo_027),
+                    file_name="lista_disp_matteo_027.pdf",
+                    mime="application/pdf",
+                    disabled=True,
+                    width="content",
+                    key="9"
+                )
+            else:
+                st.download_button(
+                    label="📥",
+                    data=genera_pdf(df_matteo_027),
+                    file_name="lista_disp_matteo_027.pdf",
+                    mime="application/pdf",
+                    width="content",
+                    key="10"
+                )
+
+        with m6:
+            m6.metric("028", matteo_028)
+            if df_disp_028.empty:
+                st.download_button(
+                    label="📥",
+                    data=genera_pdf(df_matteo_028),
+                    file_name="lista_disp_matteo_028.pdf",
+                    mime="application/pdf",
+                    disabled=True,
+                    width="content",
+                    key="11"
+                )
+            else:
+                st.download_button(
+                    label="📥",
+                    data=genera_pdf(df_matteo_028),
+                    file_name="lista_disp_matteo_028.pdf",
+                    mime="application/pdf",
+                    width="content",
+                    key="12"
+                )
+
+
+    # 🔽 Filtro visualizzazione
+    filtro_foto = st.selectbox("📌 Filtro foto da fare", ["Tutti", "Solo da scattare", "Solo già scattate", "Solo da riscattare", "Disponibili da prelevare", "Disponibili per Matias", "Disponibili per Matteo"])
+
+    if df.empty:
+        st.warning("Nessuna SKU disponibile.")
+    else:
+        # 🔍 Applica filtro
+        if filtro_foto == "Solo da scattare":
+            df = df[df["SCATTARE"] == True]
+        elif filtro_foto == "Solo già scattate":
+            df = df[df["SCATTARE"] == False]
+        elif filtro_foto == "Solo da riscattare":
+            df = df[df["RISCATTARE"] == True]
+        elif filtro_foto == "Disponibili da prelevare":
+            df = df[df["DISP"] == True]
+        elif filtro_foto == "Disponibili per Matias":
+            df = df[df["FOTOGRAFO"] == "MATIAS"]
+        elif filtro_foto == "Disponibili per Matteo":
+            df = df[df["FOTOGRAFO"] == "MATTEO"]
+
+        # ✅ Visualizzazione con emoji
+        def format_checkbox(val):
+            if val is True:
+                return "✅"
+            elif val is False:
+                return "❌"
+            return "⛔️"
+
+        # ✅ Costruzione vista tabellare con emoji
+        df_vista = df.copy()
+        df_vista = df_vista[["SKU", "CANALE", "COLLEZIONE", "DESCRIZIONE", "SCATTARE", "RISCATTARE"]]
+
+        df_vista["📷"] = df_vista["SCATTARE"].apply(format_checkbox)
+        df_vista["🔁"] = df_vista["RISCATTARE"].apply(format_checkbox)
+
+        # Rimuovi le colonne booleane originali
+        df_vista = df_vista.drop(columns=["SCATTARE", "RISCATTARE"])
+
+        # ✅ Visualizzazione
+        st.dataframe(df_vista, use_container_width=True)
+
+elif page == "Foto - Riscatta SKU":
+    selected_ristampe = st.session_state.get("ristampe_selezionate", set())
+
+    cache_token = str(st.session_state.get("refresh_foto_token", "static"))
+    df = carica_lista_foto(foto_sheet_id, cache_key=cache_token)
+
+    # Foto da riscattare
+    st.subheader("🔁 Ristampa foto specifica")
+    # ✅ Considera solo SKU che hanno già la foto (SCATTARE == False)
+    df_foto_esistenti = df[df["SCATTARE"] == False]
+
+    start_riscattare = len(df[df["RISCATTARE"] == True].index)
+
+    if "ristampe_selezionate" not in st.session_state or not st.session_state["ristampe_selezionate"]:
+        st.session_state["ristampe_selezionate"] = set(df[df["RISCATTARE"] == True]["SKU"])
+
+    selected_ristampe = st.session_state["ristampe_selezionate"]
+
+    if st.session_state.get("ristampe_confermate"):
+        st.success("✅ Ristampe confermate per le seguenti SKU:")
+        for riga in st.session_state["ristampe_confermate"]:
+            st.markdown(f"- {riga}")
+        time.sleep(5)
+        st.session_state["ristampe_confermate"] = False
+        st.session_state.ristampa_input = ""
+        st.rerun()
+    else:
+        sku_input = st.text_input("🔍 Inserisci SKU da cercare (solo con foto esistenti)", key="ristampa_input")
+
+        if sku_input:
+            sku_norm = sku_input.strip().upper()
+            match = df_foto_esistenti[df_foto_esistenti["SKU"] == sku_norm]
+
+            if match.empty:
+                st.warning("❌ SKU non trovata o la foto non esiste ancora.")
+            else:
+                row = match.iloc[0]
+                image_url = f"https://repository.falc.biz/fal001{row['SKU'].lower()}-1.jpg"
+                cols = st.columns([1, 3, 1])
+                with cols[0]:
+                    st.image(image_url, width=100, caption=row["SKU"])
+                with cols[1]:
+                    st.markdown(f"**{row['DESCRIZIONE']}**")
+                    st.markdown(f"*Canale*: {row['CANALE']}  \n*Collezione*: {row['COLLEZIONE']}")
+                with cols[2]:
+                    if row['SKU'] in selected_ristampe:
+                        ristampa_checkbox = st.checkbox("🔁 Ristampa", value=True, key=f"ristampa_{row['SKU']}")
+                    else:
+                        ristampa_checkbox = st.checkbox("🔁 Ristampa", value=False, key=f"ristampa_{row['SKU']}")
+
+                    if ristampa_checkbox:
+                        selected_ristampe.add(row['SKU'])
+                    else:
+                        selected_ristampe.discard(row['SKU'])
+
+        # Assicurati che lo stato iniziale esista (solo alla prima run)
+        if "ristampe_selezionate" not in st.session_state:
+            st.session_state["ristampe_selezionate"] = set(df[df["RISCATTARE"] == True]["SKU"].astype(str).tolist())
+
+        selected_ristampe = st.session_state["ristampe_selezionate"]
+
+        # Qui mostri la lista selezionata (se ce ne sono)
+        if selected_ristampe:
+            st.markdown(f"📦 SKU selezionate per ristampa: `{', '.join(sorted(selected_ristampe))}`")
+
+        # Unico pulsante di conferma (chiave esplicita per evitare collisioni)
+        if st.button("✅ Conferma selezione per ristampa", key="conferma_ristampa"):
+            try:
+                sheet = get_sheet(foto_sheet_id, "LISTA")
+                all_rows = sheet.get_all_values()
+                data_rows = all_rows[2:]
+
+                col_sku = 0
+                col_descrizione = 4
+                nuovi_valori = []
+                sku_descrizioni_confermate = []
+
+                for row in data_rows:
+                    sku = row[col_sku].strip() if len(row) > col_sku else ""
+                    descrizione = row[col_descrizione].strip() if len(row) > col_descrizione else ""
+
+                    if sku in selected_ristampe:
+                        nuovi_valori.append(["True"])
+                        sku_descrizioni_confermate.append(f"{sku} - {descrizione}")
+                    else:
+                        nuovi_valori.append([""])
+
+                range_update = f"P3:P{len(nuovi_valori) + 2}"
+                sheet.update(values=nuovi_valori, range_name=range_update)
+
+                # 🔄 Ricarico il DataFrame dal Google Sheet (stesso metodo usato sopra)
+                df = carica_lista_foto(foto_sheet_id, cache_key=str(time.time()))
+                st.session_state["df_lista_foto"] = df
+
+                # 🔄 Aggiorno la lista in session_state dai nuovi valori
+                st.session_state["ristampe_selezionate"] = set(df[df["RISCATTARE"] == True]["SKU"])
+
+                # Salvo anche le confermate
+                st.session_state["ristampe_confermate"] = sku_descrizioni_confermate
+
+                #st.success("✅ Ristampe aggiornate correttamente!")
+                st.rerun()
+
+            except Exception as e:
+                st.error(f"❌ Errore aggiornamento: {str(e)}")
+
+elif page == "Foto - Aggiungi SKUs":
+    new_sku = st.session_state.get("aggiunta_confermata", set())
+
+    cache_token = str(st.session_state.get("refresh_foto_token", "static"))
+    df = carica_lista_foto(foto_sheet_id, cache_key=cache_token)
+
+    # Aggiungi nuova SKU
+    st.subheader("➕ Aggiungi nuova SKU")
+    if st.session_state.get("aggiunta_confermata"):
+        sku_added = st.session_state["aggiunta_confermata"]
+        success = st.success(f"✅ SKU Aggiunta con successo: {sku_added}")
+        time.sleep(2)
+        success.empty();
+        st.session_state["aggiunta_confermata"] = False
+        st.session_state["refresh_foto_token"] = str(time.time())
+        st.session_state.input_sku = ""
+        st.rerun()
+    else:
+        add_sku_input = st.text_input("Aggiungi una nuova SKU", key="input_sku")
+        new_sku = add_sku_input.upper()
+        if add_sku_input:
+            if new_sku not in df["SKU"].values.tolist():
+                aggiungi_sku(foto_sheet_id, new_sku)
+                st.session_state["aggiunta_confermata"] = add_sku_input.strip().upper()
+                st.rerun()
+            else:
+                warning = st.warning(f"SKU {new_sku} già presente in lista")
+                time.sleep(2)
+                warning.empty()
+
+
+elif page == "Foto - Storico":
+    st.header("📚 Storico Articolo")
+    st.markdown("Inserisci una SKU per visualizzare tutte le immagini storiche salvate su Dropbox per quell’articolo.")
+
+    sku_query = st.text_input("🔎 Inserisci SKU", key="storico_sku_input")
+
+    if sku_query:
+        sku_query = sku_query.strip().upper()
+        try:
+            folder_path = f"/repository/{sku_query}"
+            access_token = get_dropbox_access_token()
+            dbx = dropbox.Dropbox(access_token)
+            image_files = []
+            try:
+                files = dbx.files_list_folder(folder_path).entries
+                image_files = [f for f in files if f.name.lower().endswith(".jpg")]
+            except dropbox.exceptions.ApiError as e:
+                if (isinstance(e.error, dropbox.files.ListFolderError) and
+                    e.error.is_path() and
+                    e.error.get_path().is_not_found()):
+                    image_files = []
+                else:
+                    st.error(f"⚠️ Errore Dropbox: {e}")
+                    image_files = []
+
+            if not image_files:
+                st.warning("❌ Nessuna immagine storica trovata su Dropbox per questa SKU.")
+
+                # Mostra immagine attuale da repository.falc.biz
+                image_url = f"https://repository.falc.biz/fal001{sku_query.lower()}-1.jpg"
+                try:
+                    resp = requests.get(image_url, timeout=5)
+                    if resp.status_code == 200:
+                        st.image(image_url, width=300, caption="📅 Attuale (da repository)")
+                    else:
+                        st.error("⚠️ Nemmeno la foto attuale è disponibile sul repository.")
+                except Exception as e:
+                    st.error(f"⚠️ Errore nel caricamento della foto attuale: {e}")
+            else:
+                def extract_date(filename):
+                    base = filename.replace(".jpg", "")
+                    parts = base.split("_")
+                    return parts[1] if len(parts) == 2 else "Attuale"
+
+                image_infos = [{
+                    "name": f.name,
+                    "path": f.path_display,
+                    "date": extract_date(f.name)
+                } for f in image_files]
+
+                image_infos.sort(key=lambda x: (x["date"] != "Attuale", x["date"]))
+
+                st.markdown(f"📸 **{len(image_infos)} immagini trovate**")
+
+                cols = st.columns(4)
+                for idx, info in enumerate(image_infos):
+                    with cols[idx % 4]:
+                        headers = {
+                            "Authorization": f"Bearer {access_token}",
+                            "Dropbox-API-Arg": json.dumps({"path": info["path"]})
+                        }
+                        resp = requests.post("https://content.dropboxapi.com/2/files/download", headers=headers)
+                        if resp.status_code == 200:
+                            st.image(resp.content, use_container_width=True)
+                            st.caption(f"📅 {info['date']}")
+                        else:
+                            st.warning(f"⚠️ Errore immagine: {info['name']}")
+        except Exception as e:
+            st.error(f"Errore: {str(e)}")
+
+elif page == "Foto - Aggiungi prelevate":
+    st.header("Aggiungi prelevate")
+    st.markdown("Aggiungi la lista delle paia prelevate")
+
+    sheet = get_sheet(foto_sheet_id, "PRELEVATE")
+    sheet_len = len(pd.DataFrame(sheet.get_all_values()))
+    oggi = datetime.today().date().strftime('%d/%m/%Y')
+    text_input = st.text_area("Lista paia prelevate", height=400, width=800)
+
+    if text_input:
+        # Regex per SKU: 7 numeri, spazio, 2 numeri, spazio, 4 caratteri alfanumerici
+        #pattern = r"\b\d{7} \d{2} [A-Z0-9]{4}\b"
+        pattern = r"\b[0-9a-zA-Z]{7} [0-9a-zA-Z]{2} [0-9a-zA-Z]{4}\b"
+        skus_raw = re.findall(pattern, text_input)
+
+        # Rimuovi spazi interni e converti in stringa (senza apostrofo per confronto)
+        skus_clean = [str(sku.replace(" ", "")) for sku in skus_raw]
+
+        st.subheader(f"SKU trovate: {len(skus_clean)}")
+
+        if st.button("Carica su GSheet"):
+            # Leggi SKU già presenti nel foglio
+            existing_skus = sheet.col_values(1)
+            # Rimuovi eventuali apostrofi e converti in str per confronto
+            existing_skus_clean = [str(sku).lstrip("'") for sku in existing_skus]
+
+            # Filtra SKU nuove
+            skus_to_append_clean = [sku for sku in skus_clean if sku not in existing_skus_clean]
+
+            if skus_to_append_clean:
+                # Aggiungi apostrofo solo al momento dell'append per forzare formato testo
+                rows_to_append = [[f"'{sku}", "=REPO(A33)", f"{oggi}", f"=SE(VAL.NON.DISP(CONFRONTA(INDIRETTO(\"LISTA!$D\"&CONFRONTA($A{sheet_len+1};LISTA!A:A;0));SPLIT(SETTINGS(\"brandMatias\");\",\");0));SE(VAL.NON.DISP(CONFRONTA(INDIRETTO(\"LISTA!$D\"&CONFRONTA($A{sheet_len+1};LISTA!A:A;0));SPLIT(SETTINGS(\"brandMatteo\");\",\");0));\"\";\"MATTEO\");\"MATIAS\")"] for sku in skus_to_append_clean]
+
+                # Append a partire dall'ultima riga disponibile
+                sheet.append_rows(rows_to_append, value_input_option="USER_ENTERED")
+                st.success(f"✅ {len(skus_to_append_clean)} nuove SKU aggiunte al foglio PRELEVATE!")
+            else:
+                st.info("⚠️ Tutte le SKU inserite sono già presenti nel foglio.")
+
+elif page == "Giacenze - Importa":
+    st.header("Importa giacenze")
+
+
+    options = ["Manuale", "UBIC", "PIM"]
+
+    selected = option_menu(
+        menu_title=None,
+        options=["Manuale", "UBIC", "PIM"],
+        icons=[" ", " ", " "],
+        default_index=0,
+        orientation="horizontal",
+        styles={
+            "container": {
+                "padding": "0 10px 0 0!important",
+                "background-color": "#f0f0f0",
+                "display": "flex",
+                "justify-content": "center"
+            },
+            "nav-link": {
+                "font-size": "16px",
+                "text-align": "center",
+                "margin": "5px",
+                "padding": "0px",
+                "min-height": "40px",
+                "height": "40px",
+                "line-height": "normal",
+                "display": "flex",
+                "align-items": "center",
+                "justify-content": "center",
+                "box-sizing": "border-box",
+                "--hover-color": "#e0e0e0",
+                "before": "none"
+            },
+            "nav-link-selected": {
+                "background-color": "#4CAF50",
+                "color": "white",
+                "border": "2px solid #cccccc",
+                "border-radius": "10px",
+                "padding": "0px",
+                "min-height": "40px",
+                "height": "40px",
+                "line-height": "normal",
+                "display": "flex",
+                "align-items": "center",
+                "justify-content": "center",
+                "box-sizing": "border-box",
+                "before": "none"
+            },
+        }
+    )
+
+    st.session_state.selected_option = selected
+    nome_file = st.session_state.selected_option
+
+    # --- Reset se cambio file/target ---
+    if "downloaded_file_name" not in st.session_state or st.session_state.downloaded_file_name != nome_file:
+        st.session_state.df_input = None
+        st.session_state.downloaded_file = None
+        st.session_state.downloaded_file_metadata = None
+        st.session_state.downloaded_file_name = nome_file
+
+    csv_import = None
+    file_bytes_for_upload = None
+    last_update = None
+
+    dbx = get_dropbox_client()
+    folder_path = "/GIACENZE"
+
+    # --- Manuale ---
+    if nome_file == "Manuale":
+        uploaded_file = st.file_uploader("Carica un file CSV manualmente", type="csv", key="uploader_manual")
+        if uploaded_file:
+            if ("uploaded_file_name" not in st.session_state) or (st.session_state.uploaded_file_name != uploaded_file.name):
+                st.session_state.uploaded_file_name = uploaded_file.name
+                st.session_state.df_input = None  # reset DataFrame se file nuovo
+                st.session_state.uploaded_file_bytes = uploaded_file.getvalue()
+                uploaded_file.seek(0)
+
+            csv_import = uploaded_file
+            file_bytes_for_upload = st.session_state.uploaded_file_bytes
+            manual_nome_file = uploaded_file.name.upper()
+            manual_nome_file = "GIACENZE.csv"
+
+    # --- UBIC / PIM ---
+    else:
+        if st.session_state.downloaded_file is None:
+            with st.spinner(f"Download {nome_file} da DropBox..."):
+                st.session_state.downloaded_file, st.session_state.downloaded_file_metadata = download_csv_from_dropbox(
+                    dbx, folder_path, f"{nome_file}.csv")
+                st.session_state.downloaded_file_name = nome_file
+
+        latest_file = st.session_state.downloaded_file
+        metadata = st.session_state.downloaded_file_metadata
+
+        if latest_file:
+            csv_import = latest_file
+            file_bytes_for_upload = latest_file.getvalue()
+            last_update = format_dropbox_date(metadata.client_modified)
+            st.info(f"{nome_file} ultimo aggiornamento: {last_update}")
+        else:
+            st.warning(f"Nessun file trovato su Dropbox, carica manualmente")
+
+    # --- Carico CSV solo se df_input è None ---
+    if csv_import and st.session_state.df_input is None:
+        with st.spinner("Carico il CSV..."):
+            #st.session_state.df_input = read_csv_auto_encoding(csv_import, "\t")
+            st.session_state.df_input = read_csv_auto_encoding(csv_import, ";")
+
+    df_input = st.session_state.df_input
+
+    default_sheet_id = foto_sheet_id
+    selected_sheet_id = st.text_input("Inserisci ID del Google Sheet", value=default_sheet_id)
+    nome_sheet_tab = st.text_input("Inserisci nome del TAB", value="GIACENZE")
+
+    col1, col2, col3, col4 = st.columns(4)
+
+    if df_input is not None:
+        view_df = st.checkbox("Visualizza il dataframe?", value=False)
+        if view_df:
+            st.write(df_input)
+
+        # --- Colonne numeriche ---
+        numeric_cols_info = { "D": "0", "M": "000", "O": "0", "P": "0" }
+        for i in range(17, 32):  # Q-AE
+            col_letter = gspread.utils.rowcol_to_a1(1, i)[:-1]
+            numeric_cols_info[col_letter] = "0"
+
+        def to_number_safe(x):
+            try:
+                if pd.isna(x) or x == "":
+                    return ""
+                return float(x)
+            except:
+                return str(x)
+
+        for col_letter in numeric_cols_info.keys():
+            col_idx = gspread.utils.a1_to_rowcol(f"{col_letter}1")[1] - 1
+            if df_input.columns.size > col_idx:
+                col_name = df_input.columns[col_idx]
+                df_input[col_name] = df_input[col_name].apply(to_number_safe)
+
+        target_indices = [gspread.utils.a1_to_rowcol(f"{col}1")[1] - 1 for col in numeric_cols_info.keys()]
+        for idx, col_name in enumerate(df_input.columns):
+            if idx not in target_indices:
+                df_input[col_name] = df_input[col_name].apply(lambda x: "" if pd.isna(x) else str(x))
+
+        data_to_write = [df_input.columns.tolist()] + df_input.values.tolist()
+
+        # --- Destinazione GSheet ---
+        with col2:
+            if st.button("Importa Giacenze"):
+                sheet_upload_tab = get_sheet(selected_sheet_id, nome_sheet_tab)
+
+                with st.spinner("Aggiorno giacenze su GSheet..."):
+                    sheet_upload_tab.clear()
+                    sheet_upload_tab.update("A1", data_to_write)
+
+                    last_row = len(df_input) + 1
+
+                    ranges_to_format = [
+                        (f"{col_letter}2:{col_letter}{last_row}",
+                            CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=pattern)))
+                        for col_letter, pattern in numeric_cols_info.items()
+                    ]
+                    format_cell_ranges(sheet_upload_tab, ranges_to_format)
+                    st.success("✅ Giacenze importate con successo!")
+
+                if nome_file == "Manuale" and file_bytes_for_upload:
+                    with st.spinner("Carico il file su DropBox..."):
+                        upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
+
+        with col3:
+            if st.button("Importa Giacenze & Anagrafica"):
+                sheet_upload_tab = get_sheet(selected_sheet_id, nome_sheet_tab)
+                sheet_upload_anagrafica = get_sheet(selected_sheet_id, "ANAGRAFICA")
+                sheet_anagrafica = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
+
+                with st.spinner("Aggiorno giacenze e anagrafica su GSheet..."):
+                    sheet_upload_tab.clear()
+                    sheet_upload_tab.update("A1", data_to_write)
+
+                    last_row = len(df_input) + 1
+
+                    ranges_to_format = [
+                        (f"{col_letter}2:{col_letter}{last_row}",
+                            CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=pattern)))
+                        for col_letter, pattern in numeric_cols_info.items()
+                    ]
+                    format_cell_ranges(sheet_upload_tab, ranges_to_format)
+
+                    sheet_upload_anagrafica.clear()
+                    sheet_upload_anagrafica.update("A1", sheet_anagrafica.get_all_values())
+                    st.success("✅ Giacenze e anagrafica importate con successo!")
+
+                if nome_file == "Manuale" and file_bytes_for_upload:
+                    with st.spinner("Carico il file su DropBox..."):
+                        upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
+
+        with col4:
+            if nome_file == "Manuale" and file_bytes_for_upload:
+                if st.button("Carica su DropBox"):
+                    with st.spinner("Carico il file su DropBox..."):
+                        upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
+
+    with col1:
+        if st.button("Importa Anagrafica"):
+            sheet_upload_anagrafica = get_sheet(selected_sheet_id, "ANAGRAFICA")
+            sheet_anagrafica = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
+
+            with st.spinner("Aggiorno anagrafica su GSheet..."):
+                sheet_upload_anagrafica.clear()
+                sheet_upload_anagrafica.update("A1", sheet_anagrafica.get_all_values())
+                st.success("✅ Anagrafica importata con successo!")
+
+elif page == "Giacenze - Per corridoio":
+    st.header("Riepilogo per corridoio")
+
+    # Calcolo anno e stagione di default
+    oggi = datetime.now()
+    anno_default = oggi.year
+    mese = oggi.month
+    stagione_default = 1 if mese in [1, 2, 11, 12] else 2
+
+    # Recupero worksheet
+    sheet_id = st.secrets["APP_GSHEET_ID"]
+    worksheet = get_sheet(sheet_id, "GIACENZE")
+
+    # Leggo dati dal foglio
+    data = worksheet.get_all_values()
+    df = pd.DataFrame(data[1:], columns=data[0])
+
+    # Conversioni iniziali
+    df = df.astype(str)
+    if "GIAC.UBIC" in df.columns:
+        df["GIAC.UBIC"] = pd.to_numeric(df["GIAC.UBIC"], errors="coerce").fillna(0)
+
+    # --- Mappatura categoria adulto/bambino ---
+    marchi_categoria = {
+        "NATURINO CLASSIC": "BAMBINO",
+        "NATURINO WILD LIFE": "BAMBINO",
+        "NATURINO ACTIVE": "BAMBINO",
+        "FLOWER M.BY NATURINO": "BAMBINO",
+        "FLOWER MOUNTAIN": "ADULTO",
+        "VOILE BLANCHE": "ADULTO",
+        "NATURINO BAREFOOT": "BAMBINO",
+        "FALCOTTO ACTIVE": "BAMBINO",
+        "FALCOTTO CLASSIC": "BAMBINO",
+        "NATURINO EASY": "BAMBINO",
+        "NATURINO COCOON": "BAMBINO",
+        "FALCOTTO SNEAKERS": "BAMBINO",
+        "NATURINO SNEAKERS": "BAMBINO",
+        "W6YZ Adulto": "ADULTO",
+        "W6YZ Bimbo": "BAMBINO",
+        "NATURINO OUTDOOR": "BAMBINO",
+        "Candice Cooper": "ADULTO",
+        "NATURINO BABY": "BAMBINO",
+        "C N R": "ADULTO"
+    }
+    df["CATEGORIA"] = df["COLLEZIONE"].map(marchi_categoria)
+
+    # Estrazione anno e stagione dalla colonna STAG
+    df[["anno_stag", "stag_stag"]] = df["STAG"].str.split("/", expand=True)
+    df["anno_stag"] = pd.to_numeric(df["anno_stag"], errors="coerce").fillna(0).astype(int)
+    df["stag_stag"] = pd.to_numeric(df["stag_stag"], errors="coerce").fillna(0).astype(int)
+
+    # Filtro CORR e Y ai valori consentiti
+    df["CORR_NUM"] = pd.to_numeric(df["CORR"], errors="coerce")
+    df = df[df["CORR_NUM"].between(1, 14)]
+    df = df[df["Y"].isin(["1", "2", "3", "4"])]
+
+    col1, col2, col3, col4, col5 = st.columns(5)
+
+    with col1:
+        # Input utente
+        anno = st.number_input("Anno", min_value=2000, max_value=2100, value=anno_default, step=1)
+        stagione = st.selectbox("Stagione", options=[1, 2], index=[1, 2].index(stagione_default))
+
+        # --- FILTRO CON CHECKBOX SULLA COLONNA "Y" ---
+        st.subheader("Filtra valori colonna Y")
+        valori_Y = sorted(df["Y"].unique())
+        cols = st.columns(4)
+        selezione_Y = {val: cols[i % 4].checkbox(val, value=True) for i, val in enumerate(valori_Y)}
+
+        # --- FILTRO CON CHECKBOX SULLA COLONNA "X" ---
+        st.subheader("Filtra valori colonna X")
+        corr_values = sorted(df["CORR_NUM"].dropna().astype(int).unique())
+        cols_corr = st.columns(4)
+        selezione_corr = {c: cols_corr[i % 4].checkbox(str(c), value=True, key=f"checkbox_corr_{c}") for i, c in enumerate(corr_values)}
+
+        # --- Checkbox filtro categoria ---
+        st.subheader("Filtra per Categoria")
+        categorie = ["ADULTO", "BAMBINO"]
+        cols_cat = st.columns(2)
+        selezione_cat = {cat: cols_cat[i % 2].checkbox(cat, value=True, key=f"checkbox_cat_{cat}") for i, cat in enumerate(categorie)}
+
+    # --- Filtri raggruppati ---
+    df_filtrato = df[
+        df["Y"].isin([v for v, sel in selezione_Y.items() if sel]) &
+        df["CORR_NUM"].isin([c for c, sel in selezione_corr.items() if sel]) &
+        df["CATEGORIA"].isin([c for c, sel in selezione_cat.items() if sel])
+    ]
+
+    with col3:
+        # Calcolo riepilogo
+        results = []
+        for corr_value in sorted(df_filtrato["CORR_NUM"].unique()):
+            corr_df = df_filtrato[df_filtrato["CORR_NUM"] == corr_value]
+            cond_vecchio = (corr_df["anno_stag"] < anno) | ((corr_df["anno_stag"] == anno) & (corr_df["stag_stag"] < stagione))
+            cond_nuovo = ~cond_vecchio
+
+            vecchio = corr_df.loc[cond_vecchio, "GIAC.UBIC"].sum()
+            nuovo = corr_df.loc[cond_nuovo, "GIAC.UBIC"].sum()
+
+            results.append({"CORR": corr_value, "VECCHIO": vecchio, "NUOVO": nuovo})
+
+        result_df = pd.DataFrame(results)
+        result_df["CORR"] = result_df["CORR"].astype(int)
+        st.table(result_df.reset_index(drop=True))
+
+    with col4:
+        st.download_button(
+            label="📥 Scarica PDF",
+            data=genera_pdf(result_df, font_size=12, header_align="CENTER", text_align="CENTER", valign="MIDDLE"),
+            file_name="giac_corridoio.pdf",
+            mime="application/pdf"
+        )
+
+        # --- Bottone Scarica SKU ---
+        mask_vecchio = (df_filtrato["anno_stag"] < anno) | ((df_filtrato["anno_stag"] == anno) & (df_filtrato["stag_stag"] < stagione))
+        cols_export = ["CODICE", "VAR", "COLORE", "COLLEZIONE.1", "CORR", "LATO", "X", "Y", "SKU NO TGL", "GIAC.UBIC"]
+        df_sku = df_filtrato.loc[mask_vecchio, cols_export].copy()
+        giac_per_sku = df_sku.groupby("SKU NO TGL")["GIAC.UBIC"].sum().reset_index()
+        giac_per_sku = giac_per_sku.rename(columns={"GIAC.UBIC": "GIACENZA"})
+        df_sku = df_sku.merge(giac_per_sku, on="SKU NO TGL", how="left")
+        df_sku = df_sku.drop_duplicates(subset=["SKU NO TGL"])
+        df_sku['CORR'] = pd.to_numeric(df_sku['CORR'], errors='coerce').fillna(0).astype(int)
+        df_sku['X'] = pd.to_numeric(df_sku['X'], errors='coerce').fillna(0).astype(int)
+        df_sku['Y'] = pd.to_numeric(df_sku['Y'], errors='coerce').fillna(0).astype(int)
+        df_sku = df_sku.sort_values(by=["CORR","X","Y","LATO","CODICE","VAR","COLORE"])
+        df_sku = df_sku[["CODICE", "VAR", "COLORE", "COLLEZIONE.1", "CORR", "LATO", "X", "Y", "GIACENZA"]]
+        df_sku = df_sku.rename(columns={
+            "CODICE":"COD",
+            "COLORE":"COL",
+            "COLLEZIONE.1":"DESCRIZIONE",
+            "CORR":"COR",
+            "GIACENZA":"GIAC"
+        })
+
+        # Definizione layout PDF
+        larghezza_col = {
+            "COD":50,
+            "VAR":35,
+            "COL":40,
+            "DESCRIZIONE":250,
+            "COR":35,
+            "LATO":35,
+            "X":25,
+            "Y":25,
+            "GIAC":30
+        }
+        align_col = {"DESCRIZIONE":"LEFT"}
+        limiti_chars = {"DESCRIZIONE":35}
+
+        st.download_button(
+            label="📥 Scarica SKUs da togliere",
+            data=genera_pdf(df_sku, font_size=10, header_align="CENTER", text_align="CENTER", valign="MIDDLE",
+                            col_widths=larghezza_col, align_map=align_col, truncate_map=limiti_chars),
+            file_name="sku_filtrate_vecchio.pdf",
+            mime="application/pdf"
+        )
+
+
+elif page == "Giacenze - Per corridoio/marchio":
+    st.header("Riepilogo per corridoio e marchio")
+
+    # --- Calcolo anno e stagione di default ---
+    oggi = datetime.now()
+    anno_default, mese = oggi.year, oggi.month
+    stagione_default = 1 if mese in [1,2,11,12] else 2
+
+    # --- Recupero worksheet ---
+    sheet_id = st.secrets["APP_GSHEET_ID"]
+    worksheet = get_sheet(sheet_id, "GIACENZE")
+    data = worksheet.get_all_values()
+    df = pd.DataFrame(data[1:], columns=data[0])
+    df = df.astype(str)
+
+    # --- Conversioni numeriche e pulizie ---
+    if "GIAC.UBIC" in df.columns:
+        df["GIAC.UBIC"] = pd.to_numeric(df["GIAC.UBIC"], errors="coerce").fillna(0)
+    df[["anno_stag","stag_stag"]] = df["STAG"].str.split("/", expand=True)
+    df["anno_stag"] = pd.to_numeric(df["anno_stag"], errors="coerce").fillna(0).astype(int)
+    df["stag_stag"] = pd.to_numeric(df["stag_stag"], errors="coerce").fillna(0).astype(int)
+    df["CORR_NUM"] = pd.to_numeric(df["CORR"], errors="coerce")
+    df = df[df["CORR_NUM"].between(1,14)]
+    df = df[df["Y"].isin(["1","2","3","4"])]
+
+    # --- Normalizzazione marchi ---
+    marchi_mapping = {
+        "NATURINO CLASSIC":"NATURINO","NATURINO WILD LIFE":"NATURINO","NATURINO ACTIVE":"NATURINO",
+        "FLOWER M.BY NATURINO":"FM FOR NATURINO","FLOWER MOUNTAIN":"FLOWER MOUNTAIN","VOILE BLANCHE":"VOILE BLANCHE",
+        "NATURINO BAREFOOT":"NATURINO","FALCOTTO ACTIVE":"FALCOTTO","FALCOTTO CLASSIC":"FALCOTTO",
+        "NATURINO EASY":"NATURINO","NATURINO COCOON":"NATURINO","FALCOTTO SNEAKERS":"FALCOTTO",
+        "NATURINO SNEAKERS":"NATURINO","W6YZ Adulto":"W6YZ Adulto","W6YZ Bimbo":"W6YZ Bimbo",
+        "NATURINO OUTDOOR":"NATURINO","Candice Cooper":"Candice Cooper","NATURINO BABY":"NATURINO","C N R":"C N R"
+    }
+    df["COLLEZIONE"] = df["COLLEZIONE"].str.strip()
+    df["MARCHIO_STD"] = df["COLLEZIONE"].map(marchi_mapping)
+
+    # --- Layout filtri utente ---
+    with st.container():
+        st.subheader("Filtri e parametri")
+        col1, col2 = st.columns([2,3])
+        with col1:
+            anno = st.number_input("Anno", min_value=2000, max_value=2100, value=anno_default)
+            stagione = st.selectbox("Stagione", options=[1,2], index=[1,2].index(stagione_default))
+        with col2:
+            # Filtro Y
+            st.markdown("**Filtra valori colonna Y**")
+            valori_Y = sorted(df["Y"].unique())
+            cols_Y = st.columns(4)
+            selezione_Y = {v: cols_Y[i % 4].checkbox(v, value=True) for i,v in enumerate(valori_Y)}
+
+            # Filtro BRAND
+            st.markdown("**Filtra valori colonna BRAND**")
+            brands_sorted = sorted(df["MARCHIO_STD"].dropna().unique())
+            cols_brand = st.columns(4)
+            selezione_brand = {b: cols_brand[i % 4].checkbox(b, value=True) for i, b in enumerate(brands_sorted)}
+
+    # --- Applico filtri ---
+    df = df[df["Y"].isin([v for v, sel in selezione_Y.items() if sel])]
+    df = df[df["MARCHIO_STD"].isin([b for b, sel in selezione_brand.items() if sel])]
+
+    # --- Pivot per tabella piatta basata sui brand filtrati ---
+    df_table = df.groupby(["CORR_NUM","MARCHIO_STD"]).apply(
+        lambda x: pd.Series({
+            "VECCHIO": x.loc[(x["anno_stag"]<anno)|((x["anno_stag"]==anno)&(x["stag_stag"]<stagione)), "GIAC.UBIC"].sum(),
+            "NUOVO": x.loc[(x["anno_stag"]>anno)|((x["anno_stag"]==anno)&(x["stag_stag"]>=stagione)), "GIAC.UBIC"].sum()
+        })
+    ).reset_index()
+
+    marchi_filtrati = sorted(df_table["MARCHIO_STD"].unique())
+    df_table = df_table.pivot(index="CORR_NUM", columns="MARCHIO_STD", values=["VECCHIO","NUOVO"])
+
+    # --- Ricostruzione colonne pivot in ordine dei brand filtrati ---
+    col_order = []
+    for b in marchi_filtrati:
+        if ("VECCHIO",b) in df_table.columns and ("NUOVO",b) in df_table.columns:
+            col_order.extend([("VECCHIO",b), ("NUOVO",b)])
+    df_table = df_table[col_order]
+    df_table.columns = [f"{col[1]}_{col[0]}" for col in df_table.columns]
+    df_table = df_table.reset_index().rename(columns={"CORR_NUM":"CORR"}).fillna(0)
+
+    # --- Costruzione AgGrid columnDefs dinamica ---
+    column_defs = [{"headerName":"CORR","headerComponentParams":{
+                        "template": '<div style="text-align:center; width:100%;">CORR</div>'
+                    },"field":"CORR","width":60,"pinned":"left","cellStyle":{"textAlign":"center"}}]
+
+    for brand in marchi_filtrati:
+        column_defs.append({
+            "headerName": brand,
+            "headerComponentParams": {
+                "template": f'<div style="text-align:center; width:100%;">{brand}</div>'
+            },
+            "children":[
+                {"headerName":"VECCHIO","headerComponentParams":{
+                    "template": '<div style="text-align:center; width:100%;">VECCHIO</div>'
+                },"field":f"{brand}_VECCHIO","width":70,"cellStyle":{"textAlign":"center","backgroundColor":"#FFF2CC"}},
+                {"headerName":"NUOVO","headerComponentParams":{
+                    "template": '<div style="text-align:center; width:100%;">NUOVO</div>'
+                },"field":f"{brand}_NUOVO","width":70,"cellStyle":{"textAlign":"center","backgroundColor":"#D9E1F2"}}
+            ]
+        })
+
+    gridOptions = {
+        "columnDefs": column_defs,
+        "defaultColDef":{
+            "resizable":False,
+            "sortable":False,
+            "filter":False,
+            "wrapText":False,
+            "autoHeight":True,
+            "lockPosition":True,
+            "cellStyle":{"textAlign":"center"}
+        },
+        "domLayout":"normal","suppressHorizontalScroll":False
+    }
+
+    # --- Visualizzazione tabella ---
+    st.subheader("Tabella completa per corridoio e marchio")
+    AgGrid(df_table, gridOptions=gridOptions, allow_unsafe_jscode=True, height=445, fit_columns_on_grid_load=True)
+
+    # --- Bottone PDF ---
+    with col2:
+        st.download_button(
+            label="📥 Scarica PDF",
+            data=genera_pdf_aggrid(df_table),
+            file_name="giac_corridoio_marchio.pdf",
+            mime="application/pdf"
+        )
+
+elif page == "Giacenze - Aggiorna anagrafica":
+    st.header("Aggiorna anagrafica da CSV")
+
+    sheet = get_sheet(anagrafica_sheet_id, "DATA")
+
+    uploaded_file = st.file_uploader("Carica CSV", type=["csv"])
+
+    if uploaded_file:
+        if st.button("Carica su GSheet"):
+            added, updated = process_csv_and_update(sheet, uploaded_file)
+            st.success(f"✅ Aggiunte {added} nuove SKU, aggiornate {updated} SKU già presenti.")
+
+
+elif page == "Logout":
+    logout()
+
+elif page == "Giacenze - Old import":
+    st.header("Importa giacenze")
+    st.markdown("Importa le giacenze da file CSV.")
+
+    sheet_id = st.secrets["APP_GSHEET_ID"]
+    sheet = get_sheet(sheet_id, "GIACENZE")
+    csv_import = st.file_uploader("Carica un file CSV", type="csv")
+
+    if csv_import:
+        df_input = read_csv_auto_encoding(csv_import, "\t")
+
+        # Lista delle colonne da formattare come numeriche con pattern
+        numeric_cols_info = {
+            "D": "0",
+            "L": "000",
+            "N": "0",
+            "O": "0",
+        }
+
+        # Colonne Q-AE
+        for i in range(17, 32):  # Q=17, AE=31
+            col_letter = gspread.utils.rowcol_to_a1(1, i)[:-1]  # togli solo il numero finale
+            numeric_cols_info[col_letter] = "0"
+
+        # Funzione bulletproof: converte solo valori numerici, testo rimane testo
+        def to_number_safe(x):
+            try:
+                if pd.isna(x) or x == "":
+                    return ""
+                return float(x)
+            except:
+                return str(x)
+
+        # Applica conversione solo alle colonne target
+        for col_letter in numeric_cols_info.keys():
+            col_idx = gspread.utils.a1_to_rowcol(f"{col_letter}1")[1] - 1  # indice zero-based
+            if df_input.columns.size > col_idx:
+                col_name = df_input.columns[col_idx]
+                df_input[col_name] = df_input[col_name].apply(to_number_safe)
+
+        # Tutte le altre colonne → forzale a stringa per evitare conversioni indesiderate
+        target_indices = [gspread.utils.a1_to_rowcol(f"{col}1")[1] - 1 for col in numeric_cols_info.keys()]
+        test = []
+        for idx, col_name in enumerate(df_input.columns):
+            if idx not in target_indices:
+                test.append(idx)
+                df_input[col_name] = df_input[col_name].apply(lambda x: "" if pd.isna(x) else str(x))
+
+        # Trasforma tutto in lista per Google Sheet
+        data_to_write = [df_input.columns.tolist()] + df_input.values.tolist()
+
+        st.write(df_input)
+
+        if st.button("Importa"):
+            sheet.clear()
+            sheet.update("A1", data_to_write)
+            last_row = len(df_input) + 1  # +1 per intestazione
+
+            # Prepara la lista di range da formattare
+            ranges_to_format = []
+            for col_letter, pattern in numeric_cols_info.items():
+                ranges_to_format.append(
+                    (f"{col_letter}2:{col_letter}{last_row}",
+                     CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=pattern)))
+                )
+
+            # Applica il formato in un colpo solo
+            format_cell_ranges(sheet, ranges_to_format)
+
+            st.success("✅ Giacenze importate con successo!")
+
+elif page == "Admin":
+    st.write("Sezione admin")
+
+elif page == "Admin - Aggiungi utente":
+    st.header("Aggiungi nuovo utente")
+    st.markdown("Crea un nuovo utente nella tabella Supabase.")
+
+    with st.form("register_form", clear_on_submit=True):
+        nome = st.text_input("Nome", key="nome")
+        cognome = st.text_input("Cognome", key="cognome")
+        username = st.text_input("Username", key="username")
+        email = st.text_input("Email", key="email")
+        password = st.text_input("Password", type="password", key="password")
+        role = st.selectbox("Ruolo",["Guest","Logistica","Customer Care","Admin"], key="role")
+        #username = nome + " " + cognome
+
+        submit = st.form_submit_button("Crea utente")
+        if submit:
+            register_user(email, password, nome=nome, cognome=cognome, username=username, role=role.lower())
+
+elif page == "Ordini - Dashboard":
+    st.title("Dashboard")
+    sheet = get_sheet(ordini_sheet_id, "ORDINI")
+
+    data = sheet.get_all_values()
+    headers = data[0]
+
+    df = pd.DataFrame(data[1:], columns=headers)
+
+    df['Quantita'] = pd.to_numeric(df['Quantita'], errors='coerce')
+    df['Data'] = pd.to_datetime(df['Data'], format="%d/%m/%Y", errors='coerce')
+
+    all_marketplaces = ['Tutti i marketplace'] + list(df['Marketplace'].unique())
+    selected_marketplace = st.selectbox('Seleziona Marketplace', all_marketplaces)
+
+    all_countries = ['Tutte le nazioni'] + list(df['Nazione'].unique())
+    selected_country = st.selectbox('Seleziona Nazione', all_countries)
+
+    filtered_df = df.copy()
+    if selected_marketplace != 'Tutti i marketplace':
+        filtered_df = filtered_df[filtered_df['Marketplace'] == selected_marketplace]
+    if selected_country != 'Tutte le nazioni':
+        filtered_df = filtered_df[filtered_df['Nazione'] == selected_country]
+
+    view_df = st.checkbox("Visualizza dataframe?", value=False)
+    if view_df:
+        st.dataframe(filtered_df)
+
+    # ---
+    st.subheader("Riepilogo Dati")
+
+    col1, col2, col3 = st.columns(3)
+
+    total_orders = filtered_df['Numero Ordine'].nunique()
+    col1.metric("Ordini Analizzati", total_orders)
+
+    total_items = filtered_df['Quantita'].sum()
+    col2.metric("Articoli Totali Venduti", total_items)
+
+    unique_marketplaces = filtered_df['Marketplace'].nunique()
+    col3.metric("Marketplace Unici", unique_marketplaces)
+
+    # ---
+    st.subheader("Analisi Visuale")
+
+    st.markdown("Quantità venduta per Marketplace")
+    market_sales = filtered_df.groupby('Marketplace')['Quantita'].sum().reset_index()
+    st.bar_chart(market_sales, x='Marketplace', y='Quantita')
+
+    st.markdown("Quantità venduta per Nazione")
+    country_sales = filtered_df.groupby('Nazione')['Quantita'].sum().reset_index()
+    st.bar_chart(country_sales, x='Nazione', y='Quantita')
+
+
+elif page == "Ordini - Importa":
+    st.title("Dashboard - Analizza PDF")
+    st.write("Carica un PDF con gli ordini (1 ordine per pagina) per estrarre le informazioni.")
+
+    sheet = get_sheet(ordini_sheet_id, "ORDINI")
+
+    uploaded_files = st.file_uploader("Scegli un file PDF", type="pdf", accept_multiple_files=True)
+
+    all_orders_data = []
+    if uploaded_files:
+        with st.spinner("Analizzando i PDF..."):
+            all_orders_data = []
+
+            for uploaded_file in uploaded_files:
+                reader = PyPDF2.PdfReader(uploaded_file)
+                for i, page in enumerate(reader.pages):
+                    page_text = page.extract_text()
+                    if page_text:
+                        order_data = extract_data_from_page(page_text)
+                        if order_data['Articoli']:
+                            for item in order_data['Articoli']:
+                                all_orders_data.append({
+                                    'Numero Ordine': order_data['Numero Ordine'],
+                                    'Marketplace': order_data['Marketplace'],
+                                    'Data': order_data['Data'],
+                                    'Nazione': order_data['Nazione'],
+                                    'Codice': item['codice'],
+                                    'Taglia': item['taglia'],
+                                    'Quantita': item['quantita'],
+                                    'Descrizione': item['descrizione']
+                                })
+
+        df = pd.DataFrame(all_orders_data)
+        st.write(len(all_orders_data))
+        ordine_colonne = ["Data", "Marketplace", "Nazione", "Numero Ordine", "Codice", "Taglia", "Quantita"]
+
+
+        col1, col2, col3 = st.columns(3)
+
+        total_orders = df['Numero Ordine'].nunique()
+        col1.metric("Ordini Analizzati", total_orders)
+
+        df['Quantita'] = pd.to_numeric(df['Quantita'], errors="coerce")
+        total_items = df['Quantita'].sum()
+        col2.metric("Articoli Totali Venduti", total_items)
+
+        unique_marketplaces = df['Marketplace'].nunique()
+        col3.metric("Marketplace Unici", unique_marketplaces)
+
+        data = df[ordine_colonne].values.tolist()
+        if st.button("Carica su gsheet"):
+            sheet.append_rows(data, value_input_option="RAW")
+
+elif page == "Catalogo - Trova articolo":
+    st.write("trova articolo")
+
+elif page == "Catalogo - Aggiungi ordini stagione":
+    st.title("Aggiungi ordini di stagione")
+    st.write("Carica un CSV con gli ordini")
+
+    uploaded_files = st.file_uploader("Aggiungi i files CSV", type=["csv"], accept_multiple_files=True)
+
+    ecom = []
+    zfs = []
+    amazon = []
+    if uploaded_files:
+        for file in uploaded_files:
+            csv = read_csv_auto_encoding(file, separatore=",")
+            data = pd.DataFrame(csv)
+            data = data[1:]
+
+            if data["COD.CLIENTI"] == "0019243.016":
+                ecom.append(data)
+            elif  data["COD.CLIENTI"] == "0039632":
+                zfs.append(data)
+            elif  data["COD.CLIENTI"] == "0034630":
+                amazon.append(data)
+
+    st.write(ecom)
+    st.write(zfs)
+    st.write(amazon)
+
+elif page == "Ferie - Aggiungi ferie":
+    st.header("Aggiungi ferie")
+
+    sheet = get_sheet(ferie_sheet_id, "FERIE")
+
+    ferie_esistenti = sheet.get_all_values()
+    users_list = supabase.table("profiles").select("*").execute().data
+    utenti = [f"{u['nome']} {u['cognome']}" for u in users_list]
+    id_mappa = {f"{u['nome']} {u['cognome']}": u["user_id"] for u in users_list}
+
+
+    oggi = datetime.now().date()
+    utente_selezionato = st.selectbox("Seleziona utente", utenti)
+    data_inizio = st.date_input("Data inizio", oggi)
+    data_fine = st.date_input(
+        "Data fine",
+        value=max(data_inizio, oggi),
+        min_value=data_inizio
+    )
+    motivazione = st.text_input("Motivazione")
+
+    if st.button("Aggiungi ferie"):
+        data = [utente_selezionato, data_inizio.strftime('%d/%m/%Y'), data_fine.strftime('%d/%m/%Y'), motivazione]
+        sheet.append_row(data, value_input_option="USER_ENTERED")
+
+elif page == "Ferie - Report":
+    st.header("📅 Report ferie settimanale")
+
+    # 1. Leggi dati ferie da GSheet
+    sheet = get_sheet(ferie_sheet_id, "FERIE")
+    ferie_data = sheet.get_all_values()
+    ferie_df = pd.DataFrame(
+        ferie_data[1:], columns=ferie_data[0]
+    ) if len(ferie_data) > 1 else pd.DataFrame(columns=["NOME", "DATA INIZIO", "DATA FINE", "MOTIVO"])
+
+    # 2. Selettore giorno iniziale
+    today = datetime.now().date()
+    start_date = st.date_input("Seleziona il giorno di inizio settimana", value=today)
+    days_of_week = [start_date + timedelta(days=i) for i in range(7)]
+
+    # Mappa abbreviata giorni in italiano
+    giorni_settimana_it = {
+        "Mon": "Lun",
+        "Tue": "Mar",
+        "Wed": "Mer",
+        "Thu": "Gio",
+        "Fri": "Ven",
+        "Sat": "Sab",
+        "Sun": "Dom"
+    }
+    days_labels = [giorni_settimana_it[day.strftime("%a")] + day.strftime(" %d/%m") for day in days_of_week]
+
+    # 3. Prepara lista utenti
+    users_list = supabase.table("profiles").select("*").execute().data
+    utenti = sorted([f"{u['nome']} {u['cognome']}" for u in users_list])
+
+    # 4. Costruisci matrice ferie (utente x giorno)
+    ferie_matrix = []
+    for utente in utenti:
+        row = []
+        ferie_utente = ferie_df[ferie_df["NOME"] == utente]
+        ferie_utente = ferie_utente.copy()
+        for idx, r in ferie_utente.iterrows():
+            try:
+                ferie_utente.at[idx, "DATA INIZIO"] = datetime.strptime(r["DATA INIZIO"], "%d/%m/%Y").date()
+                ferie_utente.at[idx, "DATA FINE"] = datetime.strptime(r["DATA FINE"], "%d/%m/%Y").date()
+            except Exception:
+                ferie_utente.at[idx, "DATA INIZIO"] = None
+                ferie_utente.at[idx, "DATA FINE"] = None
+
+        for giorno in days_of_week:
+            in_ferie = False
+            motivo = ""
+            for _, r in ferie_utente.iterrows():
+                if r["DATA INIZIO"] and r["DATA FINE"] and r["DATA INIZIO"] <= giorno <= r["DATA FINE"]:
+                    in_ferie = True
+                    motivo = r.get("MOTIVO", "")
+            if in_ferie:
+                if motivo == "Malattia":
+                    row.append("🇨🇭" + (f" {motivo}" if motivo else ""))
+                else:
+                    row.append("🌴" + (f" {motivo}" if motivo else ""))
+            else:
+                row.append("")
+        ferie_matrix.append(row)
+
+    # 5. Visualizza tabella con celle evidenziate e centrata
+    ferie_report_df = pd.DataFrame(ferie_matrix, columns=days_labels, index=utenti)
+
+    def evidenzia_ferie(val):
+        if isinstance(val, str) and val.startswith("🌴"):
+            return 'background-color: #E6F7DD; text-align: center;'
+        elif isinstance(val, str) and val.startswith("🇨🇭"):
+            return 'background-color: #FFA1A1; text-align: center;'
+        return 'text-align: center;'
+
+    ferie_report_df_styled = (
+        ferie_report_df
+        .style
+        .applymap(evidenzia_ferie)
+        .set_table_styles([
+            {"selector": "th", "props": [("font-weight", "normal"), ("text-align", "center")]},
+            {"selector": "td", "props": [("text-align", "center")]}
+        ])
+        .set_properties(**{"text-align": "center"})
+    )
+
+    st.markdown("""
+        <style>
+            .streamlit-expander, .block-container, table {
+                margin-left: auto !important;
+                margin-right: auto !important;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown(ferie_report_df_styled.to_html(escape=False), unsafe_allow_html=True)
+
+elif page == "Traduci":
+    TRANSLATION_SHEET_ID = "1wS65klpyHNft8UpJAE1x1yIVa1_8ZRLftFnUBgW_f6o"
+    TRANSLATION_TAB_NAME = "Traduzioni"
+
+    st.title("🌍 CSV Translator Async2")
+
+    uploaded_file = st.file_uploader("Carica CSV", type=["csv"])
+
+    if uploaded_file:
+        df = read_csv_auto_encoding(uploaded_file)
+
+        st.subheader("Seleziona colonne da tradurre")
+        cols_to_translate = st.multiselect(
+            "Colonne",
+            df.columns.tolist()
+        )
+
+        st.subheader("Seleziona lingue")
+        target_langs = st.multiselect(
+            "Lingue",
+            AVAILABLE_LANGS,
+            default=AVAILABLE_LANGS
+        )
+
+        if st.button("🚀 Avvia traduzione") and cols_to_translate and target_langs:
+            with st.spinner("Caricamento vocabolario..."):
+                vocab, vocab_df = load_vocab(TRANSLATION_SHEET_ID, TRANSLATION_TAB_NAME)
+
+            with st.spinner("Analisi termini mancanti..."):
+                missing_terms = extract_missing_terms(df, cols_to_translate, vocab)
+
+            st.info(f"Termini da tradurre: {len(missing_terms)}")
+
+            if missing_terms:
+                with st.spinner("Traduzione OpenAI in corso..."):
+                    ws = get_sheet(TRANSLATION_SHEET_ID, TRANSLATION_TAB_NAME)
+                    progress_bar = st.progress(0)
+                    saved_badge = st.empty()
+                    status_text = st.empty()
+                    timer_text = st.empty()
+
+                    task = run_async(
+                        enrich_vocab_with_ui(
+                            client,
+                            vocab,
+                            missing_terms,
+                            target_langs,
+                            progress_bar,
+                            status_text,
+                            timer_text,
+                            ws,
+                            saved_badge
+                        )
+                    )
+
+                    if asyncio.isfuture(task):
+                        asyncio.get_event_loop().run_until_complete(task)
+                    progress_bar.progress(1.0)
+                    status_text.text("✅ Traduzione completata")
+                    timer_text.text("")
+            with st.spinner("Applicazione traduzioni al CSV..."):
+                dfs_by_lang = apply_translations(df, cols_to_translate, target_langs, vocab)
+
+
+            st.success("✅ Traduzione completata")
+
+            zip_buffer = BytesIO()
+            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
+                for lang, df_lang in dfs_by_lang.items():
+                    csv_buffer = io.StringIO()
+                    df_lang.to_csv(csv_buffer, index=False)
+
+                    zipf.writestr(
+                        f"descrizioni_{lang}.csv",
+                        csv_buffer.getvalue()
+                    )
+
+            zip_buffer.seek(0)
+
+            #csv_buffer = io.StringIO()
+            #df_out.to_csv(csv_buffer, index=False)
+            #csv_bytes = csv_buffer.getvalue().encode("utf-8")
+
+            now = datetime.now(ZoneInfo("Europe/Rome"))
+            file_name = f"traduzioni_{now.strftime('%d-%m-%Y_%H-%M-%S')}.zip"
+            # Carico il file su dropbox
+            try:
+                folder_path = "/CATALOGO/TRADUZIONI"  # cartella su Dropbox
+                access_token = get_dropbox_access_token()
+                dbx = dropbox.Dropbox(access_token)
+                upload_to_dropbox(dbx, folder_path, file_name, zip_buffer.getvalue())
+            except Exception as e:
+                st.error(f"❌ Errore durante l'upload su Dropbox: {e}")
+
+            st.download_button(
+                "📦 Scarica ZIP traduzioni",
+                data=zip_buffer,
+                file_name=file_name,
+                mime="application/zip"
+            )
