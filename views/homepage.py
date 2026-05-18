@@ -9,7 +9,7 @@ load_functions_from("functions", globals())
 def homepage():
     st.title("Homepage")
 
-    if st.button("Svuota Cache2"):
+    if st.button("Svuota Cache"):
         st.cache_data.clear()
         st.cache_resource.clear()
         st.success("Cache svuotata con successo!")
