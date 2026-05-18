@@ -1,5 +1,4 @@
 import streamlit as st
-
 import os
 import time
 import json
@@ -7,8 +6,11 @@ import pickle
 import logging
 import asyncio
 import hashlib
+import re
+import random  # <--- FONDAMENTALE: mancava per i random.choice e random.uniform
 from typing import List, Dict
-import streamlit as st
+from collections import deque
+
 import pandas as pd
 import numpy as np
 import requests
@@ -16,7 +18,6 @@ from PIL import Image
 import openai
 from openai import AsyncOpenAI
 import faiss
-from collections import deque
 
 from utils import *
 
