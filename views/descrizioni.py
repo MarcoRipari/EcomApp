@@ -33,7 +33,7 @@ LANG_LABELS = {v.capitalize(): k for k, v in LANG_NAMES.items()}
 desc_sheet_id = st.secrets["DESC_GSHEET_ID"]
 
 def genera_descrizioni():
-    st.header("📥 Caricamento CSV dei prodotti")
+    st.header("📥 Caricamento CSV dei prodotti2")
     
     uploaded = st.file_uploader("Carica un file CSV", type="csv")
     
