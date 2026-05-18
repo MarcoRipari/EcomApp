@@ -190,6 +190,7 @@ CONCEPT
 - indossamento eccellente / indossabilità eccellente
 - aspetto distintivo
 - durabilità
+- bicolore / bicolori / multicolore / multicolori
 
 Se un concetto non è descrivibile senza usare uno dei termini vietati, deve essere **omesso**.
 
