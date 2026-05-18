@@ -15,6 +15,7 @@ import pandas as pd
 import requests
 from deep_translator import GoogleTranslator 
 import dropbox
+from openai import AsyncOpenAI
 
 from utils import *
 
