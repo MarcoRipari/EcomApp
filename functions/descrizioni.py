@@ -181,7 +181,7 @@ def build_function_schema(selected_langs):
         }
     ]
     
-def build_unified_prompt(row, col_display_names, selected_langs, image_caption=None, simili=None, marchio=None):
+def build_unified_prompt(row, col_display_names, selected_langs, simili=None, marchio=None):
     # Costruzione scheda tecnica
     fields = []
     for col in col_display_names:
@@ -197,9 +197,6 @@ def build_unified_prompt(row, col_display_names, selected_langs, image_caption=N
     
     # Elenco lingue in stringa
     lang_list = ", ".join([LANG_NAMES.get(lang, lang) for lang in selected_langs])
-
-    # Caption immagine
-    image_line = f"\nAspetto visivo: {image_caption}" if image_caption else ""
 
     # Descrizioni simili
     sim_text = ""
@@ -226,7 +223,6 @@ Le descrizioni devono riprendere tono, struttura e naturalezza delle descrizioni
 
 ### INFO PRODOTTO ###
 {product_info}
-{image_line}
 CONCEPT
 {concept}
 
@@ -317,7 +313,6 @@ storiche del catalogo Voile Blanche: editoriale, fluido, contemporaneo.
 
 ### INFO ARTICOLO ###
 {product_info}
-{image_line}
 
 CONCEPT
 {concept}
@@ -422,7 +417,6 @@ Le descrizioni devono riprodurre il linguaggio di un catalogo ufficiale Flower M
 
 ### INFO PRODOTTO ###
 {product_info}
-{image_line}
 
 CONCEPT
 {concept}
@@ -542,7 +536,6 @@ Le descrizioni devono riprodurre il linguaggio di un catalogo ufficiale Candice 
 
 ### INFO PRODOTTO ###
 {product_info}
-{image_line}
 
 CONCEPT
 {concept}
@@ -758,7 +751,7 @@ async def generate_all_prompts(prompts: list[str], model: str, langs) -> dict:
     results = await asyncio.gather(*tasks)
     return dict(results)
 
-def calcola_tokens(df_input, col_display_names, selected_langs, selected_tones, desc_lunga_length, desc_breve_length, k_simili, use_image, marchio, faiss_index, DEBUG=False):
+def calcola_tokens(df_input, col_display_names, selected_langs, selected_tones, desc_lunga_length, desc_breve_length, k_simili, marchio, faiss_index, DEBUG=False):
     if df_input.empty:
         return None, None, "❌ Il CSV è vuoto"
 
@@ -769,26 +762,11 @@ def calcola_tokens(df_input, col_display_names, selected_langs, selected_tones, 
         index, index_df = faiss_index
         simili = retrieve_similar(row, index_df, index, k=k_simili, col_weights=st.session_state.col_weights)
         
-    if use_image:
-        try:
-            sku = row["SKU"]
-            sku = sku[3:].replace(".", "").upper()
-            url = f"https://repository.falc.biz/samples/{sku}-5.JPG"
-            #caption = get_blip_caption(url)
-            caption = get_blip_caption_new(url)
-            
-        except Exception as e:
-            caption = None
-    else:
-        caption = None
-        
-    #caption = get_blip_caption(row.get("Image 1", "")) if use_image and row.get("Image 1", "") else None
 
     prompt = build_unified_prompt(
         row=row,
         col_display_names=col_display_names,
         selected_langs=selected_langs,
-        image_caption=caption,
         simili=simili,
         marchio=marchio
     )
