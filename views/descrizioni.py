@@ -249,19 +249,11 @@ def genera_descrizioni():
 
                 # Salvataggio e ZIP
                 with st.spinner("📤 Salvataggio e creazione ZIP..."):
-                    translation_db = download_translation_db_from_github()
-                    original_db_json = json.dumps(translation_db, ensure_ascii=False, indent=2)
 
                     mem_zip = BytesIO()
                     with zipfile.ZipFile(mem_zip, "w") as zf:
                         for lang in selected_langs:
                             df_out = pd.DataFrame(all_outputs[lang])
-
-                            # Traduzione colonne Subtitle
-                            if "Subtitle" in df_out.columns:
-                                df_out['Subtitle_trad'] = translate_column_parallel(df_out['Subtitle'].fillna("").tolist(), source='it', target=lang.lower(), db=translation_db)
-                            if "Subtile2" in df_out.columns:
-                                df_out['Subtile2_trad'] = translate_column_parallel(df_out['Subtile2'].fillna("").tolist(), source='it', target=lang.lower(), db=translation_db)
 
                             df_export = pd.DataFrame({
                                 "skucolore": df_out.get("skucolore", ""),
@@ -284,7 +276,6 @@ def genera_descrizioni():
                                 append_to_sheet(DESC_SHEET_ID, lang, df_new)
 
                     append_logs(DESC_SHEET_ID, logs)
-                    upload_translation_db_to_github(translation_db, original_db_json)
                     
                     mem_zip.seek(0)
                     now = datetime.now(ZoneInfo("Europe/Rome"))
