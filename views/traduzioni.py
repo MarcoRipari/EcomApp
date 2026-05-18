@@ -6,6 +6,7 @@ import time
 import os
 import base64
 import io
+from io import BytesIO
 import zipfile
 from datetime import datetime
 from zoneinfo import ZoneInfo
