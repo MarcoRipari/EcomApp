@@ -33,7 +33,7 @@ def genera_traduzioni():
     st.title("🌍 Genera Traduzioni")
     st.markdown("Carica un file CSV per tradurre le colonne desiderate utilizzando OpenAI e un vocabolario su Google Sheets.")
     
-    uploaded_file = st.file_uploader("Carica CSV", type=["csv"], key="trad_csv_uploader")
+    uploaded_file = st.file_uploader("Carica CSV", type="csv", key="trad_csv_uploader")
     
     if uploaded_file:
         df = read_csv_auto_encoding(uploaded_file)
