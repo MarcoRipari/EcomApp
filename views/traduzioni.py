@@ -501,99 +501,100 @@ def translate_column_parallel(col_values, source, target, db, max_workers=5):
     return results
   
 
-st.title("🌍 CSV Translator Async2")
-
-uploaded_file = st.file_uploader("Carica CSV", type=["csv"])
-
-if uploaded_file:
-    df = read_csv_auto_encoding(uploaded_file)
-
-    st.subheader("Seleziona colonne da tradurre")
-    cols_to_translate = st.multiselect(
-        "Colonne",
-        df.columns.tolist()
-    )
-
-    st.subheader("Seleziona lingue")
-    target_langs = st.multiselect(
-        "Lingue",
-        AVAILABLE_LANGS,
-        default=AVAILABLE_LANGS
-    )
-
-    if st.button("🚀 Avvia traduzione") and cols_to_translate and target_langs:
-        with st.spinner("Caricamento vocabolario..."):
-            vocab, vocab_df = load_vocab(TRANSLATION_SHEET_ID, TRANSLATION_TAB_NAME)
-
-        with st.spinner("Analisi termini mancanti..."):
-            missing_terms = extract_missing_terms(df, cols_to_translate, vocab)
-
-        st.info(f"Termini da tradurre: {len(missing_terms)}")
-
-        if missing_terms:
-            with st.spinner("Traduzione OpenAI in corso..."):
-                ws = get_sheet(TRANSLATION_SHEET_ID, TRANSLATION_TAB_NAME)
-                progress_bar = st.progress(0)
-                saved_badge = st.empty()
-                status_text = st.empty()
-                timer_text = st.empty()
-
-                task = run_async(
-                    enrich_vocab_with_ui(
-                        client,
-                        vocab,
-                        missing_terms,
-                        target_langs,
-                        progress_bar,
-                        status_text,
-                        timer_text,
-                        ws,
-                        saved_badge
-                    )
-                )
-                
-                if asyncio.isfuture(task):
-                    asyncio.get_event_loop().run_until_complete(task)
-                progress_bar.progress(1.0)
-                status_text.text("✅ Traduzione completata")
-                timer_text.text("")
-        with st.spinner("Applicazione traduzioni al CSV..."):
-            dfs_by_lang = apply_translations(df, cols_to_translate, target_langs, vocab)
-
-            
-        st.success("✅ Traduzione completata")
-        
-        zip_buffer = BytesIO()
-        with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
-            for lang, df_lang in dfs_by_lang.items():
-                csv_buffer = io.StringIO()
-                df_lang.to_csv(csv_buffer, index=False)
-        
-                zipf.writestr(
-                    f"descrizioni_{lang}.csv",
-                    csv_buffer.getvalue()
-                )
-        
-        zip_buffer.seek(0)
-        
-        #csv_buffer = io.StringIO()
-        #df_out.to_csv(csv_buffer, index=False)
-        #csv_bytes = csv_buffer.getvalue().encode("utf-8")
-        
-        now = datetime.now(ZoneInfo("Europe/Rome"))
-        file_name = f"traduzioni_{now.strftime('%d-%m-%Y_%H-%M-%S')}.zip"
-        # Carico il file su dropbox
-        try:
-            folder_path = "/CATALOGO/TRADUZIONI"  # cartella su Dropbox
-            access_token = get_dropbox_access_token()
-            dbx = dropbox.Dropbox(access_token)
-            upload_to_dropbox(dbx, folder_path, file_name, zip_buffer.getvalue())
-        except Exception as e:
-            st.error(f"❌ Errore durante l'upload su Dropbox: {e}")
-                        
-        st.download_button(
-            "📦 Scarica ZIP traduzioni",
-            data=zip_buffer,
-            file_name=file_name,
-            mime="application/zip"
+def genera_traduzioni():
+    st.title("🌍 CSV Translator Async2")
+    
+    uploaded_file = st.file_uploader("Carica CSV", type=["csv"])
+    
+    if uploaded_file:
+        df = read_csv_auto_encoding(uploaded_file)
+    
+        st.subheader("Seleziona colonne da tradurre")
+        cols_to_translate = st.multiselect(
+            "Colonne",
+            df.columns.tolist()
         )
+    
+        st.subheader("Seleziona lingue")
+        target_langs = st.multiselect(
+            "Lingue",
+            AVAILABLE_LANGS,
+            default=AVAILABLE_LANGS
+        )
+    
+        if st.button("🚀 Avvia traduzione") and cols_to_translate and target_langs:
+            with st.spinner("Caricamento vocabolario..."):
+                vocab, vocab_df = load_vocab(TRANSLATION_SHEET_ID, TRANSLATION_TAB_NAME)
+    
+            with st.spinner("Analisi termini mancanti..."):
+                missing_terms = extract_missing_terms(df, cols_to_translate, vocab)
+    
+            st.info(f"Termini da tradurre: {len(missing_terms)}")
+    
+            if missing_terms:
+                with st.spinner("Traduzione OpenAI in corso..."):
+                    ws = get_sheet(TRANSLATION_SHEET_ID, TRANSLATION_TAB_NAME)
+                    progress_bar = st.progress(0)
+                    saved_badge = st.empty()
+                    status_text = st.empty()
+                    timer_text = st.empty()
+    
+                    task = run_async(
+                        enrich_vocab_with_ui(
+                            client,
+                            vocab,
+                            missing_terms,
+                            target_langs,
+                            progress_bar,
+                            status_text,
+                            timer_text,
+                            ws,
+                            saved_badge
+                        )
+                    )
+                    
+                    if asyncio.isfuture(task):
+                        asyncio.get_event_loop().run_until_complete(task)
+                    progress_bar.progress(1.0)
+                    status_text.text("✅ Traduzione completata")
+                    timer_text.text("")
+            with st.spinner("Applicazione traduzioni al CSV..."):
+                dfs_by_lang = apply_translations(df, cols_to_translate, target_langs, vocab)
+    
+                
+            st.success("✅ Traduzione completata")
+            
+            zip_buffer = BytesIO()
+            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
+                for lang, df_lang in dfs_by_lang.items():
+                    csv_buffer = io.StringIO()
+                    df_lang.to_csv(csv_buffer, index=False)
+            
+                    zipf.writestr(
+                        f"descrizioni_{lang}.csv",
+                        csv_buffer.getvalue()
+                    )
+            
+            zip_buffer.seek(0)
+            
+            #csv_buffer = io.StringIO()
+            #df_out.to_csv(csv_buffer, index=False)
+            #csv_bytes = csv_buffer.getvalue().encode("utf-8")
+            
+            now = datetime.now(ZoneInfo("Europe/Rome"))
+            file_name = f"traduzioni_{now.strftime('%d-%m-%Y_%H-%M-%S')}.zip"
+            # Carico il file su dropbox
+            try:
+                folder_path = "/CATALOGO/TRADUZIONI"  # cartella su Dropbox
+                access_token = get_dropbox_access_token()
+                dbx = dropbox.Dropbox(access_token)
+                upload_to_dropbox(dbx, folder_path, file_name, zip_buffer.getvalue())
+            except Exception as e:
+                st.error(f"❌ Errore durante l'upload su Dropbox: {e}")
+                            
+            st.download_button(
+                "📦 Scarica ZIP traduzioni",
+                data=zip_buffer,
+                file_name=file_name,
+                mime="application/zip"
+            )
