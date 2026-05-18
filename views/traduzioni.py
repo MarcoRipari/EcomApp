@@ -1,3 +1,6 @@
+import re
+
+
 AVAILABLE_LANGS = ["en", "fr", "de", "es"]
 OPENAI_MODEL = "gpt-4o-mini"
 SAVE_TRANSLATE_EVERY = 25  # batch size consigliato
