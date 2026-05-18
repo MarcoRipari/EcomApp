@@ -3,6 +3,7 @@ streamlit
 Pillow
 chardet
 requests
+deep-translator
 
 # 🤖 AI Generation e Prompting
 openai>=1.30.1
