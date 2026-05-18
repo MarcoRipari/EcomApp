@@ -68,6 +68,7 @@ with st.sidebar:
         
         submenu_item_list = [{"main":"Catalogo", "name":"Aggiungi ordini stagione", "icon":"plus", "role":["logistica","customer care","admin"]},
                              {"main":"Catalogo", "name":"Genera descrizioni", "icon":"list", "role":["customer care","admin"]},
+                             {"main":"Catalogo", "name":"Genera traduzioni", "icon":"list", "role":["customer care","admin"]},
                              {"main":"Catalogo", "name":"Trova articolo", "icon":"search", "role":["logistica","customer care","admin"]},
                              {"main":"Ordini", "name":"Dashboard", "icon":"bar-chart", "role":["admin"]},
                              {"main":"Ordini", "name":"Importa", "icon":"plus", "role":["admin"]},
@@ -166,6 +167,9 @@ elif page == "Catalogo - Aggiungi ordini stagione":
     
 elif page == "Catalogo - Genera descrizioni":
     genera_descrizioni()
+
+elif page == "Catalogo - Genera traduzioni":
+    genera_traduzioni()
 
 elif page == "Catalogo - Trova articolo":
     st.info("Funzionalità 'Trova articolo' in fase di sviluppo.")
