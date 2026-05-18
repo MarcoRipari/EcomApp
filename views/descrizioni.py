@@ -134,9 +134,9 @@ def genera_descrizioni():
             logs = []
             try:
                 with st.spinner("📚 Preparazione Indice FAISS..."):
-                    if marchio = "FM JUNIOR":
+                    if marchio == "FM JUNIOR":
                         tab_storico = f"STORICO_FM_JUNIOR"
-                    elif marchio = "WZ BIMBO":
+                    elif marchio == "WZ BIMBO":
                         tab_storico = f"STORICO_WZ_BIMBO"
                     else:
                         tab_storico = f"STORICO_{marchio}"
