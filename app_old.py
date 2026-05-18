@@ -89,14 +89,14 @@ LANG_LABELS = {v.capitalize(): k for k, v in LANG_NAMES.items()}
 # GLOBAL VARS
 # ---------------------------
 desc_sheet_id = st.secrets['DESC_GSHEET_ID']
-foto_sheet_id = st.secrets['FOTO_GSHEET_ID']
+foto_sheet_id = st.secrets['FOTO_GSHEET_ID'] 
 anagrafica_sheet_id = st.secrets['ANAGRAFICA_GSHEET_ID']
 ferie_sheet_id = st.secrets['FERIE_GSHEET_ID']
 ordini_sheet_id = st.secrets['ORDINI_GSHEET_ID']
 MISTRAL_API_KEY = st.secrets['MISTRAL_API_KEY']
 OPENROUTER_API_KEY = st.secrets['OPENROUTER_API_KEY']
 
-# ---------------------------
+# --------------------------- 
 # 🔐 Setup API keys and credentials
 # ---------------------------
 openai.api_key = st.secrets["OPENAI_API_KEY"]
@@ -109,7 +109,7 @@ def check_openai_key():
             max_tokens=1
         )
         return True, None
-    except Exception as e:  
+    except Exception as e:
         msg = str(e).lower()
         return False, msg
 
@@ -161,14 +161,14 @@ def get_workflow_logs(owner, repo, run_id, artifact_name="output.txt"):
     with z.open(artifact_name) as f:
         content = f.read().decode("utf-8")
         return content
-    
+
 def workflow(owner, repo, file, interval=5, timeout=120):
     run = run_workflow(owner, repo, file)
     if run.status_code != 204:
         return st.error(f"❌ Errore: {run.status_code} - {run.text}")
-        
+
     time.sleep(10)
-    
+
     run = get_last_run(owner, repo, file)
     run_id = run["id"]
 
@@ -248,7 +248,7 @@ def retrieve_similar(query_row: pd.Series, df: pd.DataFrame, index, k=5, col_wei
     logging.info(f"QUERY TEXT: {query_text[:300]} ...")
     logging.info(f"INDICI trovati: {I[0]}")
     logging.info(f"Distanze: {D[0]}")
-    
+
     return df.iloc[I[0]]
 
 def estimate_embedding_time(df: pd.DataFrame, col_weights: Dict[str, float], sample_size: int = 10) -> float:
@@ -329,7 +329,7 @@ def load_blip_model():
     processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
     model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large")
     return processor, model
-    
+
 def get_blip_caption(image_url: str) -> str:
     try:
         processor, model = load_blip_model()
@@ -339,7 +339,7 @@ def get_blip_caption(image_url: str) -> str:
 
         inputs = processor(raw_image, return_tensors="pt")
         output = model.generate(**inputs, max_new_tokens=30)
-        
+
         caption = processor.decode(output[0], skip_special_tokens=True)
         return caption
     except Exception as e:
@@ -357,9 +357,9 @@ def get_blip_caption_new(image_url: str) -> str:
         caption = processor.decode(out[0], skip_special_tokens=True)
     except Exception as e:
         caption = f"Errore: {e}"
-        
+
     return caption
-    
+
 # ---------------------------
 # 🧠 Prompting e Generazione
 # ---------------------------
@@ -387,7 +387,7 @@ def build_function_schema(selected_langs):
             }
         }
     ]
-    
+
 def build_unified_prompt(row, col_display_names, selected_langs, image_caption=None, simili=None, marchio=None):
     # Costruzione scheda tecnica
     fields = []
@@ -401,7 +401,7 @@ def build_unified_prompt(row, col_display_names, selected_langs, image_caption=N
     # Divisione marchi
     adulto = ["VB", "FM", "CC", "WZ"]
     bambino = ["NAT", "FAL"]
-    
+
     # Elenco lingue in stringa
     lang_list = ", ".join([LANG_NAMES.get(lang, lang) for lang in selected_langs])
 
@@ -858,7 +858,7 @@ Genera due testi per ciascuna lingua:
 - In caso di conflitto, lo stile delle descrizioni di riferimento ha priorità
 
 ### CONTROLLO FINALE ###
-> Verifica che “ispirazione” e derivati NON siano presenti  
+> Verifica che “ispirazione” e derivati NON siano presenti
   Se presenti, riscrivere la frase mantenendo il contenuto descrittivo
 
 > Il testo deve:
@@ -926,7 +926,7 @@ async def async_generate_description(prompt: str, idx: int, use_model: str, lang
 
     if prompt == "SaltaRiga":
         return idx, {"Continuativo": "Si"}
-        
+
     if len(prompt) < 50:
         return idx, {
             "result": prompt,
@@ -935,7 +935,7 @@ async def async_generate_description(prompt: str, idx: int, use_model: str, lang
                 "completion_tokens": 0,
                 "total_tokens": 0}
         }
-        
+
     try:
         response = await client.chat.completions.create(
             model=use_model,
@@ -948,14 +948,14 @@ async def async_generate_description(prompt: str, idx: int, use_model: str, lang
             functions=functions,
             function_call={"name": "generate_product_descriptions"},
         )
-        
+
         content = response.choices[0].message.content
         message = response.choices[0].message
         usage = response.usage
 
         if message.function_call:
             data = json.loads(message.function_call.arguments)
-            
+
         return idx, {"result": data, "usage": usage.model_dump()}
     except Exception as e:
         return idx, {"error": str(e)}
@@ -985,7 +985,7 @@ async def async_generate_description_mistral(
             return idx, {"result": data, "usage": usage.model_dump()}
         except Exception as e:
             return idx, {"error": str(e)}
-    
+
     if use_model == "deepseek-chimera":
         for attempt in range(MAX_RETRIES):
             try:
@@ -1035,7 +1035,7 @@ async def async_generate_description_mistral(
                     return idx, {"error": f"Failed after {MAX_RETRIES} attempts: {str(e)}"}
                 await asyncio.sleep(DELAY_BETWEEN_REQUESTS * (attempt + 1))  # Attesa esponenziale
 
-    
+
     # Gestione per Mistral
     if use_model == "mistral-medium":
         for attempt in range(MAX_RETRIES):
@@ -1049,36 +1049,36 @@ async def async_generate_description_mistral(
                         "model": use_model,
                         "messages": [{"role": "user", "content": prompt}]
                     }
-    
+
                     async with session.post("https://api.mistral.ai/v1/chat/completions", headers=headers, json=data) as response:
                         if response.status != 200:
                             error_msg = await response.text()
                             st.write(f"{error_msg}")
                             raise Exception(f"API Error: {error_msg}")
-    
+
                         response_json = await response.json()
                         content = response_json["choices"][0]["message"]["content"]
                         content = content.replace("**", "")  # Rimuovi eventuali **
                         json_match = re.search(r'\{.*\}', content, re.DOTALL)
-    
+
                         if json_match:
                             content = json.loads(json_match.group(0))
                         else:
                             raise Exception("No valid JSON found in response")
-    
+
                         usage = response_json.get("usage", {})
                         total_tokens = usage.get("total_tokens", 0)
 
                         # Controlla il limite dei token al minuto
                         if not check_token_limit(total_tokens):
                             raise Exception("Token limit per minute exceeded")
-                            
+
                         return idx, {"result": content, "usage": usage}
             except Exception as e:
                 if attempt == MAX_RETRIES - 1:
                     return idx, {"error": f"Failed after {MAX_RETRIES} attempts: {str(e)}"}
                 await asyncio.sleep(DELAY_BETWEEN_REQUESTS * (attempt + 1))  # Attesa esponenziale
-            
+
 
 
 async def generate_all_prompts(prompts: list[str], model: str, langs) -> dict:
@@ -1118,7 +1118,7 @@ def calcola_tokens(df_input, col_display_names, selected_langs, selected_tones, 
     if k_simili > 0 and faiss_index:
         index, index_df = faiss_index
         simili = retrieve_similar(row, index_df, index, k=k_simili, col_weights=st.session_state.col_weights)
-        
+
     if use_image:
         try:
             sku = row["SKU"]
@@ -1126,12 +1126,12 @@ def calcola_tokens(df_input, col_display_names, selected_langs, selected_tones, 
             url = f"https://repository.falc.biz/samples/{sku}-5.JPG"
             #caption = get_blip_caption(url)
             caption = get_blip_caption_new(url)
-            
+
         except Exception as e:
             caption = None
     else:
         caption = None
-        
+
     #caption = get_blip_caption(row.get("Image 1", "")) if use_image and row.get("Image 1", "") else None
 
     prompt = build_unified_prompt(
@@ -1154,7 +1154,7 @@ def calcola_tokens(df_input, col_display_names, selected_langs, selected_tones, 
         st.markdown(f"💸 **Costo stimato per riga**: ${cost_est:.6f}")
 
     return token_est, cost_est, prompt
-    
+
 # ---------------------------
 # DropBox
 # ---------------------------
@@ -1183,7 +1183,7 @@ def get_dropbox_access_token():
 def get_dropbox_client():
     access_token = get_dropbox_access_token()
     return dropbox.Dropbox(access_token)
-    
+
 def upload_to_dropbox(dbx, folder_path: str, file_name: str, file_bytes: bytes):
     dbx_path = f"{folder_path}/{file_name}"
     try:
@@ -1192,11 +1192,11 @@ def upload_to_dropbox(dbx, folder_path: str, file_name: str, file_bytes: bytes):
         pass  # cartella già esiste
     try:
         dbx.files_upload(file_bytes, dbx_path, mode=WriteMode("overwrite"))
-        
+
         st.success(f"✅ File caricato su Dropbox: {dbx_path}")
     except Exception as e:
         st.error(f"❌ Errore upload su Dropbox: {e}")
-        
+
 def upload_csv_to_dropbox(dbx, folder_path: str, file_name: str, file_bytes: bytes):
     dbx_path = f"{folder_path}/{file_name}"
     try:
@@ -1205,7 +1205,7 @@ def upload_csv_to_dropbox(dbx, folder_path: str, file_name: str, file_bytes: byt
         pass  # cartella già esiste
     try:
         dbx.files_upload(file_bytes, dbx_path, mode=WriteMode("overwrite"))
-        
+
         st.success(f"✅ CSV caricato su Dropbox: {dbx_path}")
     except Exception as e:
         st.error(f"❌ Errore caricando CSV su Dropbox: {e}")
@@ -1218,14 +1218,14 @@ def download_csv_from_dropbox(dbx, folder_path: str, file_name: str) -> io.Bytes
         return io.BytesIO(res.content), metadata
     except dropbox.exceptions.ApiError as e:
         # Se l'errore è 'path/not_found' -> file mancante
-        if (hasattr(e.error, "is_path") and e.error.is_path() 
+        if (hasattr(e.error, "is_path") and e.error.is_path()
                 and e.error.get_path().is_not_found()):
             return None, None
         else:
             # altri errori (permessi, connessione, ecc.)
             st.error(f"Errore scaricando da Dropbox: {e}")
             return None, None
-            
+
 def format_dropbox_date(dt):
     if dt is None:
         return "Data non disponibile"
@@ -1250,7 +1250,7 @@ def format_dropbox_date(dt):
     else:
         mese = mesi_it[dt_italy.month - 1]
         return f"{dt_italy.day:02d} {mese} {dt_italy.year} - {dt_italy.strftime('%H:%M')}"
-    
+
 # ---------------------------
 # Funzioni varie
 # ---------------------------
@@ -1281,7 +1281,7 @@ Alcune parole devono seguire regole fisse:
 # =========================
 def normalize(text: str) -> str:
     return text.strip().lower()
-    
+
 def run_async(coro):
     try:
         loop = asyncio.get_running_loop()
@@ -1335,7 +1335,7 @@ def append_vocab_rows(ws, rows):
 
     if values:
         ws.append_rows(values, value_input_option="RAW")
-        
+
 # =========================
 # VOCABULARY
 # =========================
@@ -1344,12 +1344,12 @@ def worksheet_to_df(ws):
     if not records:
         return pd.DataFrame()
     return pd.DataFrame(records)
-    
+
 def load_vocab(sheet_id, tab):
     ws = get_sheet(sheet_id, tab)
     df = worksheet_to_df(ws)
     df.columns = [c.strip().lower() for c in df.columns]
-    
+
     vocab = {}
 
     if df.empty:
@@ -1386,19 +1386,19 @@ async def translate_term(client, term, target_langs, col_name):
             "IMPORTANTE: Il termine è un colore o una combinazione di colori, se contiene un trattino, "
             "traduci ciascuna parte separatamente e mantieni il trattino.\n"
         )
-        
+
     messages = [
         {"role": "user", "content": f"""
         Traduci questo testo italiano nelle lingue: {', '.join(target_langs)}.
         Mantieni maiuscole e punteggiatura come nell'originale.
         NON usare abbreviazioni, ellissi o forme contratte (es. niente “-sohle”, “-lining”, ecc.)
         {important_note}
-        
+
         Testo da tradurre:
         \"\"\"{term}\"\"\"
-        
+
         {MANUAL_TRANSLATIONS_PROMPT}
-        
+
         Rispondi SOLO in JSON valido nel formato:
         {{
           "en": "...",
@@ -1494,7 +1494,7 @@ async def enrich_vocab_with_ui(
             **vocab[key],
             "source_col": col_name
         })
-        
+
         if len(buffer) >= SAVE_TRANSLATE_EVERY:
             append_vocab_rows(ws, buffer)
             saved_count += len(buffer)
@@ -1603,12 +1603,12 @@ def apply_translations(df, columns, langs, vocab):
         dfs_by_lang[lang] = df_lang
 
     return dfs_by_lang
-        
+
 def read_csv_auto_encoding(uploaded_file, separatore=None):
     raw_data = uploaded_file.read()
     result = chardet.detect(raw_data)
     encoding = result['encoding'] or 'utf-8'
-    
+
     text_data = raw_data.decode(encoding, errors='replace')
     sniffer = csv.Sniffer()
     try:
@@ -1616,7 +1616,7 @@ def read_csv_auto_encoding(uploaded_file, separatore=None):
         separator = dialect.delimiter
     except csv.Error:
         separator = ','  # fallback
-        
+
     uploaded_file.seek(0)  # Rewind after read
     return pd.read_csv(uploaded_file, sep=separator, encoding=encoding, dtype=str)
     #if separatore:
@@ -1627,7 +1627,7 @@ def read_csv_auto_encoding(uploaded_file, separatore=None):
 def not_in_array(array, list):
     missing = not all(col in array for col in list)
     return missing
-    
+
 def genera_pdf(df_disp, **param):
     # --- Parametri ---
     truncate_map = param.get("truncate_map", None)  # se None = niente troncamento
@@ -1792,14 +1792,14 @@ def process_csv_and_update(sheet, uploaded_file, batch_size=100):
     if new_rows:
         # pulizia valori
         new_rows_clean = [[str(cell) if cell is not None else "" for cell in row] for row in new_rows]
-    
+
         start_row = len(existing_df) + 2  # +2 per header e base 1
         end_row = start_row + len(new_rows_clean) - 1
         missing_rows = end_row - sheet.row_count
         if missing_rows > 0:
             sheet.add_rows(missing_rows)
         cell_range = f"A{start_row}:U{end_row}"
-    
+
         sheet.update(cell_range, new_rows_clean, value_input_option="RAW")
 
     st.text("✅ Operazione completata!")
@@ -1968,7 +1968,7 @@ def translate_column_parallel(col_values, source, target, db, max_workers=5):
                 results[idx] = str(col_values[idx])
 
     return results
-    
+
 # --- Funzione per generare PDF ---
 def genera_pdf_aggrid(df_table, file_path="giac_corridoio.pdf"):
     doc = SimpleDocTemplate(file_path, pagesize=landscape(A4))
@@ -2022,7 +2022,7 @@ def genera_pdf_aggrid(df_table, file_path="giac_corridoio.pdf"):
     doc.build(elements)
 
     return open(file_path, "rb").read()
-    
+
 # ---------------------------
 # Funzioni gestione foto
 # ---------------------------
@@ -2096,7 +2096,7 @@ def carica_lista_foto(sheet_id: str, cache_key: str = "") -> pd.DataFrame:
         values = sheet.get("A3:Y5000")
         if not values:
             return pd.DataFrame()
-        
+
         # ✅ Definizione corretta: 24 intestazioni per colonne A–V
         headers = ["SKU", "CANALE", "STAGIONE", "COLLEZIONE", "DESCRIZIONE", "COD", "VAR", "COL", "TG CAMP", "TG PIC", "SCATTARE", "CONTROLLO", "DISP", "DISP 027", "DISP 028", "RISCATTARE", "CONSEGNATA", "FOTOGRAFO", "COR", "LAT", "X", "Y", "UBI", "REPO", "END"]
         df = pd.DataFrame(values, columns=headers)
@@ -2105,7 +2105,7 @@ def carica_lista_foto(sheet_id: str, cache_key: str = "") -> pd.DataFrame:
         # 🧹 Normalizza booleani
         def normalize_bool(col):
             return col.astype(str).str.strip().str.lower().map({"true": True, "false": False}).fillna(False)
-        
+
         df["SCATTARE"] = normalize_bool(df["SCATTARE"])
         df["CONSEGNATA"] = normalize_bool(df["CONSEGNATA"])
         df["RISCATTARE"] = normalize_bool(df["RISCATTARE"])
@@ -2124,7 +2124,7 @@ def carica_lista_foto(sheet_id: str, cache_key: str = "") -> pd.DataFrame:
 # Funzione per estrarre i dati da una pagina PDF
 def extract_data_from_page(page_text):
     data = {}
-    
+
     # Marketplace
     # Ricerca separata per essere più robusti alle variazioni di layout
     marketplace_match = re.search(r"Taglia(.*)Marketplace:", page_text, re.IGNORECASE)
@@ -2162,7 +2162,7 @@ def extract_data_from_page(page_text):
             mp = "Miinto"
         else:
             mp = marketplace_match.group(1).strip()
-            
+
         data['Marketplace'] = mp
     else:
         data['Marketplace'] = "N/A"
@@ -2170,7 +2170,7 @@ def extract_data_from_page(page_text):
     # Numero Ordine
     #order_match = re.search(r"Marketplace order\s*([a-zA-Z0-9-]+)", page_text, re.IGNORECASE)
     order_match = re.search(r"Marketplace order\s*(.*)\sUbicazioneData vendita", page_text, re.IGNORECASE)
-    
+
     if order_match:
         data['Numero Ordine'] = order_match.group(1).strip()
     else:
@@ -2222,20 +2222,20 @@ def extract_data_from_page(page_text):
             nazione = "ES"
         else:
             nazione = "N/A"
-    
+
     data['Nazione'] = nazione
-    
+
     #if country_match:
     #    data['Nazione'] = country_match.group(1).strip()
     #else:
     #    data['Nazione'] = "N/A"
-    
+
     # Articoli, quantità e taglia
     items = []
     items_section = re.search(r"Articolo\s+Quantità\s+Descrizione articolo\s+Taglia(.*?)ISTRUZIONI IMBALLO", page_text, re.DOTALL)
     if not items_section:
         items_section = re.search(r"Articolo\s+Taglia\s+Quantità\s+Descrizione articolo(.*?)ISTRUZIONI IMBALLO", page_text, re.DOTALL)
-    
+
     if items_section:
         items_text = items_section.group(1).strip()
         item_lines = items_text.split('\n')
@@ -2265,9 +2265,9 @@ def extract_data_from_page(page_text):
                             'descrizione': item_match.group(6).strip()
                         }
                         items.append(item_data)
-                        
+
     data['Articoli'] = items
-    
+
     return data
 
 def get_country_from_address(address):
@@ -2283,10 +2283,10 @@ def get_country_from_address(address):
     try:
         # Crea un geocoder con un timeout per evitare che il programma si blocchi
         geolocator = Nominatim(user_agent="my-app", timeout=5)
-        
+
         # Tenta di geocodificare l'indirizzo
         location = geolocator.geocode(address)
-        
+
         if location and location.address:
             # L'indirizzo geocodificato restituisce una stringa strutturata.
             # Esempio: 'Via Roma 1, 00100 Roma RM, Italia'
@@ -2294,13 +2294,13 @@ def get_country_from_address(address):
             country_match = re.search(r"([^,]+)\s*$", location.address)
             if country_match:
                 return country_match.group(1)
-        
+
     except (GeocoderTimedOut, GeocoderUnavailable) as e:
         print(f"Errore di geocoding: {e}")
-        
+
     return "N/A"
 
-    
+
 # ---------------------------
 # 📦 Streamlit UI
 # ---------------------------
@@ -2333,7 +2333,7 @@ drive_service = build('drive', 'v3', credentials=credentials)
 def get_sheet(sheet_id, tab):
     spreadsheet = gsheet_client.open_by_key(sheet_id)
     worksheets = spreadsheet.worksheets()
-    
+
     # Confronto case-insensitive per maggiore robustezza
     for ws in worksheets:
         if ws.title.strip().lower() == tab.strip().lower():
@@ -2352,7 +2352,7 @@ def append_logs(sheet_id, logs_data):
     sheet = get_sheet(sheet_id, "logs")
     values = [list(log.values()) for log in logs]
     sheet.append_rows(values, value_input_option="RAW")
-    
+
 def append_log(sheet_id, log_data):
     sheet = get_sheet(sheet_id, "logs")
     sheet.append_row(list(log_data.values()), value_input_option="RAW")
@@ -2382,7 +2382,7 @@ with st.sidebar:
             password = st.text_input("Password", type="password")
 
             login_button = st.form_submit_button("Accedi")
-            
+
         if login_button:
             if login(email, password):
                 st.rerun()  # ricarica subito la pagina senza messaggio
@@ -2402,7 +2402,7 @@ with st.sidebar:
                           {"name":"Test", "icon":"gear", "role":["admin"]},
                           {"name":"Logout", "icon":"key", "role":["guest","logistica","customer care","admin"]}
                          ]
-        
+
         submenu_item_list = [{"main":"Catalogo", "name":"Trova articolo", "icon":"search", "role":["logistica","customer care","admin"]},
                              {"main":"Catalogo", "name":"Aggiungi ordini stagione", "icon":"plus", "role":["logistica","customer care","admin"]},
                              {"main":"Ordini", "name":"Dashboard", "icon":"bar-chart", "role":["admin"]},
@@ -2421,15 +2421,15 @@ with st.sidebar:
                              {"main":"Ferie", "name":"Aggiungi ferie", "icon":"plus", "role":["admin"]},
                              {"main":"Admin", "name":"Aggiungi utente", "icon":"plus", "role":["admin"]}
                             ]
-        
+
         menu_items = []
         icon_items = []
         for item in menu_item_list:
             if user["role"] in item["role"]:
                 menu_items.append(item["name"])
                 icon_items.append(item["icon"])
-        
-        
+
+
         st.markdown("## 📋 Menu")
         # --- Menu principale verticale ---
         main_page = option_menu(
@@ -2467,7 +2467,7 @@ with st.sidebar:
             if main_page == item["main"] and user["role"] in item["role"]:
                 submenu_items.append(item["name"])
                 submenu_icons.append(item["icon"])
-                
+
         if submenu_items:
             sub_page = option_menu(
                 menu_title=None,
@@ -2529,15 +2529,15 @@ if page == "🔑 Login":
         if login:
             login_as(login)
 
-        
+
 # ---------------------------
 # 📝 GENERAZIONE DESCRIZIONI
 # ---------------------------
 elif page == "Descrizioni":
     st.header("📥 Caricamento CSV dei prodotti")
-    
+
     uploaded = st.file_uploader("Carica un file CSV", type="csv")
-    
+
     if uploaded:
         df_input = read_csv_auto_encoding(uploaded, ";")
         df_input["skucolore"] = df_input["skucolore"].astype(str)
@@ -2565,7 +2565,7 @@ elif page == "Descrizioni":
         with st.expander("⚙️ Configura colonne per il prompt", expanded=True):
             st.markdown("### 1. Seleziona colonne")
             available_cols = [col for col in df_input.columns if col not in ["Description", "Description2"]]
-    
+
             def_column = ["SKU famille", "Saison",
                           "Silouhette",
                           "sole_material_zalando",
@@ -2592,23 +2592,23 @@ elif page == "Descrizioni":
                                "futter_zalando": 3,
                                "Sp.feature": 1
                               }
-    
+
             missing = not_in_array(df_input.columns, def_column)
             if missing:
                 def_column = []
-                
+
             st.session_state.selected_cols = st.multiselect("Colonne da includere nel prompt", options=available_cols, default=def_column)
-    
+
             if st.session_state.selected_cols:
                 if st.button("▶️ Procedi alla configurazione colonne"):
                     st.session_state.config_ready = True
-    
+
             if st.session_state.get("config_ready"):
                 st.markdown("### 2. Configura pesi ed etichette")
                 for col in st.session_state.selected_cols:
                     st.session_state.col_weights.setdefault(col, def_col_weights[col])
                     st.session_state.col_display_names.setdefault(col, col)
-    
+
                     cols = st.columns([2, 3])
                     with cols[0]:
                         st.session_state.col_weights[col] = st.slider(
@@ -2619,7 +2619,7 @@ elif page == "Descrizioni":
                             #f"Etichetta: {col}", value=st.session_state.col_display_names[col], key=f"label_{col}"
                             f"Etichetta: {col}", value=trans_def_colum[col], key=f"label_{col}"
                         )
-    
+
         # 🌍 Lingue e parametri
         with st.expander("🌍 Selezione Lingue & Parametri"):
             settings_col1, settings_col2, settings_col3 = st.columns(3)
@@ -2631,11 +2631,11 @@ elif page == "Descrizioni":
                 )
                 use_simili = st.checkbox("Usa descrizioni simili (RAG)", value=True)
                 k_simili = 2 if use_simili else 0
-                
+
                 use_image = st.checkbox("Usa immagine per descrizioni accurate", value=False)
 
                 use_model = st.radio("Seleziona modello GPT", ["gpt-4o-mini", "gpt-4o", "gpt-5", "gpt-3.5-turbo", "gpt-4.1-nano", "gpt-5-nano", "mistral-medium", "deepseek-chimera"], index=1, horizontal = True)
-    
+
             with settings_col2:
                 selected_labels = st.multiselect(
                     "Lingue di output",
@@ -2643,17 +2643,17 @@ elif page == "Descrizioni":
                     default=["Italiano", "Inglese", "Francese", "Tedesco", "Spagnolo"]
                 )
                 selected_langs = [LANG_LABELS[label] for label in selected_labels]
-                
+
                 selected_tones = st.multiselect(
                     "Tono desiderato",
                     ["informale", "conversazionale", "chiaro e diretto", "professionale", "amichevole", "accattivante", "descrittivo", "tecnico", "ironico", "minimal", "user friendly", "SEO-friendly", "SEO-optimized"],
                     default=["informale", "conversazionale", "chiaro e diretto", "user friendly", "SEO-friendly", "SEO-optimized"]
                 )
-    
+
             with settings_col3:
                 desc_lunga_length = st.selectbox("Lunghezza descrizione lunga", ["10", "20", "30", "40", "50", "60", "70", "80", "90", "100"], index=5)
                 desc_breve_length = st.selectbox("Lunghezza descrizione breve", ["10", "20", "30", "40", "50", "60", "70", "80", "90", "100"], index=1)
-    
+
         # 💵 Stima costi
         if st.button("💰 Stima costi generazione"):
             token_est, cost_est, prompt = calcola_tokens(
@@ -2674,7 +2674,7 @@ elif page == "Descrizioni":
                 📊 Token totali: ~{token_est}
                 💸 Costo stimato: ${cost_est:.6f}
                 """)
-    
+
         # 🪄 Generazione descrizioni
         openai_check, openai_check_msg = check_openai_key()
         if not openai_check:
@@ -2683,7 +2683,7 @@ elif page == "Descrizioni":
         else:
             if st.button("🚀 Genera Descrizioni"):
                 st.session_state["generate"] = True
-            
+
             if st.session_state.get("generate"):
                 logs = []
                 try:
@@ -2691,19 +2691,19 @@ elif page == "Descrizioni":
                         tab_storico = f"STORICO_{marchio}"
                         data_sheet = get_sheet(desc_sheet_id, tab_storico)
                         df_storico = pd.DataFrame(data_sheet.get_all_records()).tail(500)
-            
+
                         if "faiss_index" not in st.session_state:
                             index, index_df = build_faiss_index(df_storico, st.session_state.col_weights)
                             st.session_state["faiss_index"] = (index, index_df)
                         else:
                             index, index_df = st.session_state["faiss_index"]
-            
+
                     # ✅ Recupera descrizioni già esistenti su GSheet
                     st.info("🔄 Verifico se alcune righe sono già state generate...")
                     existing_data = {}
                     already_generated = {lang: [] for lang in selected_langs}
                     rows_to_generate = []
-            
+
                     for lang in selected_langs:
                         try:
                             tab_df = pd.DataFrame(get_sheet(desc_sheet_id, lang).get_all_records())
@@ -2719,7 +2719,7 @@ elif page == "Descrizioni":
                         if not sku:
                             rows_to_generate.append(i)
                             continue
-                    
+
                         all_present = True
                         for lang in selected_langs:
                             df_lang = existing_data.get(lang)
@@ -2730,7 +2730,7 @@ elif page == "Descrizioni":
                             if not desc["Description"] or not desc["Description2"]:
                                 all_present = False
                                 break
-                    
+
                         if all_present:
                             # ✅ SKU già presente in tutti i fogli
                             for lang in selected_langs:
@@ -2741,7 +2741,7 @@ elif page == "Descrizioni":
                                 already_generated[lang].append(output_row)
                         else:
                             prefix = sku[:13]
-                    
+
                             # 🔍 Cerca se esiste già una SKU con questo prefisso in existing_data
                             found_existing = False
                             for lang in selected_langs:
@@ -2756,15 +2756,15 @@ elif page == "Descrizioni":
                                         output_row["Description2"] = desc["Description2"]
                                         already_generated[lang].append(output_row)
                                         found_existing = True
-                    
+
                             # Se nessuna SKU con quel prefisso è già presente → generala ora
                             if not found_existing:
                                 if prefix not in unique_sku_prefixes:
                                     unique_sku_prefixes[prefix] = i
                                     rows_to_generate.append(i)
-            
+
                     df_input_to_generate = df_input.iloc[rows_to_generate]
-            
+
                     # Costruzione dei prompt
                     all_prompts = []
                     with st.spinner("✍️ Costruisco i prompt..."):
@@ -2783,7 +2783,7 @@ elif page == "Descrizioni":
                                 caption = None
                             prompt = build_unified_prompt(row, st.session_state.col_display_names, selected_langs, image_caption=caption, simili=simili, marchio=marchio)
                             all_prompts.append(prompt)
-            
+
                     with st.spinner("🚀 Generazione asincrona in corso..."):
                         if use_model == "mistral-medium":
                             results = asyncio.run(generate_all_prompts_mistral(all_prompts, use_model))
@@ -2791,17 +2791,17 @@ elif page == "Descrizioni":
                             results = asyncio.run(generate_all_prompts_deepseek(all_prompts, use_model))
                         else:
                             results = asyncio.run(generate_all_prompts(all_prompts, use_model, selected_langs))
-                    
+
                     # Parsing risultati
                     all_outputs = already_generated.copy()
                     prefix_to_output = {lang: {} for lang in selected_langs}
-                    
+
                     for i, (_, row) in enumerate(df_input_to_generate.iterrows()):
                         result = results.get(i, {})
 
                         if "Continuativo" in result:
                             continue
-                            
+
                         sku = str(row.get("SKU", "")).strip()
                         prefix = sku[:13]
                         if "error" in result:
@@ -2814,11 +2814,11 @@ elif page == "Descrizioni":
                                 "timestamp": time.strftime("%Y-%m-%d %H:%M:%S")
                             })
                             continue
-                        
+
                         sku_generate_lista = []
                         result_data = result.get("result", {})
                         result_data_norm = {k.lower(): v for k, v in result_data.items()}
-                        
+
                         for lang in selected_langs:
                             output_row = row.to_dict()
                             lang_data = result_data_norm.get(lang.lower(), {})
@@ -2828,7 +2828,7 @@ elif page == "Descrizioni":
                             output_row["Description2"] = descr_breve
                             all_outputs[lang].append(output_row)
                             prefix_to_output[lang][prefix] = output_row
-            
+
                         log_entry = {
                             "utente": st.session_state.user["username"],
                             "sku": row.get("SKU", ""),
@@ -2858,14 +2858,14 @@ elif page == "Descrizioni":
                                 new_row["Description2"] = copied_row.get("Description2", "")
                                 all_outputs[lang].append(new_row)
                                 #all_outputs[lang].append(copied_row)
-                                
+
 
                     # 🔄 Salvataggio solo dei nuovi risultati
                     with st.spinner("📤 Salvataggio nuovi dati..."):
                         try:
                             for lang in selected_langs:
                                 df_out = pd.DataFrame(all_outputs[lang])
-                                
+
                                 #df_new = df_out[df_out["SKU"].isin(df_input_to_generate["SKU"].astype(str))]
                                 # Recupera gli SKU già presenti nello sheet
                                 try:
@@ -2876,7 +2876,7 @@ elif page == "Descrizioni":
                                     existing_skus = set()
 
                                 df_new = df_out[~df_out["SKU"].astype(str).isin(existing_skus)]
-        
+
                                 if not df_new.empty:
                                     append_to_sheet(desc_sheet_id, lang, df_new)
 
@@ -2884,12 +2884,12 @@ elif page == "Descrizioni":
                         except Exception as e:
                             st.warning(f"Errore: {e}")
 
-                    
+
                     # 📦 ZIP finale
                     with st.spinner("📦 Generazione ZIP..."):
                         translation_db = download_translation_db_from_github()
                         original_db_json = json.dumps(translation_db, ensure_ascii=False, indent=2)
-                        
+
                         mem_zip = BytesIO()
                         with zipfile.ZipFile(mem_zip, "w") as zf:
                             for lang in selected_langs:
@@ -2923,20 +2923,20 @@ elif page == "Descrizioni":
                             upload_to_dropbox(dbx, folder_path, file_name, file_bytes)
                         except Exception as e:
                             st.error(f"❌ Errore durante l'upload su Dropbox: {e}")
-                            
+
                     st.success("✅ Tutto fatto!")
                     st.download_button("📥 Scarica descrizioni (ZIP)", mem_zip, file_name=file_name)
                     st.session_state["generate"] = False
-            
+
                 except Exception as e:
                     st.error(f"Errore durante la generazione: {str(e)}")
                     st.text(traceback.format_exc())
-    
+
         # 🔍 Prompt Preview & Benchmark
         with st.expander("🔍 Strumenti di debug & Anteprima"):
             row_index = st.number_input("Indice riga per anteprima", 0, len(df_input) - 1, 0)
             test_row = df_input.iloc[row_index]
-    
+
             if st.button("💬 Mostra Prompt di Anteprima"):
                 with st.spinner("Generazione..."):
                     try:
@@ -2955,7 +2955,7 @@ elif page == "Descrizioni":
                             )
                         else:
                             simili = pd.DataFrame([])
-    
+
                         image_url = test_row.get("Image 1", "")
                         if use_image:
                             #caption = get_blip_caption(image_url) if image_url else None
@@ -2973,7 +2973,7 @@ elif page == "Descrizioni":
                         st.expander("📄 Prompt generato").code(prompt_preview, language="markdown")
                     except Exception as e:
                         st.error(f"Errore: {str(e)}")
-    
+
             if st.button("🧪 Esegui Benchmark FAISS"):
                 with st.spinner("In corso..."):
                     benchmark_faiss(df_input, st.session_state.col_weights)
@@ -2983,7 +2983,7 @@ elif page == "Foto - Gestione":
     tab_names = ["ECOM", "ZFS", "AMAZON"]
 
     selected_ristampe = st.session_state.get("ristampe_selezionate", set())
-    
+
     # 🔽 Caricamento dati con chiave cache dinamica
     cache_token = str(st.session_state.get("refresh_foto_token", "static"))
     df = carica_lista_foto(foto_sheet_id, cache_key=cache_token)
@@ -2993,10 +2993,10 @@ elif page == "Foto - Gestione":
     df_disp = df[df["DISP"] == True]
     df_disp_027 = df[df["DISP 027"] == True]
     df_disp_028 = df[df["DISP 028"] == True]
-    
+
     df_disp["X"] = df_disp["X"].astype(int)
     df_disp["Y"] = df_disp["Y"].astype(int)
-    
+
     #df_disp = df_disp[["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y","FOTOGRAFO"]]
     df_disp = df_disp.sort_values(by=["COR", "X", "Y", "LAT"])
     df_disp_027 = df_disp_027.sort_values(by=["UBI"])
@@ -3005,16 +3005,16 @@ elif page == "Foto - Gestione":
     df_matias = df_disp[df_disp["FOTOGRAFO"] == "MATIAS"]
     df_matias_027 = df_disp_027[df_disp_027["FOTOGRAFO"] == "MATIAS"]
     df_matias_028 = df_disp_028[df_disp_028["FOTOGRAFO"] == "MATIAS"]
-    
+
     df_matteo = df_disp[df_disp["FOTOGRAFO"] == "MATTEO"]
     df_matteo_027 = df_disp_027[df_disp_027["FOTOGRAFO"] == "MATTEO"]
     df_matteo_028 = df_disp_028[df_disp_028["FOTOGRAFO"] == "MATTEO"]
-    
+
 
     df_matias = df_matias[["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
     df_matias_027 = df_matias_027[["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
     df_matias_028 = df_matias_028[["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
-    
+
     df_matteo = df_matteo[["COD","VAR","COL","TG PIC","DESCRIZIONE","COR","LAT","X","Y"]]
     df_matteo_027 = df_matteo_027[["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
     df_matteo_028 = df_matteo_028[["COD","VAR","COL","TG CAMP","DESCRIZIONE","UBI"]]
@@ -3028,17 +3028,17 @@ elif page == "Foto - Gestione":
     matias = df_matias.shape[0]
     matias_027 = df_matias_027.shape[0]
     matias_028 = df_matias_028.shape[0]
-    
+
     #matteo = df[df["FOTOGRAFO"] == "MATTEO"].shape[0]
     matteo = df_matteo.shape[0]
     matteo_027 = df_matteo_027.shape[0]
     matteo_028 = df_matteo_028.shape[0]
-    
+
     col1, col2 = st.columns(2)
     with col1:
         if st.button("Avvia workflow"):
             workflow("MarcoRipari", "Gestione-Ecom", "check_photos")
-            
+
         if st.button("📦 Genera lista SKU"):
             try:
                 genera_lista_sku(foto_sheet_id, tab_names)
@@ -3047,27 +3047,27 @@ elif page == "Foto - Gestione":
                 st.error(f"Errore: {str(e)}")
         if st.button("🔄 Refresh"):
             st.session_state["refresh_foto_token"] = str(time.time())
-            
+
         if st.button("Esegui controllo2"):
             url = f"https://api.github.com/repos/{OWNER}/{REPO}/actions/workflows/{WORKFLOW_FILENAME}/dispatches"
-        
+
             headers = {
                 "Authorization": f"token {GITHUB_TOKEN}",
                 "Accept": "application/vnd.github+json",
             }
-        
+
             data = {
                 "ref": REF,
                 "inputs": {}
             }
-        
+
             response = requests.post(url, headers=headers, json=data)
-        
+
             if response.status_code == 204:
                 st.success("✅ Workflow avviato con successo!")
             else:
                 st.error(f"❌ Errore: {response.status_code} - {response.text}")
-            
+
     with col2:
         c1, c2, c3, c4, c5 = st.columns([0.35,1,1,1,1])
         c2.metric('📝 Totale SKU', total)
@@ -3075,7 +3075,7 @@ elif page == "Foto - Gestione":
         c4.metric("🚚 Dal fotografo", consegnate)
         c5.metric("📸 Da scattare", da_scattare)
         st.divider()
-    
+
 
     col_dati1, col_dati2, col_dati3 = st.columns(3)
     with col_dati1:
@@ -3152,7 +3152,7 @@ elif page == "Foto - Gestione":
         t4, t5, t6 = st.columns(3)
         with t5:
             st.subheader("MATTEO")
-            
+
         m4, m5, m6 = st.columns(3)
         with m4:
             m4.metric("ECOM", matteo)
@@ -3197,7 +3197,7 @@ elif page == "Foto - Gestione":
                     width="content",
                     key="10"
                 )
-            
+
         with m6:
             m6.metric("028", matteo_028)
             if df_disp_028.empty:
@@ -3219,8 +3219,8 @@ elif page == "Foto - Gestione":
                     width="content",
                     key="12"
                 )
-    
-   
+
+
     # 🔽 Filtro visualizzazione
     filtro_foto = st.selectbox("📌 Filtro foto da fare", ["Tutti", "Solo da scattare", "Solo già scattate", "Solo da riscattare", "Disponibili da prelevare", "Disponibili per Matias", "Disponibili per Matteo"])
 
@@ -3252,13 +3252,13 @@ elif page == "Foto - Gestione":
         # ✅ Costruzione vista tabellare con emoji
         df_vista = df.copy()
         df_vista = df_vista[["SKU", "CANALE", "COLLEZIONE", "DESCRIZIONE", "SCATTARE", "RISCATTARE"]]
-        
+
         df_vista["📷"] = df_vista["SCATTARE"].apply(format_checkbox)
         df_vista["🔁"] = df_vista["RISCATTARE"].apply(format_checkbox)
-        
+
         # Rimuovi le colonne booleane originali
         df_vista = df_vista.drop(columns=["SCATTARE", "RISCATTARE"])
-        
+
         # ✅ Visualizzazione
         st.dataframe(df_vista, use_container_width=True)
 
@@ -3274,12 +3274,12 @@ elif page == "Foto - Riscatta SKU":
     df_foto_esistenti = df[df["SCATTARE"] == False]
 
     start_riscattare = len(df[df["RISCATTARE"] == True].index)
-    
+
     if "ristampe_selezionate" not in st.session_state or not st.session_state["ristampe_selezionate"]:
         st.session_state["ristampe_selezionate"] = set(df[df["RISCATTARE"] == True]["SKU"])
-    
+
     selected_ristampe = st.session_state["ristampe_selezionate"]
-        
+
     if st.session_state.get("ristampe_confermate"):
         st.success("✅ Ristampe confermate per le seguenti SKU:")
         for riga in st.session_state["ristampe_confermate"]:
@@ -3290,11 +3290,11 @@ elif page == "Foto - Riscatta SKU":
         st.rerun()
     else:
         sku_input = st.text_input("🔍 Inserisci SKU da cercare (solo con foto esistenti)", key="ristampa_input")
-        
+
         if sku_input:
             sku_norm = sku_input.strip().upper()
             match = df_foto_esistenti[df_foto_esistenti["SKU"] == sku_norm]
-    
+
             if match.empty:
                 st.warning("❌ SKU non trovata o la foto non esiste ancora.")
             else:
@@ -3311,7 +3311,7 @@ elif page == "Foto - Riscatta SKU":
                         ristampa_checkbox = st.checkbox("🔁 Ristampa", value=True, key=f"ristampa_{row['SKU']}")
                     else:
                         ristampa_checkbox = st.checkbox("🔁 Ristampa", value=False, key=f"ristampa_{row['SKU']}")
-                        
+
                     if ristampa_checkbox:
                         selected_ristampe.add(row['SKU'])
                     else:
@@ -3320,60 +3320,60 @@ elif page == "Foto - Riscatta SKU":
         # Assicurati che lo stato iniziale esista (solo alla prima run)
         if "ristampe_selezionate" not in st.session_state:
             st.session_state["ristampe_selezionate"] = set(df[df["RISCATTARE"] == True]["SKU"].astype(str).tolist())
-        
+
         selected_ristampe = st.session_state["ristampe_selezionate"]
-        
+
         # Qui mostri la lista selezionata (se ce ne sono)
         if selected_ristampe:
             st.markdown(f"📦 SKU selezionate per ristampa: `{', '.join(sorted(selected_ristampe))}`")
-        
+
         # Unico pulsante di conferma (chiave esplicita per evitare collisioni)
         if st.button("✅ Conferma selezione per ristampa", key="conferma_ristampa"):
             try:
                 sheet = get_sheet(foto_sheet_id, "LISTA")
                 all_rows = sheet.get_all_values()
                 data_rows = all_rows[2:]
-        
+
                 col_sku = 0
                 col_descrizione = 4
                 nuovi_valori = []
                 sku_descrizioni_confermate = []
-        
+
                 for row in data_rows:
                     sku = row[col_sku].strip() if len(row) > col_sku else ""
                     descrizione = row[col_descrizione].strip() if len(row) > col_descrizione else ""
-        
+
                     if sku in selected_ristampe:
                         nuovi_valori.append(["True"])
                         sku_descrizioni_confermate.append(f"{sku} - {descrizione}")
                     else:
                         nuovi_valori.append([""])
-        
+
                 range_update = f"P3:P{len(nuovi_valori) + 2}"
                 sheet.update(values=nuovi_valori, range_name=range_update)
-        
+
                 # 🔄 Ricarico il DataFrame dal Google Sheet (stesso metodo usato sopra)
                 df = carica_lista_foto(foto_sheet_id, cache_key=str(time.time()))
                 st.session_state["df_lista_foto"] = df
-        
+
                 # 🔄 Aggiorno la lista in session_state dai nuovi valori
                 st.session_state["ristampe_selezionate"] = set(df[df["RISCATTARE"] == True]["SKU"])
-        
+
                 # Salvo anche le confermate
                 st.session_state["ristampe_confermate"] = sku_descrizioni_confermate
-        
+
                 #st.success("✅ Ristampe aggiornate correttamente!")
                 st.rerun()
-        
+
             except Exception as e:
                 st.error(f"❌ Errore aggiornamento: {str(e)}")
-                
+
 elif page == "Foto - Aggiungi SKUs":
     new_sku = st.session_state.get("aggiunta_confermata", set())
 
     cache_token = str(st.session_state.get("refresh_foto_token", "static"))
     df = carica_lista_foto(foto_sheet_id, cache_key=cache_token)
-    
+
     # Aggiungi nuova SKU
     st.subheader("➕ Aggiungi nuova SKU")
     if st.session_state.get("aggiunta_confermata"):
@@ -3397,8 +3397,8 @@ elif page == "Foto - Aggiungi SKUs":
                 warning = st.warning(f"SKU {new_sku} già presente in lista")
                 time.sleep(2)
                 warning.empty()
-                
-                
+
+
 elif page == "Foto - Storico":
     st.header("📚 Storico Articolo")
     st.markdown("Inserisci una SKU per visualizzare tutte le immagini storiche salvate su Dropbox per quell’articolo.")
@@ -3426,7 +3426,7 @@ elif page == "Foto - Storico":
 
             if not image_files:
                 st.warning("❌ Nessuna immagine storica trovata su Dropbox per questa SKU.")
-            
+
                 # Mostra immagine attuale da repository.falc.biz
                 image_url = f"https://repository.falc.biz/fal001{sku_query.lower()}-1.jpg"
                 try:
@@ -3472,48 +3472,48 @@ elif page == "Foto - Storico":
 elif page == "Foto - Aggiungi prelevate":
     st.header("Aggiungi prelevate")
     st.markdown("Aggiungi la lista delle paia prelevate")
-    
+
     sheet = get_sheet(foto_sheet_id, "PRELEVATE")
     sheet_len = len(pd.DataFrame(sheet.get_all_values()))
     oggi = datetime.today().date().strftime('%d/%m/%Y')
     text_input = st.text_area("Lista paia prelevate", height=400, width=800)
-    
+
     if text_input:
         # Regex per SKU: 7 numeri, spazio, 2 numeri, spazio, 4 caratteri alfanumerici
         #pattern = r"\b\d{7} \d{2} [A-Z0-9]{4}\b"
         pattern = r"\b[0-9a-zA-Z]{7} [0-9a-zA-Z]{2} [0-9a-zA-Z]{4}\b"
         skus_raw = re.findall(pattern, text_input)
-    
+
         # Rimuovi spazi interni e converti in stringa (senza apostrofo per confronto)
         skus_clean = [str(sku.replace(" ", "")) for sku in skus_raw]
-    
+
         st.subheader(f"SKU trovate: {len(skus_clean)}")
-    
+
         if st.button("Carica su GSheet"):
             # Leggi SKU già presenti nel foglio
             existing_skus = sheet.col_values(1)
             # Rimuovi eventuali apostrofi e converti in str per confronto
             existing_skus_clean = [str(sku).lstrip("'") for sku in existing_skus]
-    
+
             # Filtra SKU nuove
             skus_to_append_clean = [sku for sku in skus_clean if sku not in existing_skus_clean]
-    
+
             if skus_to_append_clean:
                 # Aggiungi apostrofo solo al momento dell'append per forzare formato testo
                 rows_to_append = [[f"'{sku}", "=REPO(A33)", f"{oggi}", f"=SE(VAL.NON.DISP(CONFRONTA(INDIRETTO(\"LISTA!$D\"&CONFRONTA($A{sheet_len+1};LISTA!A:A;0));SPLIT(SETTINGS(\"brandMatias\");\",\");0));SE(VAL.NON.DISP(CONFRONTA(INDIRETTO(\"LISTA!$D\"&CONFRONTA($A{sheet_len+1};LISTA!A:A;0));SPLIT(SETTINGS(\"brandMatteo\");\",\");0));\"\";\"MATTEO\");\"MATIAS\")"] for sku in skus_to_append_clean]
-                
+
                 # Append a partire dall'ultima riga disponibile
                 sheet.append_rows(rows_to_append, value_input_option="USER_ENTERED")
                 st.success(f"✅ {len(skus_to_append_clean)} nuove SKU aggiunte al foglio PRELEVATE!")
             else:
                 st.info("⚠️ Tutte le SKU inserite sono già presenti nel foglio.")
-                
+
 elif page == "Giacenze - Importa":
     st.header("Importa giacenze")
 
-    
+
     options = ["Manuale", "UBIC", "PIM"]
-    
+
     selected = option_menu(
         menu_title=None,
         options=["Manuale", "UBIC", "PIM"],
@@ -3586,7 +3586,7 @@ elif page == "Giacenze - Importa":
                 st.session_state.df_input = None  # reset DataFrame se file nuovo
                 st.session_state.uploaded_file_bytes = uploaded_file.getvalue()
                 uploaded_file.seek(0)
-                
+
             csv_import = uploaded_file
             file_bytes_for_upload = st.session_state.uploaded_file_bytes
             manual_nome_file = uploaded_file.name.upper()
@@ -3602,7 +3602,7 @@ elif page == "Giacenze - Importa":
 
         latest_file = st.session_state.downloaded_file
         metadata = st.session_state.downloaded_file_metadata
-        
+
         if latest_file:
             csv_import = latest_file
             file_bytes_for_upload = latest_file.getvalue()
@@ -3624,7 +3624,7 @@ elif page == "Giacenze - Importa":
     nome_sheet_tab = st.text_input("Inserisci nome del TAB", value="GIACENZE")
 
     col1, col2, col3, col4 = st.columns(4)
-    
+
     if df_input is not None:
         view_df = st.checkbox("Visualizza il dataframe?", value=False)
         if view_df:
@@ -3657,17 +3657,17 @@ elif page == "Giacenze - Importa":
 
         data_to_write = [df_input.columns.tolist()] + df_input.values.tolist()
 
-        # --- Destinazione GSheet ---       
+        # --- Destinazione GSheet ---
         with col2:
             if st.button("Importa Giacenze"):
                 sheet_upload_tab = get_sheet(selected_sheet_id, nome_sheet_tab)
-                
+
                 with st.spinner("Aggiorno giacenze su GSheet..."):
                     sheet_upload_tab.clear()
                     sheet_upload_tab.update("A1", data_to_write)
-                            
+
                     last_row = len(df_input) + 1
-    
+
                     ranges_to_format = [
                         (f"{col_letter}2:{col_letter}{last_row}",
                             CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=pattern)))
@@ -3679,19 +3679,19 @@ elif page == "Giacenze - Importa":
                 if nome_file == "Manuale" and file_bytes_for_upload:
                     with st.spinner("Carico il file su DropBox..."):
                         upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
-                        
+
         with col3:
             if st.button("Importa Giacenze & Anagrafica"):
                 sheet_upload_tab = get_sheet(selected_sheet_id, nome_sheet_tab)
                 sheet_upload_anagrafica = get_sheet(selected_sheet_id, "ANAGRAFICA")
                 sheet_anagrafica = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
-                
+
                 with st.spinner("Aggiorno giacenze e anagrafica su GSheet..."):
                     sheet_upload_tab.clear()
                     sheet_upload_tab.update("A1", data_to_write)
-                            
+
                     last_row = len(df_input) + 1
-    
+
                     ranges_to_format = [
                         (f"{col_letter}2:{col_letter}{last_row}",
                             CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=pattern)))
@@ -3702,7 +3702,7 @@ elif page == "Giacenze - Importa":
                     sheet_upload_anagrafica.clear()
                     sheet_upload_anagrafica.update("A1", sheet_anagrafica.get_all_values())
                     st.success("✅ Giacenze e anagrafica importate con successo!")
-    
+
                 if nome_file == "Manuale" and file_bytes_for_upload:
                     with st.spinner("Carico il file su DropBox..."):
                         upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
@@ -3712,17 +3712,17 @@ elif page == "Giacenze - Importa":
                 if st.button("Carica su DropBox"):
                     with st.spinner("Carico il file su DropBox..."):
                         upload_csv_to_dropbox(dbx, folder_path, f"{manual_nome_file}", file_bytes_for_upload)
-                    
+
     with col1:
         if st.button("Importa Anagrafica"):
             sheet_upload_anagrafica = get_sheet(selected_sheet_id, "ANAGRAFICA")
             sheet_anagrafica = get_sheet(anagrafica_sheet_id, "ANAGRAFICA")
-            
+
             with st.spinner("Aggiorno anagrafica su GSheet..."):
                 sheet_upload_anagrafica.clear()
                 sheet_upload_anagrafica.update("A1", sheet_anagrafica.get_all_values())
                 st.success("✅ Anagrafica importata con successo!")
-            
+
 elif page == "Giacenze - Per corridoio":
     st.header("Riepilogo per corridoio")
 
@@ -3746,7 +3746,7 @@ elif page == "Giacenze - Per corridoio":
         df["GIAC.UBIC"] = pd.to_numeric(df["GIAC.UBIC"], errors="coerce").fillna(0)
 
     # --- Mappatura categoria adulto/bambino ---
-    marchi_categoria = { 
+    marchi_categoria = {
         "NATURINO CLASSIC": "BAMBINO",
         "NATURINO WILD LIFE": "BAMBINO",
         "NATURINO ACTIVE": "BAMBINO",
@@ -3765,7 +3765,7 @@ elif page == "Giacenze - Per corridoio":
         "NATURINO OUTDOOR": "BAMBINO",
         "Candice Cooper": "ADULTO",
         "NATURINO BABY": "BAMBINO",
-        "C N R": "ADULTO" 
+        "C N R": "ADULTO"
     }
     df["CATEGORIA"] = df["COLLEZIONE"].map(marchi_categoria)
 
@@ -3856,7 +3856,7 @@ elif page == "Giacenze - Per corridoio":
             "CORR":"COR",
             "GIACENZA":"GIAC"
         })
-        
+
         # Definizione layout PDF
         larghezza_col = {
             "COD":50,
@@ -3871,7 +3871,7 @@ elif page == "Giacenze - Per corridoio":
         }
         align_col = {"DESCRIZIONE":"LEFT"}
         limiti_chars = {"DESCRIZIONE":35}
-        
+
         st.download_button(
             label="📥 Scarica SKUs da togliere",
             data=genera_pdf(df_sku, font_size=10, header_align="CENTER", text_align="CENTER", valign="MIDDLE",
@@ -3880,7 +3880,7 @@ elif page == "Giacenze - Per corridoio":
             mime="application/pdf"
         )
 
-        
+
 elif page == "Giacenze - Per corridoio/marchio":
     st.header("Riepilogo per corridoio e marchio")
 
@@ -4014,7 +4014,7 @@ elif page == "Giacenze - Aggiorna anagrafica":
     st.header("Aggiorna anagrafica da CSV")
 
     sheet = get_sheet(anagrafica_sheet_id, "DATA")
-    
+
     uploaded_file = st.file_uploader("Carica CSV", type=["csv"])
 
     if uploaded_file:
@@ -4022,21 +4022,21 @@ elif page == "Giacenze - Aggiorna anagrafica":
             added, updated = process_csv_and_update(sheet, uploaded_file)
             st.success(f"✅ Aggiunte {added} nuove SKU, aggiornate {updated} SKU già presenti.")
 
-    
+
 elif page == "Logout":
     logout()
 
 elif page == "Giacenze - Old import":
     st.header("Importa giacenze")
     st.markdown("Importa le giacenze da file CSV.")
-    
+
     sheet_id = st.secrets["APP_GSHEET_ID"]
     sheet = get_sheet(sheet_id, "GIACENZE")
     csv_import = st.file_uploader("Carica un file CSV", type="csv")
-    
+
     if csv_import:
         df_input = read_csv_auto_encoding(csv_import, "\t")
-    
+
         # Lista delle colonne da formattare come numeriche con pattern
         numeric_cols_info = {
             "D": "0",
@@ -4058,7 +4058,7 @@ elif page == "Giacenze - Old import":
                 return float(x)
             except:
                 return str(x)
-    
+
         # Applica conversione solo alle colonne target
         for col_letter in numeric_cols_info.keys():
             col_idx = gspread.utils.a1_to_rowcol(f"{col_letter}1")[1] - 1  # indice zero-based
@@ -4076,14 +4076,14 @@ elif page == "Giacenze - Old import":
 
         # Trasforma tutto in lista per Google Sheet
         data_to_write = [df_input.columns.tolist()] + df_input.values.tolist()
-    
+
         st.write(df_input)
-    
+
         if st.button("Importa"):
             sheet.clear()
             sheet.update("A1", data_to_write)
             last_row = len(df_input) + 1  # +1 per intestazione
-    
+
             # Prepara la lista di range da formattare
             ranges_to_format = []
             for col_letter, pattern in numeric_cols_info.items():
@@ -4091,10 +4091,10 @@ elif page == "Giacenze - Old import":
                     (f"{col_letter}2:{col_letter}{last_row}",
                      CellFormat(numberFormat=NumberFormat(type="NUMBER", pattern=pattern)))
                 )
-    
+
             # Applica il formato in un colpo solo
             format_cell_ranges(sheet, ranges_to_format)
-    
+
             st.success("✅ Giacenze importate con successo!")
 
 elif page == "Admin":
@@ -4112,7 +4112,7 @@ elif page == "Admin - Aggiungi utente":
         password = st.text_input("Password", type="password", key="password")
         role = st.selectbox("Ruolo",["Guest","Logistica","Customer Care","Admin"], key="role")
         #username = nome + " " + cognome
-        
+
         submit = st.form_submit_button("Crea utente")
         if submit:
             register_user(email, password, nome=nome, cognome=cognome, username=username, role=role.lower())
@@ -4147,21 +4147,21 @@ elif page == "Ordini - Dashboard":
 
     # ---
     st.subheader("Riepilogo Dati")
-    
+
     col1, col2, col3 = st.columns(3)
-    
+
     total_orders = filtered_df['Numero Ordine'].nunique()
     col1.metric("Ordini Analizzati", total_orders)
 
     total_items = filtered_df['Quantita'].sum()
     col2.metric("Articoli Totali Venduti", total_items)
-    
+
     unique_marketplaces = filtered_df['Marketplace'].nunique()
     col3.metric("Marketplace Unici", unique_marketplaces)
 
     # ---
     st.subheader("Analisi Visuale")
-    
+
     st.markdown("Quantità venduta per Marketplace")
     market_sales = filtered_df.groupby('Marketplace')['Quantita'].sum().reset_index()
     st.bar_chart(market_sales, x='Marketplace', y='Quantita')
@@ -4169,7 +4169,7 @@ elif page == "Ordini - Dashboard":
     st.markdown("Quantità venduta per Nazione")
     country_sales = filtered_df.groupby('Nazione')['Quantita'].sum().reset_index()
     st.bar_chart(country_sales, x='Nazione', y='Quantita')
-    
+
 
 elif page == "Ordini - Importa":
     st.title("Dashboard - Analizza PDF")
@@ -4202,21 +4202,21 @@ elif page == "Ordini - Importa":
                                     'Quantita': item['quantita'],
                                     'Descrizione': item['descrizione']
                                 })
-    
+
         df = pd.DataFrame(all_orders_data)
         st.write(len(all_orders_data))
         ordine_colonne = ["Data", "Marketplace", "Nazione", "Numero Ordine", "Codice", "Taglia", "Quantita"]
-        
-        
+
+
         col1, col2, col3 = st.columns(3)
-        
+
         total_orders = df['Numero Ordine'].nunique()
         col1.metric("Ordini Analizzati", total_orders)
-    
+
         df['Quantita'] = pd.to_numeric(df['Quantita'], errors="coerce")
         total_items = df['Quantita'].sum()
         col2.metric("Articoli Totali Venduti", total_items)
-        
+
         unique_marketplaces = df['Marketplace'].nunique()
         col3.metric("Marketplace Unici", unique_marketplaces)
 
@@ -4255,7 +4255,7 @@ elif page == "Catalogo - Aggiungi ordini stagione":
 
 elif page == "Ferie - Aggiungi ferie":
     st.header("Aggiungi ferie")
-    
+
     sheet = get_sheet(ferie_sheet_id, "FERIE")
 
     ferie_esistenti = sheet.get_all_values()
@@ -4263,13 +4263,13 @@ elif page == "Ferie - Aggiungi ferie":
     utenti = [f"{u['nome']} {u['cognome']}" for u in users_list]
     id_mappa = {f"{u['nome']} {u['cognome']}": u["user_id"] for u in users_list}
 
-    
+
     oggi = datetime.now().date()
     utente_selezionato = st.selectbox("Seleziona utente", utenti)
     data_inizio = st.date_input("Data inizio", oggi)
     data_fine = st.date_input(
-        "Data fine", 
-        value=max(data_inizio, oggi), 
+        "Data fine",
+        value=max(data_inizio, oggi),
         min_value=data_inizio
     )
     motivazione = st.text_input("Motivazione")
@@ -4280,19 +4280,19 @@ elif page == "Ferie - Aggiungi ferie":
 
 elif page == "Ferie - Report":
     st.header("📅 Report ferie settimanale")
-    
+
     # 1. Leggi dati ferie da GSheet
     sheet = get_sheet(ferie_sheet_id, "FERIE")
     ferie_data = sheet.get_all_values()
     ferie_df = pd.DataFrame(
         ferie_data[1:], columns=ferie_data[0]
     ) if len(ferie_data) > 1 else pd.DataFrame(columns=["NOME", "DATA INIZIO", "DATA FINE", "MOTIVO"])
-    
+
     # 2. Selettore giorno iniziale
     today = datetime.now().date()
     start_date = st.date_input("Seleziona il giorno di inizio settimana", value=today)
     days_of_week = [start_date + timedelta(days=i) for i in range(7)]
-    
+
     # Mappa abbreviata giorni in italiano
     giorni_settimana_it = {
         "Mon": "Lun",
@@ -4304,11 +4304,11 @@ elif page == "Ferie - Report":
         "Sun": "Dom"
     }
     days_labels = [giorni_settimana_it[day.strftime("%a")] + day.strftime(" %d/%m") for day in days_of_week]
-    
+
     # 3. Prepara lista utenti
     users_list = supabase.table("profiles").select("*").execute().data
     utenti = sorted([f"{u['nome']} {u['cognome']}" for u in users_list])
-    
+
     # 4. Costruisci matrice ferie (utente x giorno)
     ferie_matrix = []
     for utente in utenti:
@@ -4322,7 +4322,7 @@ elif page == "Ferie - Report":
             except Exception:
                 ferie_utente.at[idx, "DATA INIZIO"] = None
                 ferie_utente.at[idx, "DATA FINE"] = None
-    
+
         for giorno in days_of_week:
             in_ferie = False
             motivo = ""
@@ -4338,17 +4338,17 @@ elif page == "Ferie - Report":
             else:
                 row.append("")
         ferie_matrix.append(row)
-    
+
     # 5. Visualizza tabella con celle evidenziate e centrata
     ferie_report_df = pd.DataFrame(ferie_matrix, columns=days_labels, index=utenti)
-    
+
     def evidenzia_ferie(val):
         if isinstance(val, str) and val.startswith("🌴"):
             return 'background-color: #E6F7DD; text-align: center;'
         elif isinstance(val, str) and val.startswith("🇨🇭"):
             return 'background-color: #FFA1A1; text-align: center;'
         return 'text-align: center;'
-    
+
     ferie_report_df_styled = (
         ferie_report_df
         .style
@@ -4359,7 +4359,7 @@ elif page == "Ferie - Report":
         ])
         .set_properties(**{"text-align": "center"})
     )
-    
+
     st.markdown("""
         <style>
             .streamlit-expander, .block-container, table {
@@ -4368,7 +4368,7 @@ elif page == "Ferie - Report":
             }
         </style>
     """, unsafe_allow_html=True)
-    
+
     st.markdown(ferie_report_df_styled.to_html(escape=False), unsafe_allow_html=True)
 
 elif page == "Traduci":
@@ -4376,34 +4376,34 @@ elif page == "Traduci":
     TRANSLATION_TAB_NAME = "Traduzioni"
 
     st.title("🌍 CSV Translator Async2")
-    
+
     uploaded_file = st.file_uploader("Carica CSV", type=["csv"])
 
     if uploaded_file:
         df = read_csv_auto_encoding(uploaded_file)
-    
+
         st.subheader("Seleziona colonne da tradurre")
         cols_to_translate = st.multiselect(
             "Colonne",
             df.columns.tolist()
         )
-    
+
         st.subheader("Seleziona lingue")
         target_langs = st.multiselect(
             "Lingue",
             AVAILABLE_LANGS,
             default=AVAILABLE_LANGS
         )
-    
+
         if st.button("🚀 Avvia traduzione") and cols_to_translate and target_langs:
             with st.spinner("Caricamento vocabolario..."):
                 vocab, vocab_df = load_vocab(TRANSLATION_SHEET_ID, TRANSLATION_TAB_NAME)
-    
+
             with st.spinner("Analisi termini mancanti..."):
                 missing_terms = extract_missing_terms(df, cols_to_translate, vocab)
-    
+
             st.info(f"Termini da tradurre: {len(missing_terms)}")
-    
+
             if missing_terms:
                 with st.spinner("Traduzione OpenAI in corso..."):
                     ws = get_sheet(TRANSLATION_SHEET_ID, TRANSLATION_TAB_NAME)
@@ -4425,7 +4425,7 @@ elif page == "Traduci":
                             saved_badge
                         )
                     )
-                    
+
                     if asyncio.isfuture(task):
                         asyncio.get_event_loop().run_until_complete(task)
                     progress_bar.progress(1.0)
@@ -4434,26 +4434,26 @@ elif page == "Traduci":
             with st.spinner("Applicazione traduzioni al CSV..."):
                 dfs_by_lang = apply_translations(df, cols_to_translate, target_langs, vocab)
 
-                
+
             st.success("✅ Traduzione completata")
-            
+
             zip_buffer = BytesIO()
             with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zipf:
                 for lang, df_lang in dfs_by_lang.items():
                     csv_buffer = io.StringIO()
                     df_lang.to_csv(csv_buffer, index=False)
-            
+
                     zipf.writestr(
                         f"descrizioni_{lang}.csv",
                         csv_buffer.getvalue()
                     )
-            
+
             zip_buffer.seek(0)
-            
+
             #csv_buffer = io.StringIO()
             #df_out.to_csv(csv_buffer, index=False)
             #csv_bytes = csv_buffer.getvalue().encode("utf-8")
-            
+
             now = datetime.now(ZoneInfo("Europe/Rome"))
             file_name = f"traduzioni_{now.strftime('%d-%m-%Y_%H-%M-%S')}.zip"
             # Carico il file su dropbox
@@ -4464,7 +4464,7 @@ elif page == "Traduci":
                 upload_to_dropbox(dbx, folder_path, file_name, zip_buffer.getvalue())
             except Exception as e:
                 st.error(f"❌ Errore durante l'upload su Dropbox: {e}")
-                            
+
             st.download_button(
                 "📦 Scarica ZIP traduzioni",
                 data=zip_buffer,
