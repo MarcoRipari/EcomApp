@@ -40,7 +40,14 @@ def append_to_sheet(sheet_id, tab, df):
     sheet = get_sheet(sheet_id, tab)
     df = df.fillna("").astype(str)
     values = df.values.tolist()
-    sheet.append_rows(values, value_input_option="RAW")  # ✅ chiamata unica
+
+    existing_rows = len(sheet.get_all_values())
+    
+    # Definiamo la cella di partenza
+    start_row = existing_rows + 1 if existing_rows > 0 else 1
+    target_cell = f"A{start_row}"  # Diventa "A1", "A11", "A101", ecc.
+    sheet.update(target_cell, values, value_input_option="RAW")
+    #sheet.append_rows(values, value_input_option="RAW")  # ✅ chiamata unica
 
 def append_log(sheet_id, logs):
     sheet = get_sheet(sheet_id, "logs")
