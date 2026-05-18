@@ -228,8 +228,8 @@ Il testo deve:
 - non sembrare regolamentato o artificiale
 - descrivere solo ciò che è visibile o dichiarato
 """
-        elif marchio == "VB":
-            prompt = f"""
+    elif marchio == "VB":
+        prompt = f"""
 Scrivi due descrizioni per una calzatura da vendere online (catalogo e-commerce),
 coerenti con le INFO ARTICOLO, in ciascuna delle seguenti lingue: {lang_list}.
 
@@ -334,8 +334,8 @@ Il testo deve:
 - non sembrare regolamentato o artificiale
 - descrivere solo ciò che è visibile o dichiarato
 """
-        elif marchio == "FM":
-            prompt = f"""
+    elif marchio == "FM":
+        prompt = f"""
 Scrivi due descrizioni per una calzatura da vendere online (e-commerce), coerenti con le INFO ARTICOLO, in ciascuna delle seguenti lingue: {lang_list}.
 
 Le descrizioni devono riprodurre il linguaggio di un catalogo ufficiale Flower Mountain: tecnico, descrittivo, con struttura riconoscibile e lessico ricorrente.
@@ -453,8 +453,8 @@ Genera due testi per ciascuna lingua:
     - privilegiare coerenza e riconoscibilità rispetto all’unicità
     In caso contrario, riscrivere il testo mantenendo contenuto e ordine degli elementi.
 """
-        elif marchio == "CC":
-            prompt = f"""
+    elif marchio == "CC":
+        prompt = f"""
 Scrivi due descrizioni per una calzatura da vendere online (e-commerce), coerenti con le INFO ARTICOLO, in ciascuna delle seguenti lingue: {lang_list}.
 
 Le descrizioni devono riprodurre il linguaggio di un catalogo ufficiale Candice Cooper: fashion–editoriale, metropolitano, raffinato, con struttura riconoscibile e lessico ricorrente.
