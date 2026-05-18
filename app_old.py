@@ -89,14 +89,14 @@ LANG_LABELS = {v.capitalize(): k for k, v in LANG_NAMES.items()}
 # GLOBAL VARS
 # ---------------------------
 desc_sheet_id = st.secrets['DESC_GSHEET_ID']
-foto_sheet_id = st.secrets['FOTO_GSHEET_ID']
+foto_sheet_id = st.secrets['FOTO_GSHEET_ID'] 
 anagrafica_sheet_id = st.secrets['ANAGRAFICA_GSHEET_ID']
 ferie_sheet_id = st.secrets['FERIE_GSHEET_ID']
 ordini_sheet_id = st.secrets['ORDINI_GSHEET_ID']
 MISTRAL_API_KEY = st.secrets['MISTRAL_API_KEY']
 OPENROUTER_API_KEY = st.secrets['OPENROUTER_API_KEY']
 
-# ---------------------------
+# --------------------------- 
 # 🔐 Setup API keys and credentials
 # ---------------------------
 openai.api_key = st.secrets["OPENAI_API_KEY"]
