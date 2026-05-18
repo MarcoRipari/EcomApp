@@ -1,13 +1,44 @@
 import streamlit as st
 import re
+import streamlit as st
+import re
+import json
+import asyncio
+import time
+import os
+import base64
+import io
+import zipfile
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
+from utils import *
+
+# 📊 Manipolazione dati
+import pandas as pd
+
+# 🌐 Chiamate API (GitHub, ecc.)
+import requests
+
+# 🧠 Se usi una libreria esterna per GoogleTranslator (es: deep_translator)
+# Nota: se GoogleTranslator fa parte di un tuo modulo interno, modifica questo import
+from deep_translator import GoogleTranslator 
+
+# 📦 Libreria Dropbox (se non l'hai già installata: pip install dropbox)
+import dropbox
 
 AVAILABLE_LANGS = ["en", "fr", "de", "es"]
 OPENAI_MODEL = "gpt-4o-mini"
 SAVE_TRANSLATE_EVERY = 25  # batch size consigliato
 
-TRANSLATION_SHEET_ID = "1wS65klpyHNft8UpJAE1x1yIVa1_8ZRLftFnUBgW_f6o"
+TRANSLATION_SHEET_ID = st.secrets['TRANSLATION_SHEET_ID']
 TRANSLATION_TAB_NAME = "Traduzioni"
+
+
+GITHUB_REPO = "MarcoRipari/Gestione-Ecom"
+GITHUB_PATH = "data/translations_db.json"
+GITHUB_BRANCH = "main"
 
 MANUAL_TRANSLATIONS = {
     "strappo": {
