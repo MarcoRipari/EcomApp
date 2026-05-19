@@ -130,4 +130,4 @@ def genera_traduzioni():
                 mime="application/zip"
             )
             
-            st.write(dfs_by_lang.items())
+            st.write(vocab)
