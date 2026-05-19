@@ -135,7 +135,19 @@ def build_unified_prompt(row, col_display_names, selected_langs, selected_tones,
             sim_text = "\nDescrizioni simili:\n" + "\n".join(sim_lines)
 
     concept = row.get("Concept", "")
-    incipit_seeds = ["SEO-oriented", "Descrittivo", "Pratico", "Classico", "Informativo", "Accattivante"]
+    #incipit_seeds = ["SEO-oriented", "Descrittivo", "Pratico", "Classico", "Informativo", "Accattivante"]
+    incipit_seeds = [
+        "Inizia direttamente con il tipo di calzatura come soggetto grammaticale, seguito da una caratteristica materica o costruttiva (es: 'La sneaker si presenta con tomaia in...' / 'Il mocassino unisce...')",
+        "Inizia con uno o due aggettivi visivi o sensoriali seguiti dal tipo di calzatura (es: 'Morbida e avvolgente, la scarpina...' / 'Essenziale e pulita, questa scarpa...')",
+        "Inizia con il materiale principale della tomaia come punto di partenza narrativo (es: 'In pelle liscia dal colore...' / 'Tomaia in nabuk con...')",
+        "Inizia con un verbo alla terza persona singolare che descrive una qualità visiva o fisica del prodotto (es: 'Si distingue per la tomaia in...' / 'Scintilla ad ogni passo...')",
+        "Inizia con una costruzione nominale che descrive la forma o il profilo del modello (es: 'Linee pulite e tomaia in...' / 'Profilo basso e costruzione...')",
+        "Inizia con il nome del tipo di calzatura preceduto da un articolo determinativo, presentandolo come elemento di riferimento della categoria (es: 'La ballerina classica si rinnova con...' / 'Il sandalo si caratterizza per...')",
+        "Inizia con due sostantivi astratti legati da 'e' che evocano le qualità del prodotto, seguiti dal tipo di calzatura (es: 'Forma e funzione si incontrano in questa...' / 'Semplicità e cura del dettaglio per...')",
+        "Inizia con una frase breve che descrive il colore o l'aspetto visivo d'insieme del prodotto (es: 'Un tono caldo e naturale caratterizza...' / 'Il colore deciso della tomaia...')",
+        "Inizia con un participio presente o passato riferito alla calzatura, che introduce subito una caratteristica fisica (es: 'Realizzata interamente in pelle, questa...' / 'Costruita su una suola flessibile...')",
+        "Inizia riprendendo liberamente il concept come suggestione visiva o di contesto, senza citarlo, per introdurre il prodotto (es: se il concept evoca leggerezza, aprire con 'Dal passo leggero e...' / se evoca classicità, aprire con 'Nel rispetto di una linea essenziale...')",
+    ]
 
     # Fallback to general prompt if no specific brand logic is found
     # (Keeping the structure from app_old.py but removing image-specific lines)
