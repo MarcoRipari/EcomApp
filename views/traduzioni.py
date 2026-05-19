@@ -129,3 +129,5 @@ def genera_traduzioni():
                 file_name=file_name,
                 mime="application/zip"
             )
+            
+            st.write(df_by_lang.items())
