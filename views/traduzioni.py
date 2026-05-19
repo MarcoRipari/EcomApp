@@ -131,3 +131,4 @@ def genera_traduzioni():
             )
             
             st.write(vocab)
+            st.write(f"Missing: {missing_terms}")
