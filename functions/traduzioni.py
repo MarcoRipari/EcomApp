@@ -65,6 +65,7 @@ def vocab_to_rows(vocab):
     return rows
 
 def append_vocab_rows(ws, rows):
+    st.write(rows)
     values = []
     for r in rows:
         values.append([
