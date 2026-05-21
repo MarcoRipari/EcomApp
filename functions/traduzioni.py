@@ -122,9 +122,15 @@ async def translate_term(term, target_langs, col_name):
 
     messages = [
         {"role": "user", "content": f"""
-        Traduci questo testo italiano nelle lingue: {', '.join(target_langs)}.
-        Mantieni maiuscole e punteggiatura come nell'originale.
-        NON usare abbreviazioni, ellissi o forme contratte (es. niente “-sohle”, “-lining”, ecc.)
+        Traduci il seguente testo italiano nelle seguenti lingue target: {', '.join(target_langs)}.
+
+        IMPORTANTE:
+        - Il testo risultante deve essere realmente tradotto.
+        - NON lasciare il testo in italiano.
+        - Ogni valore JSON deve essere nella lingua corretta.
+        - Mantieni maiuscole e punteggiatura come nell'originale.
+        - NON usare abbreviazioni, ellissi o forme contratte (es. niente “-sohle”, “-lining”, ecc.)
+        
         {important_note}
 
         Testo da tradurre:
@@ -163,6 +169,7 @@ async def translate_term(term, target_langs, col_name):
     )
 
     message = response.choices[0].message
+    
     func_call = getattr(message, "function_call", None)
     if func_call and hasattr(func_call, "arguments"):
         return json.loads(func_call.arguments)
