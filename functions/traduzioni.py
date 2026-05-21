@@ -65,7 +65,6 @@ def vocab_to_rows(vocab):
     return rows
 
 def append_vocab_rows(ws, rows):
-    st.write(rows)
     values = []
     for r in rows:
         values.append([
@@ -162,6 +161,8 @@ async def translate_term(term, target_langs, col_name):
         function_call={"name": "translate_text"},
         temperature=0
     )
+    st.write(messages)
+    st.write(response)
 
     message = response.choices[0].message
     func_call = getattr(message, "function_call", None)
@@ -205,6 +206,7 @@ async def enrich_vocab_with_ui(
         else:
             try:
                 translations = await translate_term(term, target_langs, col_name)
+                st.write(translations)
                 vocab[key] = translations
             except Exception as e:
                 st.warning(f"Errore traduzione '{term}': {e}")
