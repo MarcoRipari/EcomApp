@@ -129,7 +129,3 @@ def genera_traduzioni():
                 file_name=file_name,
                 mime="application/zip"
             )
-            
-            st.write(vocab)
-            st.write("------")
-            st.write(f"Missing: {missing_terms}")
