@@ -170,10 +170,6 @@ async def translate_term(term, target_langs, col_name):
 
     message = response.choices[0].message
     func_call = getattr(message, "function_call", None)
-
-    st.write(response)
-    st.write(message)
-    st.write(json.loads(func_call.arguments))
     
     if func_call and hasattr(func_call, "arguments"):
         return json.loads(func_call.arguments)
