@@ -153,7 +153,7 @@ def build_unified_prompt(row, col_display_names, selected_langs, selected_tones,
     # (Keeping the structure from app_old.py but removing image-specific lines)
 
     if marchio in bambino:
-        prompt = f"""Scrivi due descrizioni per una calzatura da vendere online (e-commerce), coerenti con le INFO ARTICOLO, in ciascuna delle seguenti lingue: {lang_list}.
+        prompt = f"""Scrivi due descrizioni per una calzatura per bambini da vendere online (e-commerce), coerenti con le INFO ARTICOLO, in ciascuna delle seguenti lingue: {lang_list}.
 
 Le descrizioni devono riprendere tono, struttura e naturalezza delle descrizioni catalogo tradizionali, con un linguaggio semplice, fluido e descrittivo.
 
@@ -203,6 +203,12 @@ CONCEPT
 - aspetto distintivo
 - durabilità
 - bicolore / bicolori / multicolore / multicolori
+- le sneakers si impongono
+- terreni insidiosi
+- morbido colore 
+- stagione fredda
+- linee eleganti
+- linee moderne
 
 Se un concetto non è descrivibile senza usare uno dei termini vietati, deve essere **omesso**.
 
@@ -218,6 +224,8 @@ Se un concetto non è descrivibile senza usare uno dei termini vietati, deve ess
 ### NORMALIZZAZIONE TIPO DI CALZATURA ###
 - "first shoe", "first shoes" → SEMPRE trasformato in "scarpe"
 - "special case slippers" → SEMPRE trasformato in "pantofole"
+- "boots" → SEMPRE trasformato in "stivali"
+- "ankle boots" → SEMPRE trasformato in "stivali alla caviglia"
 - Non usare derivati: prime scarpe, scarpa da primi passi, first shoes, first shoe
 - Usare solo termine generico "scarpe"
 
