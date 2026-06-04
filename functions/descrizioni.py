@@ -175,6 +175,12 @@ CONCEPT
 - Frasi complete e scorrevoli
 - Nessuna formattazione
 
+### FOCUS LINGUAGGIO E VOCABOLARIO SOTTOINTESO ###
+- **Autonomia e gesti quotidiani:** Fai riferimento alla facilità dei gesti (es. "pensata per accompagnare i movimenti di ogni giorno", "facile da calzare in totale autonomia", "gesti semplici per il momento della calzata").
+- **Movimento e gioco:** Usa verbi e dinamiche legati all'attività dinamica (es. "per correre e giocare", "accompagna i passi con leggerezza", "studiata per i momenti di gioco e le avventure quotidiane").
+- **Protezione e comfort nei passi:** Focus sulla stabilità e la morbidezza (es. "avvolge il piede con dolcezza", "offre stabilità a ogni passo", "pensata per le giornate più dinamiche").
+- **Termini vietati aggiuntivi (per evitare riferimenti espliciti):** bambino, bambina, kids, baby, piccoli, infanzia, figli, junior, ragazzo, ragazza.
+
 ### CONTENUTO ###
 - Usa esclusivamente le informazioni presenti nelle INFO ARTICOLO
 - Usa il tipo di calzatura fornito
@@ -209,6 +215,10 @@ CONCEPT
 - stagione fredda
 - linee eleganti
 - linee moderne
+- linee moderne / linee pulite / linee geometriche
+- design minimalista / taglio minimal / silhouette
+- estetica contemporanea / look urbano / allure
+- essenzialità formale / rigore stilistico
 
 Se un concetto non è descrivibile senza usare uno dei termini vietati, deve essere **omesso**.
 
