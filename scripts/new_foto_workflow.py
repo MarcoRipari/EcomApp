@@ -15,6 +15,7 @@ from dropbox.files import WriteMode
 from skimage.metrics import structural_similarity as ssim
 import numpy as np
 import time
+import random
 
 # -------------------------------
 # CONFIG
@@ -47,39 +48,62 @@ dbx = dropbox.Dropbox(
 # -------------------------------
 # UTILS
 # -------------------------------
-def get_sheet(sheet_id, tab_name):
+def gsheets_retry(max_retries=6, initial_delay=5, backoff_factor=2):
+    """Decorator per gestire i retry sulle chiamate Google Sheets API."""
+    def decorator(func):
+        def wrapper(*args, **kwargs):
+            retries = 0
+            delay = initial_delay
+            while retries < max_retries:
+                try:
+                    return func(*args, **kwargs)
+                except gspread.exceptions.APIError as e:
+                    code = getattr(e.response, 'status_code', None)
+                    if code in [429, 500, 502, 503, 504] or code is None:
+                        retries += 1
+                        if retries == max_retries:
+                            print(f"❌ Raggiunto il limite di retry per {func.__name__}")
+                            raise
+                        sleep_time = delay + random.uniform(0, 2)
+                        print(f"⚠️ Google Sheets API Error {code}. Retry {retries}/{max_retries} in {sleep_time:.2f}s...")
+                        time.sleep(sleep_time)
+                        delay *= backoff_factor
+                    else:
+                        raise
+                except Exception as e:
+                    retries += 1
+                    if retries == max_retries:
+                        raise
+                    sleep_time = delay + random.uniform(0, 2)
+                    print(f"⚠️ Errore imprevisto {type(e).__name__}: {e}. Retry {retries}/{max_retries} in {sleep_time:.2f}s...")
+                    time.sleep(sleep_time)
+                    delay *= backoff_factor
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+@gsheets_retry()
+def get_worksheet(sheet_id, tab_name):
     return gs_client.open_by_key(sheet_id).worksheet(tab_name)
 
-def hash_image(image: Image.Image) -> str:
-    """Genera hash MD5 per un'immagine."""
-    img_bytes = io.BytesIO()
-    image.save(img_bytes, format="JPEG")
-    return hashlib.md5(img_bytes.getvalue()).hexdigest()
+@gsheets_retry()
+def get_values_optimized(worksheet, range_name="A:P"):
+    """Recupera i valori solo per il range necessario per ridurre il carico."""
+    return worksheet.get(range_name)
 
-def images_are_equal(img1: Image.Image, img2: Image.Image, threshold: int = 0) -> bool:
-    """Confronta le immagini usando perceptual hash (pHash)."""
-    hash1 = imagehash.phash(img1)
-    hash2 = imagehash.phash(img2)
-    return hash1 - hash2 <= threshold  # soglia 0 = identiche, 1-2 = molto simili
+@gsheets_retry()
+def batch_update_with_retry(worksheet, data):
+    return worksheet.batch_update(data)
 
-def hashdiff(img1: Image.Image, img2: Image.Image):
-    hash1 = imagehash.phash(img1)
-    hash2 = imagehash.phash(img2)
-    return hash1 - hash2
+@gsheets_retry()
+def clear_sheet_with_retry(worksheet):
+    return worksheet.clear()
 
-def ssim_similarity(img1, img2):
-    img1 = np.array(img1.resize((256, 256)).convert("L"))
-    img2 = np.array(img2.resize((256, 256)).convert("L"))
-    score, _ = ssim(img1, img2, full=True)
-    return score
+@gsheets_retry()
+def update_sheet_with_retry(worksheet, range_name, values):
+    return worksheet.update(range_name, values)
 
-def mse(img1, img2):
-    """Mean Squared Error tra due immagini."""
-    arr1 = np.array(img1.resize((256, 256)).convert("L"))
-    arr2 = np.array(img2.resize((256, 256)).convert("L"))
-    return np.mean((arr1 - arr2) ** 2)
-
-def get_dropbox_latest_image(sku: str) -> (str, Image.Image):
+def get_dropbox_latest_image(sku: str) -> (str, str, Image.Image):
     folder_path = f"/repository/{sku}"
     try:
         res = dbx.files_list_folder(folder_path)
@@ -89,12 +113,15 @@ def get_dropbox_latest_image(sku: str) -> (str, Image.Image):
             reverse=True
         )
         if not jpgs:
-            return None, None
+            return None, None, None
         latest = jpgs[0]
         _, resp = dbx.files_download(latest.path_display)
         img = Image.open(io.BytesIO(resp.content)).convert("RGB")
         return latest.name, latest.client_modified.strftime("%d%m%Y"), img
     except dropbox.exceptions.ApiError:
+        return None, None, None
+    except Exception as e:
+        print(f"⚠️ Errore Dropbox per {sku}: {e}")
         return None, None, None
 
 def save_image_to_dropbox(sku: str, filename: str, image: Image.Image):
@@ -112,6 +139,22 @@ def save_image_to_dropbox(sku: str, filename: str, image: Image.Image):
 
     dbx.files_upload(img_bytes.read(), file_path, mode=WriteMode("overwrite"))
 
+def hashdiff(img1: Image.Image, img2: Image.Image):
+    hash1 = imagehash.phash(img1)
+    hash2 = imagehash.phash(img2)
+    return hash1 - hash2
+
+def ssim_similarity(img1, img2):
+    img1 = np.array(img1.resize((256, 256)).convert("L"))
+    img2 = np.array(img2.resize((256, 256)).convert("L"))
+    score, _ = ssim(img1, img2, full=True)
+    return score
+
+def mse(img1, img2):
+    arr1 = np.array(img1.resize((256, 256)).convert("L"))
+    arr2 = np.array(img2.resize((256, 256)).convert("L"))
+    return np.mean((arr1 - arr2) ** 2)
+
 async def check_photo(sku: str, riscattare: str, sem: asyncio.Semaphore, session: aiohttp.ClientSession) -> (str, bool, bool):
     url = f"https://repository.falc.biz/fal001{sku.lower()}-1.jpg"
     async with sem:
@@ -125,20 +168,14 @@ async def check_photo(sku: str, riscattare: str, sem: asyncio.Semaphore, session
                     if riscattare == "true" or riscattare == "check":
                         old_name, old_date, old_img = get_dropbox_latest_image(sku)
                         if old_img:
-                            hash_score = hashdiff(new_img, old_img)
-                            ssim_score = ssim_similarity(new_img, old_img)
-                            mse_score = mse(new_img, old_img)
-                            print(f"{sku} - HASHDIFF score: {hash_score} - SSIM score: {ssim_score} - MSE score: {mse_score}")
+                            h_diff = hashdiff(new_img, old_img)
+                            s_sim = ssim_similarity(new_img, old_img)
+                            m_err = mse(new_img, old_img)
                         else:
-                            hash_score = 5
-                            ssim_score = 0
-                            mse_score = 100
-                            print(f"{sku} - Foto sku non trovata in repository")
+                            h_diff, s_sim, m_err = 5, 0, 100
 
-                        #if not old_img or not images_are_equal(new_img, old_img) and score < 0.98:
-                        if not old_img or hash_score >= 0 and ssim_score < 0.998 and mse_score > 1.5:
+                        if not old_img or (h_diff >= 0 and s_sim < 0.998 and m_err > 1.5):
                             if old_name:
-                                #date_suffix = datetime.now().strftime("%d%m%Y")
                                 ext = old_name.split(".")[-1]
                                 new_old_name = f"{sku}_{old_date}.{ext}"
                                 try:
@@ -156,68 +193,63 @@ async def check_photo(sku: str, riscattare: str, sem: asyncio.Semaphore, session
                     return sku, False, foto_salvata
                 else:
                     return sku, True, False
-        except Exception as e:
-            print(f"❌ Errore fetch immagine {sku}: {e}")
+        except Exception:
             return sku, True, False
 
-async def process_skus(data_rows: List[List[str]], sku_idx: int, riscattare_idx: int) -> Dict[str, bool]:
+async def process_skus(data_rows: List[List[str]], sku_idx: int, riscattare_idx: int) -> (Dict[str, tuple], int):
     results = {}
     foto_salvate = 0
     sem = asyncio.Semaphore(MAX_CONCURRENT)
     async with aiohttp.ClientSession() as session:
-        tasks = {}
-        for i, row in enumerate(data_rows):
+        tasks = []
+        for row in data_rows:
             if len(row) > max(sku_idx, riscattare_idx):
                 sku = row[sku_idx].strip()
                 riscattare = row[riscattare_idx].strip().lower()
                 if sku:
-                    tasks[sku] = asyncio.create_task(check_photo(sku, riscattare, sem, session))
-        for sku, task in tasks.items():
+                    tasks.append(check_photo(sku, riscattare, sem, session))
+
+        for coro in asyncio.as_completed(tasks):
             try:
-                sku, mancante, salvata = await task
-                results[sku] = (mancante, salvata)
+                sku_res, mancante, salvata = await coro
+                results[sku_res] = (mancante, salvata)
                 if salvata:
                     foto_salvate += 1    
-            except:
-                results[sku] = True
+            except Exception:
+                pass
     return results, foto_salvate
 
-async def retry_until_complete(data_rows, sku_idx, riscattare_idx) -> (Dict[str, bool], int):
+async def retry_until_complete(data_rows, sku_idx, riscattare_idx) -> (Dict[str, tuple], int):
     checked = {}
     foto_salvate_totali = 0
-    retries = 0
-    while retries < RETRY_LIMIT:
+    for attempt in range(RETRY_LIMIT):
         pending = [row for row in data_rows if row[sku_idx].strip() not in checked]
         if not pending:
             break
+        print(f"🔄 Elaborazione di {len(pending)} SKU (Tentativo {attempt+1}/{RETRY_LIMIT})")
         partial, salvate = await process_skus(pending, sku_idx, riscattare_idx)
         checked.update(partial)
         foto_salvate_totali += salvate
-        retries += 1
     return checked, foto_salvate_totali
 
-def load_sheet_with_retry(sheet_id, tab_name, min_rows=10, max_retries=5, delay=15):
-    """Carica il foglio, aspettando che IMPORTRANGE finisca di aggiornarsi."""
-    for attempt in range(max_retries):
-        sheet = get_sheet(sheet_id, tab_name)
-        all_data = sheet.get_all_values()
-        num_rows = len(all_data)
-        #print(f"📄 Tentativo {attempt+1}: trovate {num_rows} righe")
-        if num_rows >= min_rows:
-            return all_data
-        #print(f"⚠️ IMPORTRANGE non completo, aspetto {delay}s...")
-        time.sleep(delay)
-    #print("❌ Dati non completi dopo vari tentativi.")
-    return all_data
-    
+def get_val(row, idx):
+    return row[idx].strip() if len(row) > idx else ""
+
 # -------------------------------
 # MAIN
 # -------------------------------
 async def main():
-    sheet = get_sheet(SHEET_ID, FOGLIO)
-    all_data = load_sheet_with_retry(SHEET_ID, FOGLIO, min_rows=3, max_retries=6, delay=20)
-    if len(all_data) < 3:
-        print("❌ Foglio non caricato completamente anche dopo il retry.")
+    print(f"🚀 Avvio workflow check foto sul foglio {FOGLIO}")
+
+    try:
+        lista_worksheet = get_worksheet(SHEET_ID, FOGLIO)
+        all_data = get_values_optimized(lista_worksheet, "A:P")
+    except Exception as e:
+        print(f"❌ Impossibile caricare il foglio LISTA: {e}")
+        return
+
+    if len(all_data) < 2:
+        print("❌ Foglio vuoto o intestazione mancante.")
         return
 
     header = all_data[0]
@@ -227,119 +259,83 @@ async def main():
         sku_idx = header.index("SKU")
         riscattare_idx = header.index("RISCATTARE")
         consegnata_idx = header.index("CONSEGNATA")
-    except ValueError as e:
-        print(f"❌ Colonna mancante: {e}")
-        return
+    except ValueError:
+        sku_idx, riscattare_idx, consegnata_idx = 0, 11, 15
+        print(f"⚠️ Indici colonne non trovati, uso default: SKU={sku_idx}, RISCATTARE={riscattare_idx}, CONSEGNATA={consegnata_idx}")
 
-    print(f"🔍 SKU totali: {len(rows)}")
+    print(f"🔍 Righe da elaborare: {len(rows)}")
     results, tot_foto_salvate = await retry_until_complete(rows, sku_idx, riscattare_idx)
-    print(f"✅ Verificate: {len(results)}")
-
-    output_col_k = []  # Colonna SCATTARE
-    output_col_l = []  # Colonna RISCATTARE
     
-    for i, row in enumerate(rows):
-        sku = row[sku_idx].strip() if len(row) > sku_idx else ""
-        mancante, salvata = results.get(sku, (None, False))
+    output_col_k, output_col_l = [], []
+
+    for row in rows:
+        sku = get_val(row, sku_idx)
+        mancante, salvata = results.get(sku, (True, False))
         output_col_k.append([str(mancante)])
     
-        # Imposta RISCATTARE = FALSE solo se l'immagine è stata salvata effettivamente
-        if salvata and len(row) > riscattare_idx:
-            if row[riscattare_idx].strip().lower() == "true":
-                if row[consegnata_idx].strip().lower() == "true":
+        val_riscattare = get_val(row, riscattare_idx).lower()
+        val_consegnata = get_val(row, consegnata_idx).lower()
+
+        if salvata:
+            if val_riscattare == "true":
+                if val_consegnata == "true":
                     output_col_l.append(["Check"])
                 else:
                     output_col_l.append(["True"])
-            elif row[riscattare_idx].strip().lower() == "check":
+            else:
                 output_col_l.append([""])
         else:
-            if row[riscattare_idx].strip().lower() == "true":
-                if row[consegnata_idx].strip().lower() == "true":
-                    output_col_l.append(["Check"])
-                else:
-                    output_col_l.append(["True"])
-            elif row[riscattare_idx].strip().lower() == "check":
+            if val_riscattare == "true":
+                output_col_l.append(["Check" if val_consegnata == "true" else "True"])
+            elif val_riscattare == "check":
                 output_col_l.append(["Check"])
             else:
                 output_col_l.append([""])
     
-    # Aggiorna le due colonne nel foglio
-    sheet.batch_update([
-        {
-            "range": f"K2:K{len(output_col_k)+1}",
-            "values": output_col_k
-        },
-        {
-            "range": f"L2:L{len(output_col_l)+1}",
-            "values": output_col_l
-        }
-    ])
-    
-    print("✅ Google Sheet aggiornato")
-    print(f"📦 Aggiornate {len(results)} SKU")
-    print(f"🖼️ Foto scaricate su Dropbox: {tot_foto_salvate}")
-
-    # --- LOGICA AGGIORNATA: GESTIONE FOGLIO URGENZE SENZA RIGHE VUOTE ---
-    URGENZE_SHEET_ID = "1YbU9twZgJECIsbxhRft-7yGGuH37xzVdOkz7jJIL5aQ"
-    
-    # 1. Recupero dati aggiornati dal foglio principale
-    all_data_updated = sheet.get_all_values()
-    rows_updated = all_data_updated[1:]
-    
-    def is_true(val):
-        return str(val).strip().upper() in ["TRUE", "VERO", "1"]
-    
-    def is_false(val):
-        v = str(val).strip().upper()
-        return v in ["FALSE", "FALSO", "0", ""]
-
-    nuovi_sku_foto = []
-    for row in rows_updated:
-        # Controllo che la riga arrivi almeno alla colonna P (indice 15)
-        if len(row) > 15:
-            sku = row[0].strip()  # Colonna A
-            k = row[10].strip()   # Colonna K
-            m = row[12].strip()   # Colonna M
-            n = row[13].strip()   # Colonna N
-            o = row[14].strip()   # Colonna O
-            p = row[15].strip()   # Colonna P
-
-            if is_true(k) and is_false(m) and is_false(n) and is_false(o) and is_false(p):
-                if sku:
-                    nuovi_sku_foto.append([sku, "FOTO"])
-
-    # 2. Accesso al secondo foglio
+    print("⏳ Aggiornamento Google Sheet...")
     try:
-        urg_sheet = gs_client.open_by_key(URGENZE_SHEET_ID).worksheet("URGENZE")
-        dat_esistenti = urg_sheet.get_all_values()
+        batch_update_with_retry(lista_worksheet, [
+            {"range": f"K2:K{len(output_col_k)+1}", "values": output_col_k},
+            {"range": f"L2:L{len(output_col_l)+1}", "values": output_col_l}
+        ])
+        print("✅ Google Sheet 'LISTA' aggiornato")
+    except Exception as e:
+        print(f"⚠️ Errore durante l'aggiornamento del foglio LISTA: {e}")
+
+    # Aggiornamento Foglio URGENZE
+    URGENZE_SHEET_ID = "1YbU9twZgJECIsbxhRft-7yGGuH37xzVdOkz7jJIL5aQ"
+    try:
+        all_data_updated = get_values_optimized(lista_worksheet, "A:P")
+        rows_updated = all_data_updated[1:]
+
+        is_t = lambda v: str(v).strip().upper() in ["TRUE", "VERO", "1"]
+        is_f = lambda v: str(v).strip().upper() in ["FALSE", "FALSO", "0", ""]
+
+        nuovi_sku_foto = []
+        for r_upd in rows_updated:
+            k, m, n, o, p = get_val(r_upd, 10), get_val(r_upd, 12), get_val(r_upd, 13), get_val(r_upd, 14), get_val(r_upd, 15)
+            if is_t(k) and is_f(m) and is_f(n) and is_f(o) and is_f(p):
+                sku = get_val(r_upd, 0)
+                if sku: nuovi_sku_foto.append([sku, "FOTO"])
+
+        urg_worksheet = get_worksheet(URGENZE_SHEET_ID, "URGENZE")
+        dat_esistenti = get_values_optimized(urg_worksheet, "A:B")
         
-        # 3. Pulizia e Riordino in memoria
-        # Teniamo l'header (se esiste) e tutte le righe che NON sono "FOTO" e NON sono vuote
-        header = dat_esistenti[0] if dat_esistenti else ["SKU", "TIPO"]
-        lista_finale = [header]
+        lista_finale = [[ "SKU", "TIPO" ]]
+        if dat_esistenti: lista_finale = [dat_esistenti[0]]
         
         for r in dat_esistenti[1:]:
-            # Se la riga ha contenuto, non è "FOTO" e non è una riga vuota (es. r[0] non vuoto)
-            if len(r) >= 2 and r[1] != "FOTO" and r[0].strip() != "":
+            if len(r) >= 2 and r[1] != "FOTO" and r[0].strip():
                 lista_finale.append(r)
-            elif len(r) == 1 and r[0].strip() != "": # Caso riga con solo SKU
+            elif len(r) == 1 and r[0].strip():
                 lista_finale.append(r)
 
-        # 4. Aggiunta dei nuovi SKU filtrati in coda a quelli esistenti (non "FOTO")
         lista_finale.extend(nuovi_sku_foto)
-
-        # 5. Scrittura pulita sul foglio
-        # Cancelliamo tutto il contenuto precedente per evitare residui in fondo
-        urg_sheet.clear()
-        
-        # Aggiorniamo partendo da A1: questo compatta automaticamente la lista eliminando i buchi
-        urg_sheet.update("A1", lista_finale)
-        
-        print(f"🚀 Foglio URGENZE compattato e aggiornato. Nuovi SKU 'FOTO': {len(nuovi_sku_foto)}")
-
+        clear_sheet_with_retry(urg_worksheet)
+        update_sheet_with_retry(urg_worksheet, "A1", lista_finale)
+        print(f"🚀 Foglio URGENZE aggiornato. Nuovi SKU 'FOTO': {len(nuovi_sku_foto)}")
     except Exception as e:
-        print(f"⚠️ Errore durante l'aggiornamento del foglio URGENZE: {e}")
+        print(f"⚠️ Errore foglio URGENZE: {e}")
     
 if __name__ == "__main__":
-    import asyncio
     asyncio.run(main())
