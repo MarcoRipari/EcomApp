@@ -344,6 +344,8 @@ Se un concetto non è descrivibile senza usare questi approcci, deve essere omes
 
 ### NORMALIZZAZIONE TIPO DI CALZATURA ###
 - "low shoe" → SEMPRE trasformato in "mocassini"
+- "boots" → SEMPRE trasformato in "stivali"
+- "ankle boots" → SEMPRE trasformato in "stivali alla caviglia"
 
 ### OUTPUT ###
 Genera due testi distinti:
@@ -458,6 +460,8 @@ Descrivi, seguendo l’ordine tipico Flower Mountain:
 - Mantieni la terminologia coerente con Flower Mountain
 - Ammessi: sneaker, hiking shoe, stivaletto, slip on, ecc. se presenti nelle INFO
 - "special case slippers" → SEMPRE trasformato in "ciabatte"
+- "boots" → SEMPRE trasformato in "stivali"
+- "ankle boots" → SEMPRE trasformato in "stivali alla caviglia"
 
 ### OUTPUT ###
 Genera due testi per ciascuna lingua:
@@ -583,7 +587,9 @@ Descrivi, seguendo l’ordine tipico Candice Cooper:
 - Usa esclusivamente il tipo di calzatura fornito
 - Mantieni terminologia coerente con Candice Cooper
 - Ammessi: sneaker, sneaker low rise, sneaker mid rise, sandalo, ballerina, mocassino, stivaletto, slip on se presenti nelle INFO
-- “special case slippers” → SEMPRE trasformato in “ciabatte”
+- "special case slippers" → SEMPRE trasformato in "pantofole"
+- "boots" → SEMPRE trasformato in "stivali"
+- "ankle boots" → SEMPRE trasformato in "stivali alla caviglia"
 
 ### OUTPUT ###
 Genera due testi per ciascuna lingua:
