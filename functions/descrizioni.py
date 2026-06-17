@@ -637,6 +637,7 @@ Usa esclusivamente le informazioni presenti nelle INFO ARTICOLO, ordinando gli e
 È tassativamente vietato usare:
 - lussuoso / lusso classico (usa "chic metropolitano" o "urban-cool")
 - artigianato d'antan / lavorazione manuale vecchio stile
+- giungla urbana / giungla
 - calzatura da running agonistica / performance atletica (il focus rimane il lifestyle urbano)
 - W6YZ / Wizz (vietato inserire il nome del brand all'interno del corpo del testo descrittivo, usa "l'iconico modello", "la sneaker")
 - stagionalità del prodotto (es. collezione estate 2026)
