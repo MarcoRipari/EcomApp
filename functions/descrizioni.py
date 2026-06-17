@@ -596,6 +596,91 @@ Genera due testi distinti per ciascuna lingua, rispettando i limiti di lunghezza
 2. Assicurati che il nome del brand "Candice Cooper" NON compaia mai.
 3. Controlla che il testo descriva oggettivamente il prodotto in modo editoriale, garantendo che sia interamente riutilizzabile su più varianti colore (fatta eccezione per i riferimenti ai materiali o ai blocchi cromatici se specificati nelle INFO).
 """
+    elif marchio == "WZ":
+        prompt = f"""
+Scrivi due descrizioni per una calzatura da vendere online (e-commerce), coerenti con le INFO ARTICOLO, in ciascuna delle seguenti lingue: {lang_list}.
+
+Le descrizioni devono riprodurre fedelmente il linguaggio fresco, pop e dinamico del catalogo ufficiale W6YZ: energico, metropolitano, urban-cool, con ritmo incalzante e formule ricorrenti basate sullo storico del brand.
+
+### INFO PRODOTTO ###
+{product_info}
+
+CONCEPT
+{concept}
+
+*** Regole del concept ***
+- Serve come orientamento interno per catturare la carica dinamica del modello.
+- Deve tradursi in un'attitudine street o sport-chic senza scadere in testi puramente tecnici da sport agonistico.
+- Evitare di inventare ispirazioni storiche non presenti nelle INFO.
+
+### STILE E RITMO (STRUTTURA W6YZ) ###
+- Apertura: Impattante, energica e immediata.
+- Stile Apertura: {incipit_seeds}
+- Tono: Streetwear di lusso, energico, pop, contemporaneo, fresco.
+- Sintassi: Frasi dinamiche, ritmate, incisive. 
+- Nessuna formattazione (no grassetti, no corsivi, no elenchi).
+
+### CONTENUTO E SEQUENZA INFORMATIVA ###
+Usa esclusivamente le informazioni presenti nelle INFO ARTICOLO, ordinando gli elementi nel modo tipico di W6YZ:
+1. Dichiarazione di energia o claim iniziale (es. look per tutti i giorni, spirito urban o giungla urbana).
+2. Tomaia e materiali principali: Citare esplicitamente il "tessuto tecnico" e gli "inserti in suede" (o altri materiali indicati).
+3. Dettagli grafici e pop distintivi: Logo/scudetto laterale, piping a contrasto, occhielli metallici, topponcino, inserti animalier o inserti colorati.
+4. Chiusura e Lacci: Lacci in tono, lacci trek, lacci spessi.
+5. Spoiler e Stabilizzatore: Evidenziare SEMPRE lo spoiler o stabilizzatore in gomma sotto il tallone (se presente o deducibile dal modello iconico).
+6. Fodera e Soletta: Comfort della calzata, fodera e soletta in tessuto o pelle.
+7. Suola o Fondo: Suola in gomma ultra leggera, specificando se rialzata, se presenta una mescola stampata (es. effetto camouflage, scritte laterali) e le caratteristiche del battistrada (dentellato, sagomato o personalizzato).
+
+- I materiali d'elezione del brand (tessuto tecnico, suede) vanno citati esplicitamente.
+- NON usare abbreviazioni o forme contratte.
+
+### TERMINI E CONCETTI VIETATI ###
+È tassativamente vietato usare:
+- lussuoso / lusso classico (usa "chic metropolitano" o "urban-cool")
+- artigianato d'antan / lavorazione manuale vecchio stile
+- calzatura da running agonistica / performance atletica (il focus rimane il lifestyle urbano)
+- W6YZ / Wizz (vietato inserire il nome del brand all'interno del corpo del testo descrittivo, usa "l'iconico modello", "la sneaker")
+- stagionalità del prodotto (es. collezione estate 2026)
+
+### LESSICO GUIDA (AMMESSO E INCORAGGIATO) ###
+- Easy e cool
+- sferzata di energia / grinta / dinamico e autentico
+- chic metropolitano / eleganza sportiva / ispirazione urban
+- giungla urbana / look per tutti i giorni / versatilità
+- tessuto tecnico / inserti in suede / pelle / mesh
+- lacci trek / lacci in tono / lacci spessi
+- suola in gomma ultra leggera / suola rialzata / bordo sagomato
+- battistrada personalizzato / battistrada dentellato
+- slancia la silhouette / comfort prolungato / calzata comoda e avvolgente
+
+### LIMITI E RIGORE INFORMATIVO ###
+- Non introdurre dettagli grafici o varianti colore.
+- Non inventare tecnologie di ammortizzazione non dichiarate.
+- Non descrivere interi abbinamenti di vestiti (ammesso solo il concetto generale di "look quotidiano").
+
+### NORMALIZZAZIONE TIPO DI CALZATURA ###
+- Usa esclusivamente il tipo di calzatura fornito.
+- Ammessi in base alle INFO: sneaker, sneaker low rise, sneaker mid rise, platform sneaker, slip on.
+- "low shoe" → SEMPRE trasformato in "mocassini"
+- "boots" → SEMPRE trasformato in "stivali"
+- "ankle boots" → SEMPRE trasformato in "stivali alla caviglia"
+
+### OUTPUT ###
+Genera due testi distinti per ciascuna lingua, rispettando i limiti di lunghezza richiesti senza troncare le frasi:
+- desc_lunga: {desc_lunga_length} parole (completa di dettagli su tomaia, spoiler, contrasti e suola dentellata).
+- desc_breve: {desc_breve_length} parole (focalizzata su claim di apertura, materiali chiave e leggerezza della suola).
+
+### DESCRIZIONI DI RIFERIMENTO (STRUTTURA MODELLO) ###
+{sim_text}
+
+*** Uso delle descrizioni di riferimento ***
+- Copia il ritmo incalzante e l'uso dei contrasti cromatici tipici dei testi storici di W6YZ.
+- Se le descrizioni storiche fornite mostrano un focus prevalente sulla suola dentellata/ultra leggera e sul logo, dai massima priorità a questi elementi nell'output finalizzato.
+
+### CONTROLLO FINALE OBBLIGATORIO ###
+1. Assicurati che il tono sia energico e mai formale o piatto.
+2. Controlla che il nome del brand "W6YZ" NON compaia mai nel testo descrittivo.
+3. Il testo deve essere agnostico rispetto alla variante colore specifica, a meno che i blocchi di colore non siano l'elemento strutturale descritto nelle INFO ARTICOLO.
+"""
     return prompt
 
 async def async_generate_description(prompt: str, idx: int, use_model: str, langs):
