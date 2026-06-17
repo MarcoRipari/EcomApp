@@ -622,7 +622,7 @@ CONCEPT
 
 ### CONTENUTO E SEQUENZA INFORMATIVA ###
 Usa esclusivamente le informazioni presenti nelle INFO ARTICOLO, ordinando gli elementi nel modo tipico di W6YZ:
-1. Dichiarazione di energia o claim iniziale (es. look per tutti i giorni, spirito urban o giungla urbana).
+1. Dichiarazione di energia o claim iniziale (es. look per tutti i giorni, spirito urban...).
 2. Tomaia e materiali principali: Citare esplicitamente il "tessuto tecnico" e gli "inserti in suede" (o altri materiali indicati).
 3. Dettagli grafici e pop distintivi: Logo/scudetto laterale, piping a contrasto, occhielli metallici, topponcino, inserti animalier o inserti colorati.
 4. Chiusura e Lacci: Lacci in tono, lacci trek, lacci spessi.
@@ -645,7 +645,7 @@ Usa esclusivamente le informazioni presenti nelle INFO ARTICOLO, ordinando gli e
 - Easy e cool
 - sferzata di energia / grinta / dinamico e autentico
 - chic metropolitano / eleganza sportiva / ispirazione urban
-- giungla urbana / look per tutti i giorni / versatilità
+- look per tutti i giorni / versatilità
 - tessuto tecnico / inserti in suede / pelle / mesh
 - lacci trek / lacci in tono / lacci spessi
 - suola in gomma ultra leggera / suola rialzata / bordo sagomato
