@@ -371,7 +371,7 @@ Il testo deve:
         prompt = f"""
 Scrivi due descrizioni per una calzatura da vendere online (e-commerce), coerenti con le INFO ARTICOLO, in ciascuna delle seguenti lingue: {lang_list}.
 
-Le descrizioni devono riprodurre il linguaggio di un catalogo ufficiale Flower Mountain: tecnico, descrittivo, con struttura riconoscibile e lessico ricorrente.
+Le descrizioni devono riprodurre il linguaggio di un catalogo ufficiale Flower Mountain: tecnico, descrittivo, con lessico ricorrente ma STRUTTURA SINTATTICA DINAMICA E VARIEGATA (evita l'effetto template automatico).
 
 ### INFO PRODOTTO ###
 {product_info}
@@ -385,23 +385,19 @@ CONCEPT
 - Non deve generare riferimenti espliciti a ispirazione
 - Deve emergere indirettamente da materiali, costruzione e utilizzo
 
-### STILE ###
-- Apertura: descrittiva e assertiva
-- Vietato aprire il testo con riferimenti a “ispirazione”
-- Tono: tecnico–editoriale, brand–driven
-- Linguaggio chiaro e dichiarativo
-- Ammesse valutazioni soft (es. “ideale”, “perfetta”, “assicura”)
-- Ammessi riferimenti a:
-  - mondo outdoor
-  - utilizzo urbano
-  - capsule collection e collaborazioni (se presenti nelle INFO)
-- Frasi complete
-- Nessuna formattazione
+### STILE E VARIETÀ TESTUALE ###
+- Apertura: descrittiva e assertiva. VARIA l'attacco tra le due descrizioni: non iniziare entrambe con la stessa formula o struttura della frase.
+- Vietato aprire il testo con riferimenti a “ispirazione”.
+- Tono: tecnico–editoriale, brand–driven.
+- Linguaggio chiaro e dichiarativo.
+- Ammesse valutazioni soft (es. “ideale”, “perfetta”, “assicura”).
+- Ammessi riferimenti a: mondo outdoor, utilizzo urbano, capsule collection e collaborazioni.
+- Frasi complete, fluide e naturali. Nessuna formattazione.
 
-### CONTENUTO ###
-- Usa esclusivamente le informazioni presenti nelle INFO ARTICOLO
-- Usa il tipo di calzatura fornito
-Descrivi, seguendo l’ordine tipico Flower Mountain:
+### CONTENUTO E STRUTTURA ###
+- Usa esclusivamente le informazioni presenti nelle INFO ARTICOLO.
+- Usa il tipo di calzatura fornito.
+- **REGOLA DI VARIABILITÀ:** Includi tutti gli elementi tipici Flower Mountain elencati sotto, ma NON seguire sempre lo stesso ordine rigido. Distribuisci le informazioni in modo fluido nei periodi, alternando l'ordine di presentazione degli elementi tra la versione lunga e quella breve, e tra prodotti diversi:
     - carattere del modello e destinazione d’uso (senza usare il termine “ispirazione”)
     - tomaia (materiali e costruzione overlapping se presente)
     - dettagli iconici (occhielli, nastri, loop, traforature)
@@ -409,28 +405,24 @@ Descrivi, seguendo l’ordine tipico Flower Mountain:
     - fodera e soletta (specificare materiali e trattamento se dichiarato)
     - fondo o suola (gomma ultra leggera, Vibram, megagrip, battistrada)
 
-- I materiali devono essere citati in modo esplicito
-- È ammessa la ripetizione di formule lessicali consolidate
-- Non inserire la stagionalità del prodotto (il riferimento può essere solo sui sandali)
-- NON usare abbreviazioni, ellissi o forme contratte (es. niente “-sohle”, “-lining”, ecc.)
+- I materiali devono essere citati in modo esplicito.
+- È ammessa la ripetizione di formule lessicali consolidate, ma evita di clonare la struttura della frase da un articolo all'altro.
+- Non inserire la stagionalità del prodotto (il riferimento può essere solo sui sandali).
+- NON usare abbreviazioni, ellissi o forme contratte.
 
-### TERMINI E CONCETTI VIETATI ###
+### TERMINI E STRUTTURE VIETATE ###
 È vietato usare, anche in forma parafrasata:
 - Vocazione
 - La chiusura è affidata a
 - costruzione minimale
-- classici lacci
-- lacci tradizionali
+- classici lacci / lacci tradizionali
 - sapientemente
 - assicura proprietà antibatteriche
-- bicolori
-- "bicolore", utilizzabile solamente per il fondo se indicato.
-- ispirazione
-- ispirata / ispirato
-- ispira / ispirare
-- riferimenti espliciti al marchio
-- Flower Mountain
-- Stagione del prodotto (il riferimento può essere solo sui sandali/ciabatte)
+- bicolori / "bicolore" (utilizzabile solamente per il fondo se indicato)
+- ispirazione / ispirata / ispirato / ispira / ispirare
+- riferimenti espliciti al marchio / Flower Mountain
+- Stagione del prodotto (tranne per sandali/ciabatte)
+- **FORMULE RIPETITIVE DI APERTURA:** Evita di iniziare sistematicamente con "Perfetto equilibrio tra...", "Sneaker dal carattere versatile...", "Queste sneakers combinano...". Trova attacchi tecnici differenti basati sulla tomaia o sulle caratteristiche specifiche del modello.
 
 ### LESSICO GUIDA (AMMESSO E INCORAGGIATO) ###
 - mondo outdoor
@@ -472,10 +464,8 @@ Genera due testi per ciascuna lingua:
 {sim_text}
 
 *** Uso delle descrizioni di riferimento ***
-- Replicare struttura sintattica e ritmo
-- Riutilizzare formule verbali consolidate
-- Privilegiare costruzioni già presenti nello storico
-- In caso di conflitto, lo stile delle descrizioni di riferimento ha priorità
+- Utilizzale ESCLUSIVAMENTE per assorbire il Tono di Voce (Tone of Voice) e il livello di tecnicismo.
+- NON copiare la struttura sintattica delle frasi se questo comporta la generazione di testi fotocopia. La naturalezza e la varietà tra i modelli hanno la priorità.
 
 ### CONTROLLO FINALE ###
 > Verifica che “ispirazione” e derivati NON siano presenti
