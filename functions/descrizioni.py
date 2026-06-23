@@ -386,6 +386,7 @@ CONCEPT
 - Deve emergere indirettamente da materiali, costruzione e utilizzo
 
 ### STILE E VARIETÀ TESTUALE ###
+- **Apertura Tecnica o Editoriale:** È SEVERAMENTE VIETATO iniziare la descrizione con un articolo determinativo o indeterminativo seguito dal nome del prodotto e da aggettivi di elogio (es. NO a: "Le sneakers perfette...", "Gli stivali ideali...").
 - Apertura: descrittiva e assertiva. VARIA l'attacco tra le due descrizioni: non iniziare entrambe con la stessa formula o struttura della frase.
 - Vietato aprire il testo con riferimenti a “ispirazione”.
 - Tono: tecnico–editoriale, brand–driven.
