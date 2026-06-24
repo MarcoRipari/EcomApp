@@ -379,34 +379,35 @@ def get_lang(col):
 
 def apply_translations(df, columns, langs, vocab):
     dfs_by_lang = {}
-    selected_bases = {get_base_name(c) for c in columns} [cite: 28]
+    selected_bases = {get_base_name(c) for c in columns}
 
     for lang in langs:
-        df_lang = df.copy() [cite: 28]
+        df_lang = df.copy()
         cols_to_drop = []
 
         for col in df.columns:
-            base = get_base_name(col) [cite: 29]
-            col_lang = get_lang(col) [cite: 29]
+            base = get_base_name(col)
+            col_lang = get_lang(col)
 
-            if base in selected_bases and col_lang == "it": [cite: 29]
+            if base in selected_bases and col_lang == "it":
                 new_col_name = f"{base} ({lang})"
                 
+                # Definizione pulita della funzione interna (4 spazi di indentazione rispetto a 'if')
                 def translate_cell(val):
                     if pd.isna(val):
                         return ""
-                    key = str(val).strip() [cite: 31]
+                    key = str(val).strip()
                     
                     # Gestione della nuova struttura dati di vocab
                     if key in vocab:
                         return vocab[key]["translations"].get(lang, key)
                     return key
               
-                df_lang[new_col_name] = df_lang[col].apply(translate_cell) [cite: 33]
-                cols_to_drop.append(col) [cite: 33]
+                df_lang[new_col_name] = df_lang[col].apply(translate_cell)
+                cols_to_drop.append(col)
         
-        df_lang.drop(columns=cols_to_drop, errors='ignore', inplace=True) [cite: 34]
-        dfs_by_lang[lang] = df_lang [cite: 34]
+        df_lang.drop(columns=cols_to_drop, errors='ignore', inplace=True)
+        dfs_by_lang[lang] = df_lang
 
     return dfs_by_lang
 
