@@ -62,7 +62,8 @@ def genera_traduzioni():
                 vocab, ws = load_vocab(TRANSLATION_SHEET_ID, TRANSLATION_TAB_NAME)
     
             with st.spinner("Analisi termini mancanti..."):
-                missing_terms = extract_missing_terms(df, cols_to_translate, vocab)
+                # Passiamo anche target_langs per controllare se mancano traduzioni parziali
+                missing_terms = extract_missing_terms(df, cols_to_translate, vocab, target_langs)
     
             st.info(f"Termini da tradurre: {len(missing_terms)}")
     
