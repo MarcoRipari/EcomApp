@@ -122,8 +122,7 @@ async def translate_term(term, target_langs, col_name):
 
     messages = [
         {"role": "user", "content": f"""
-        Traduci il seguente testo italiano nelle seguenti lingue target: {', '.join(target_langs)}.
-
+        Traduci il seguente testo italiano ESCLUSIVAMENTE nelle seguenti lingue target: {', '.join(target_langs)}.
         IMPORTANTE:
         - Il testo risultante deve essere realmente tradotto.
         - NON lasciare il testo in italiano.
@@ -138,16 +137,11 @@ async def translate_term(term, target_langs, col_name):
 
         {MANUAL_TRANSLATIONS_PROMPT}
 
-        Rispondi SOLO in JSON valido nel formato:
-        {{
-          "en": "...",
-          "fr": "...",
-          "de": "...",
-          "es": "..."
-        }}
+        Rispondi SOLO in JSON valido nel formato richiesto dalla funzione.
         """}
     ]
 
+    # Generazione dinamica dei parametri dello schema JSON in base alle sole lingue mancanti
     functions = [
         {
             "name": "translate_text",
@@ -188,59 +182,115 @@ async def enrich_vocab_with_ui(
 ):
     total = len(missing_terms)
     start_time = time.time()
-    buffer = []
+    buffer_new_rows = []  # Solo per termini NUOVI totali da appendere
     saved_count = 0
 
-    for i, (term, col_name) in enumerate(missing_terms.items(), start=1):
+    for i, (term, info) in enumerate(missing_terms.items(), start=1):
         key = term.strip()
+        col_name = info["col_name"]
+        langs_to_translate = info["langs"]
 
         elapsed = time.time() - start_time
         avg_time = elapsed / i
         remaining = avg_time * (total - i)
 
         progress_bar.progress(i / total)
-        saved_badge.markdown(f"💾 **Salvate su Google:** {saved_count}")
-        status_text.text(f"🔤 Traduzione: {term} ({i}/{total})")
+        saved_badge.markdown(f"💾 **Salvate/Aggiornate:** {saved_count}")
+        status_text.text(f"🔤 Traduzione parziale: {term} ({i}/{total})")
         timer_text.text(
-            f"⏱️ Trascorso: {format_time(elapsed)} | "
-            f"Stimato: {format_time(remaining)}"
+            f"⏱️ Trascorso: {format_time(elapsed)} | Stimato: {format_time(remaining)}"
         )
 
-        if key in MANUAL_TRANSLATIONS:
-            vocab[key] = {lang: MANUAL_TRANSLATIONS[key].get(lang, term) for lang in target_langs}
+        # Inizializza il record nel vocab se non esiste
+        if key not in vocab:
+            vocab[key] = {lang: "" for lang in target_langs}
+            is_new_term = True
         else:
-            try:
-                translations = await translate_term(term, target_langs, col_name)
-                vocab[key] = translations
-            except Exception as e:
-                st.warning(f"Errore traduzione '{term}': {e}")
-                vocab[key] = {lang: "" for lang in target_langs}
+            is_new_term = False
 
-        buffer.append({
-            "it": key,
-            **vocab[key],
-            "source_col": col_name
-        })
+        try:
+            # Chiediamo a OpenAI di tradurre SOLO le lingue mancanti
+            translations = await translate_term(term, langs_to_translate, col_name)
+            
+            # Aggiorna il vocabolario globale in memoria con i nuovi valori recuperati
+            for lang in langs_to_translate:
+                vocab[key][lang] = translations.get(lang, "")
+                
+        except Exception as e:
+            st.warning(f"Errore traduzione '{term}': {e}")
 
-        if len(buffer) >= SAVE_TRANSLATE_EVERY:
-            append_vocab_rows(ws, buffer)
-            saved_count += len(buffer)
+        # Se il termine è completamente nuovo, lo mettiamo nel buffer per fare l'append_rows su Google Sheets
+        if is_new_term:
+            row_to_append = {
+                "it": key,
+                **vocab[key],
+                "source_col": col_name
+            }
+            buffer_new_rows.append(row_to_append)
+
+        # Se il termine esisteva già ma è stato completato, l'append_rows creerebbe un duplicato.
+        # Per ora aggiorniamo la memoria interna. Se vuoi aggiornare la cella esatta del foglio Google, 
+        # servirebbe rintracciare il numero di riga. Per semplicità ed efficienza, aggiungiamo comunque 
+        # al foglio il record aggiornato in modo che al prossimo riavvio sovrascriva la vecchia entry 
+        # (visto che load_vocab prende l'ultimo stato valido nel ciclo rows).
+        else:
+            row_to_append = {
+                "it": key,
+                **vocab[key],
+                "source_col": col_name + " (completato)"
+            }
+            buffer_new_rows.append(row_to_append)
+
+        if len(buffer_new_rows) >= SAVE_TRANSLATE_EVERY:
+            append_vocab_rows(ws, buffer_new_rows)
+            saved_count += len(buffer_new_rows)
             saved_badge.markdown(f"💾 **Salvate su Google:** {saved_count}")
-            buffer.clear()
+            buffer_new_rows.clear()
 
-    if buffer:
-        append_vocab_rows(ws, buffer)
-        saved_count += len(buffer)
+    if buffer_new_rows:
+        append_vocab_rows(ws, buffer_new_rows)
+        saved_count += len(buffer_new_rows)
         saved_badge.markdown(f"💾 **Salvate su Google:** {saved_count}")
 
-def extract_missing_terms(df, columns, vocab):
+def extract_missing_terms(df, columns, vocab, target_langs):
+    """
+    Rileva i termini che mancano completamente o che non hanno tutte 
+    le lingue di destinazione compilate nel vocabolario.
+    """
     missing = {}
     for col in columns:
         if col in df.columns:
             for value in df[col].dropna():
                 key = str(value).strip()
-                if key not in vocab and key not in MANUAL_TRANSLATIONS:
-                    missing[key] = col
+                if key == "":
+                    continue
+                
+                # Se il termine è tra le traduzioni manuali fisse, lo saltiamo
+                if key in MANUAL_TRANSLATIONS:
+                    continue
+
+                # Determiniamo quali lingue mancano per questo termine specifico
+                langs_to_translate = []
+                if key not in vocab:
+                    # Manca totalmente nel vocabolario, servono tutte le lingue target
+                    langs_to_translate = list(target_langs)
+                else:
+                    # Esiste nel vocabolario, verifichiamo se qualche lingua target è vuota o assente
+                    for lang in target_langs:
+                        if lang not in vocab[key] or pd.isna(vocab[key][lang]) or str(vocab[key][lang]).strip() == "":
+                            langs_to_translate.append(lang)
+
+                # Se ci sono lingue mancanti, salviamo il record
+                if langs_to_translate:
+                    # Se il termine è già stato intercettato in un'altra colonna, uniamo le lingue mancanti
+                    if key in missing:
+                        existing_langs = missing[key]["langs"]
+                        missing[key]["langs"] = list(set(existing_langs + langs_to_translate))
+                    else:
+                        missing[key] = {
+                            "col_name": col,
+                            "langs": langs_to_translate
+                        }
     return missing
 
 LANG_RE = re.compile(r"\(([^)]+)\)$")
