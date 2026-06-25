@@ -190,8 +190,6 @@ async def enrich_vocab_with_ui(
     # Buffer per la gestione a blocchi (batch)
     buffer_updates = {}       # { row_number: [valori_riga] } per righe esistenti
     buffer_new_rows = []      # [ [valori_riga], ... ] per nuovi record
-    
-    processed_in_batch = 0    # Contatore per far scattare il salvataggio ogni 25 iterazioni
 
     for i, (term, info) in enumerate(missing_terms.items(), start=1):
         key = term.strip()
@@ -237,36 +235,53 @@ async def enrich_vocab_with_ui(
         else:
             buffer_new_rows.append(row_data)
 
-        processed_in_batch += 1
-
         # ========================================================
-        # SALVATAGGIO A BLOCCHI (ANTI-CRASH) - OGNI 25 ELEMENTI
+        # SALVATAGGIO A BLOCCHI MIRATO (ANTI-CRASH)
         # ========================================================
-        if processed_in_batch >= SAVE_TRANSLATE_EVERY:
-            status_text.text("💾 Salvataggio blocco su Google Sheets...")
-            
-            # 1. Svuota il batch delle righe modificate
-            if buffer_updates:
-                try:
-                    batch_data = [
-                        {"range": f"A{row_num}:F{row_num}", "values": [values]}
-                        for row_num, values in buffer_updates.items()
-                    ]
-                    ws.batch_update(batch_data, value_input_option="RAW")
-                    buffer_updates.clear()
-                except Exception as e:
-                    st.error(f"Errore salvataggio blocco aggiornamenti: {e}")
+        # Se il buffer degli aggiornamenti raggiunge la soglia, svuota su Google Sheets
+        if len(buffer_updates) >= SAVE_TRANSLATE_EVERY:
+            try:
+                batch_data = [
+                    {"range": f"A{row_num}:F{row_num}", "values": [values]}
+                    for row_num, values in buffer_updates.items()
+                ]
+                ws.batch_update(batch_data, value_input_option="RAW")
+                buffer_updates.clear()
+                saved_badge.markdown(f"💾 **Aggiornati salvati alla riga {i}/{total}**")
+            except Exception as e:
+                st.error(f"Errore salvataggio blocco aggiornamenti: {e}")
 
-            # 2. Svuota il batch dei nuovi record
-            if buffer_new_rows:
-                try:
-                    ws.append_rows(buffer_new_rows, value_input_option="RAW")
-                    buffer_new_rows.clear()
-                except Exception as e:
-                    st.error(f"Errore salvataggio blocco nuovi record: {e}")
+        # Se il buffer dei nuovi record raggiunge la soglia, svuota su Google Sheets
+        if len(buffer_new_rows) >= SAVE_TRANSLATE_EVERY:
+            try:
+                ws.append_rows(buffer_new_rows, value_input_option="RAW")
+                buffer_new_rows.clear()
+                saved_badge.markdown(f"💾 **Nuovi record salvati alla riga {i}/{total}**")
+            except Exception as e:
+                st.error(f"Errore salvataggio blocco nuovi record: {e}")
 
-            saved_badge.markdown(f"💾 **Salvataggi intermedi completati alla riga {i}/{total}**")
-            processed_in_batch = 0  # Resetta il contatore del blocco
+    # ========================================================
+    # INSERIMENTO RIGHE EREDITATE DA CSV (Spostato prima dei residui)
+    # ========================================================
+    # Recuperiamo anche tutti i termini che sono stati popolati dai CSV di input 
+    # ma che non erano presenti sul foglio Google e non avevano bisogno di AI
+    for key, data in vocab.items():
+        if data["row_number"] is None:
+            if any(str(v).strip() != "" for v in data["translations"].values()):
+                t = data["translations"]
+                already_buffered = any(r[0] == key for r in buffer_new_rows)
+                if not already_buffered:
+                    buffer_new_rows.append([
+                        key, t.get("en", ""), t.get("fr", ""), t.get("de", ""), t.get("es", ""), "Importato da CSV"
+                    ])
+                    
+                    # Se accumulando questi dati superiamo di nuovo i 25 elementi, scarichiamo a blocchi
+                    if len(buffer_new_rows) >= SAVE_TRANSLATE_EVERY:
+                        try:
+                            ws.append_rows(buffer_new_rows, value_input_option="RAW")
+                            buffer_new_rows.clear()
+                        except Exception as e:
+                            print(f"Errore nell'append intermedio dati CSV: {e}")
 
     # ========================================================
     # SALVATAGGIO FINALE PER I RESIDUI RIMASTI FUORI DAL BLOCCO
@@ -295,15 +310,15 @@ async def enrich_vocab_with_ui(
 
 def extract_missing_terms(df, columns, vocab, target_langs):
     """
-    Analizza le colonne (it). Per ogni riga, verifica se nei campi specchio 
-    (es. colonna (de) sullo stesso df) esiste già la traduzione. 
-    Se esiste, popola il vocabolario. Se manca ovunque, la manda all'AI.
+    Analizza le colonne (it). Se nel df sono presenti le colonne delle lingue estere,
+    recupera le traduzioni esistenti. Se mancano o sono vuote, controlla su Google Sheets.
+    Se mancano ovunque, le passa all'AI.
     """
     missing = {}
     
     for col in columns:
         if col in df.columns:
-            # Ricaviamo il nome base della colonna (es. "Descrizione")
+            # Estraiamo il nome pulito senza la dicitura " (it)"
             base_col_name = col.replace(" (it)", "").strip()
             
             for idx, row in df.iterrows():
@@ -314,7 +329,7 @@ def extract_missing_terms(df, columns, vocab, target_langs):
                 if key == "" or key in MANUAL_TRANSLATIONS:
                     continue
 
-                # Inizializziamo il termine nel vocabolario se totalmente nuovo
+                # Se il termine non è presente nel vocabolario, lo inizializziamo
                 if key not in vocab:
                     vocab[key] = {
                         "translations": {lang: "" for lang in target_langs},
@@ -324,27 +339,25 @@ def extract_missing_terms(df, columns, vocab, target_langs):
                 langs_to_translate = []
                 
                 for lang in target_langs:
-                    # 1. Controlliamo se nel CSV esiste la colonna specchio per questa lingua
                     csv_lang_col = f"{base_col_name} ({lang})"
                     csv_translation = ""
+                    
+                    # 1. Controlliamo se la colonna della lingua esiste ed è popolata nel CSV
                     if csv_lang_col in df.columns and pd.notna(row[csv_lang_col]):
                         csv_translation = str(row[csv_lang_col]).strip()
 
-                    # 2. Se il CSV ha già la traduzione, la importiamo nel nostro database locale
+                    # 2. Se c'è una traduzione nel CSV, la importiamo in memoria e saltiamo l'AI
                     if csv_translation != "":
-                        # Aggiorna la memoria interna salvando il dato del CSV
                         vocab[key]["translations"][lang] = csv_translation
-                        # Se il record non ha ancora una riga assegnata su Google Sheets, 
-                        # verrà inserito alla fine come nuovo, altrimenti aggiornato.
-                        continue 
+                        continue
 
-                    # 3. Se il CSV è vuoto, verifichiamo se la traduzione è già presente su Google Sheets
+                    # 3. Se la colonna non esiste nel CSV o la cella è vuota, guardiamo Google Sheets
                     saved_langs = vocab[key]["translations"]
                     if lang not in saved_langs or pd.isna(saved_langs[lang]) or str(saved_langs[lang]).strip() == "":
-                        # Manca sia nel CSV che su Google Sheets: serve l'AI
+                        # Manca ovunque: segnamo come da tradurre con AI
                         langs_to_translate.append(lang)
 
-                # Se per questo termine ci sono lingue scoperte, lo passiamo all'arricchimento UI
+                # Se ci sono lingue scoperte per questa stringa, la passiamo alla coda dei mancanti
                 if langs_to_translate:
                     if key in missing:
                         missing[key]["langs"] = list(set(missing[key]["langs"] + langs_to_translate))
