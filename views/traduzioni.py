@@ -118,7 +118,10 @@ def genera_traduzioni():
 
             with st.spinner("Caricamento vocabolario..."):
                 vocab, ws = load_vocab(TRANSLATION_SHEET_ID, TRANSLATION_TAB_NAME)
-    
+
+            with st.spinner("Analisi del file ed estrazione termini mancanti..."):
+                missing_terms = extract_missing_terms(df, cols_to_translate, target_langs, vocab)
+                
             # Avviamo direttamente la sincronizzazione unificata
             with st.spinner("Sincronizzazione e Traduzione in corso..."):
                 progress_bar = st.progress(0)
