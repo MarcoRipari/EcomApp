@@ -189,130 +189,73 @@ async def enrich_vocab_with_ui(
 ):
     start_time = time.time()
     
-    # Area Log visiva in Streamlit
     st.markdown("### 📋 Log Avanzamento Sincronizzazione")
     log_area = st.empty()
-    logs = ["🎬 Avvio del processo di allineamento database..."]
+    logs = ["🎬 Avvio allineamento chirurgico celle modifiche da file..."]
     
     def log_msg(msg):
         logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
         log_area.code("\n".join(logs[-10:]))
 
-    # Buffer unici (Batch size = 25)
-    buffer_updates = {}       # { row_number: [valori_riga] }
-    buffer_new_rows = []      # [ [valori_riga], ... ]
-
-    async def flush_buffers(fase_label):
-        """Svuota i buffer su Google Sheets solo se contengono reali modifiche"""
-        if buffer_updates:
-            try:
-                log_msg(f"⏳ [{fase_label}] Scrittura batch di {len(buffer_updates)} modifiche reali su Google Sheets...")
-                batch_data = [{"range": f"A{r}:F{r}", "values": [v]} for r, v in buffer_updates.items()]
-                ws.batch_update(batch_data, value_input_option="RAW")
-                buffer_updates.clear()
-                await asyncio.sleep(1.0) # Pausa di sicurezza anti-quota
-            except Exception as e:
-                log_msg(f"❌ Errore scrittura batch [{fase_label}]: {e}")
-                
-        if buffer_new_rows:
-            try:
-                log_msg(f"⏳ [{fase_label}] Inserimento di {len(buffer_new_rows)} nuove righe reali (append)...")
-                ws.append_rows(buffer_new_rows, value_input_option="RAW")
-                buffer_new_rows.clear()
-                await asyncio.sleep(1.0) # Pausa di sicurezza anti-quota
-            except Exception as e:
-                log_msg(f"❌ Errore append [{fase_label}]: {e}")
+    # Mappa nativa delle colonne su Google Sheets (IT=1, EN=2, FR=3, DE=4, ES=5, Nota=6)
+    COL_MAPPING = {"en": 2, "fr": 3, "de": 4, "es": 5}
 
     # ========================================================
-    # STEP 1: ALLINEAMENTO CHIRURGICO DELLE SOLE DIFFERENZE REALI
+    # STEP 1: AGGIORNAMENTO DELLE SOLE CELLE VARIATE DAL FILE DI INPUT
     # ========================================================
-    log_msg("📂 STEP 1: Analisi differenze tra file di input e foglio Google...")
+    log_msg("📂 STEP 1: Analisi dei termini nei file di input...")
     
-    # Rileviamo lo stato attuale del foglio Google rileggendo rapidamente i record correnti 
-    # per fare un confronto reale (cella per cella) ed evitare di riscrivere dati identici.
-    try:
-        all_records = ws.get_all_records()
-        # Creiamo una mappa rapida { termine_italiano: {en, fr, de, es, col_name} } dello stato attuale del server
-        gsheet_state = {}
-        for row_idx, row in enumerate(all_records, start=2): # start=2 perché la riga 1 è l'intestazione
-            it_val = str(row.get("italiano", "")).strip()
-            if it_val:
-                gsheet_state[it_val] = {
-                    "row_number": row_idx,
-                    "en": str(row.get("en", "")).strip(),
-                    "fr": str(row.get("fr", "")).strip(),
-                    "de": str(row.get("de", "")).strip(),
-                    "es": str(row.get("es", "")).strip(),
-                    "col_name": str(row.get("colonna", "")).strip()
-                }
-    except Exception as e:
-        log_msg(f"⚠️ Impossibile mappare lo stato remoto del foglio: {e}. Uso fallback.")
-        gsheet_state = {}
-
-    # Identifichiamo i termini unici presenti nel file corrente
+    # Estraiamo i termini unici presenti nei file Excel/CSV attuali
     current_file_terms = set()
     term_to_col_map = {}
     for col in cols_to_translate:
         if col in df.columns:
-            unique_vals = df[col].dropna().unique()
-            for val in unique_vals:
+            for val in df[col].dropna().unique():
                 val_str = str(val).strip()
                 if val_str:
                     current_file_terms.add(val_str)
                     term_to_col_map[val_str] = col
 
-    count_file_sync = 0
-    
+    count_changes = 0
+
     for key in current_file_terms:
         if key not in vocab:
             continue
             
         data = vocab[key]
+        row_num = data.get("row_number")
         t = data["translations"]
         
         orig_col = data.get("col_name", term_to_col_map[key])
         clean_col = re.sub(r'\s*\([^)]*\)', '', str(orig_col)).strip()
-            
-        row_data = [
-            key,
-            t.get("en", ""),
-            t.get("fr", ""),
-            t.get("de", ""),
-            t.get("es", ""),
-            clean_col
-        ]
 
-        # CONTROLLO REALE: Verifichiamo se il termine esiste già sul server
-        if key in gsheet_state:
-            state = gsheet_state[key]
-            row_num = state["row_number"]
+        if row_num is not None:
+            # IL TERMINE ESISTE GIÀ: Aggiorniamo solo le celle dove il valore del file è diverso dal foglio
+            for lang in target_langs:
+                valore_locale = str(t.get(lang, "")).strip()
+                valore_storico = str(data.get("original_translations", {}).get(lang, "")).strip()
+                
+                # Se il file locale ha una traduzione ed è DIVERSA da quella che c'era sul foglio
+                if valore_locale and valore_locale != valore_storico:
+                    col_idx = COL_MAPPING.get(lang.lower())
+                    if col_idx:
+                        log_msg(f"✏️ Modifica rilevata su '{key}' [{lang.upper()}]. Aggiorno riga {row_num}, colonna {col_idx}")
+                        ws.update_cell(row_num, col_idx, valore_locale)  # <-- USIAMO LA TUA LOGICA ORIGINARIA CHIRURGICA
+                        count_changes += 1
             
-            # Confrontiamo i valori attuali in memoria (dal file input) con quelli reali sul foglio Google
-            has_changes = (
-                t.get("en", "").strip() != state["en"] or
-                t.get("fr", "").strip() != state["fr"] or
-                t.get("de", "").strip() != state["de"] or
-                t.get("es", "").strip() != state["es"] or
-                clean_col != state["col_name"]
-            )
-            
-            if has_changes:
-                # Viene aggiunto al buffer di aggiornamento SOLO se c'è almeno una variazione di testo!
-                buffer_updates[row_num] = row_data
-                count_file_sync += 1
+            # Controllo eventuale variazione del nome colonna nota (Colonna F = 6)
+            valore_nota_storico = str(data.get("original_col_name", "")).strip()
+            if clean_col and clean_col != valore_nota_storico:
+                ws.update_cell(row_num, 6, clean_col)
+                count_changes += 1
         else:
-            # È un termine nuovo (non esiste sul foglio Google)
-            if row_data not in buffer_new_rows:
-                buffer_new_rows.append(row_data)
-                count_file_sync += 1
+            # IL TERMINE È TOTALMENTE NUOVO: facciamo l'append_row della nuova riga intera
+            log_msg(f"➕ Nuovo termine rilevato dal file: '{key}'. Aggiungo riga al foglio.")
+            row_data = [key, t.get("en", ""), t.get("fr", ""), t.get("de", ""), t.get("es", ""), clean_col]
+            ws.append_row(row_data, value_input_option="RAW")
+            count_changes += 1
 
-        # Svuotamento buffer regolare solo se raggiungiamo i 25 elementi REALI modificati
-        if len(buffer_updates) >= SAVE_TRANSLATE_EVERY or len(buffer_new_rows) >= SAVE_TRANSLATE_EVERY:
-            await flush_buffers("Modifiche da File")
-
-    # Svuotiamo i residui delle modifiche reali dello Step 1 (qui finiranno i tuoi 3/4 termini)
-    await flush_buffers("Modifiche da File Finali")
-    log_msg(f"✅ STEP 1 Completato. Sincronizzati solo {count_file_sync} elementi realmente modificati o nuovi.")
+    log_msg(f"✅ STEP 1 Completato. Sincronizzate {count_changes} celle modificate con successo.")
 
     # ========================================================
     # STEP 2: GENERAZIONE CON AI PER I TERMINI VERAMENTE MANCANTI
@@ -334,58 +277,47 @@ async def enrich_vocab_with_ui(
             status_text.text(f"🔤 Traduzione AI: {term} ({i}/{total_ai})")
             timer_text.text(f"⏱️ Trascorso: {format_time(elapsed)} | Rimasto: {format_time(remaining)}")
 
-            if key not in vocab:
-                vocab[key] = {
-                    "translations": {lang: "" for lang in target_langs},
-                    "row_number": None,
-                    "col_name": col_name
-                }
-
             try:
                 log_msg(f"🧠 Chiamata OpenAI ({i}/{total_ai}) per: '{key}'")
                 translations = await translate_term(term, langs_to_translate, col_name)
+                
+                if key not in vocab:
+                    vocab[key] = {"translations": {}, "row_number": None}
+                
                 for lang in langs_to_translate:
                     vocab[key]["translations"][lang] = translations.get(lang, "")
             except Exception as e:
                 log_msg(f"❌ Errore OpenAI su '{key}': {e}")
+                continue
 
             clean_col = re.sub(r'\s*\([^)]*\)', '', col_name).strip()
             t = vocab[key]["translations"]
-            row_data = [
-                key,
-                t.get("en", ""),
-                t.get("fr", ""),
-                t.get("de", ""),
-                t.get("es", ""),
-                clean_col
-            ]
-
-            # Per l'AI, cerchiamo il numero di riga aggiornato dal gsheet_state appena letto
-            current_row_num = gsheet_state.get(key, {}).get("row_number", vocab[key]["row_number"])
-
-            if current_row_num is not None:
-                buffer_updates[current_row_num] = row_data
+            row_num = vocab[key].get("row_number")
+            
+            if row_num is not None:
+                # Il termine esisteva, l'AI ha riempito i vuoti: aggiorna le singole celle generate
+                for lang in langs_to_translate:
+                    val_ai = t.get(lang, "")
+                    col_idx = COL_MAPPING.get(lang.lower())
+                    if val_ai and col_idx:
+                        ws.update_cell(row_num, col_idx, val_ai)  # <-- AGGIORNAMENTO CELLA IMMEDIATO FINALE
+                ws.update_cell(row_num, 6, clean_col)
             else:
-                buffer_new_rows.append(row_data)
+                # Termine nuovo creato da zero dall'AI
+                row_data = [key, t.get("en", ""), t.get("fr", ""), t.get("de", ""), t.get("es", ""), clean_col]
+                ws.append_row(row_data, value_input_option="RAW")
 
-            # SALVATAGGIO DI SICUREZZA CUMULATIVO OGNI 25 ELEMENTI GENERATI CON AI (Salva-Token)
-            if len(buffer_updates) >= SAVE_TRANSLATE_EVERY or len(buffer_new_rows) >= SAVE_TRANSLATE_EVERY:
-                await flush_buffers("Blocco Traduzioni AI")
-                saved_badge.markdown(f"💾 **Traduzioni AI salvate parzialmente sul foglio ({i}/{total_ai})**")
+            # Breve pausa per non superare il rate limit delle singole celle
+            await asyncio.sleep(0.5)
 
-        # Svuotamento dei residui finali dell'AI
-        await flush_buffers("Residui Finali AI")
     else:
         log_msg("ℹ️ STEP 2: Nessun termine da inviare ad OpenAI (0 mancanti).")
         status_text.text("ℹ️ Nessun termine da tradurre con l'AI.")
 
-    # ========================================================
-    # FINE CHIUSURA PROCESSO
-    # ========================================================
-    log_msg("🏁 Processo concluso con successo.")
+    log_msg("🏁 Sincronizzazione conclusa con successo.")
     progress_bar.progress(1.0)
     saved_badge.markdown(f"✅ **Sincronizzazione completata!**")
-    status_text.text("✅ Google Sheets allineato correttamente.")
+    status_text.text("✅ Google Sheets aggiornato correttamente.")
 
 def extract_missing_terms(df, columns, vocab, target_langs):
     """
