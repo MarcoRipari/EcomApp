@@ -129,14 +129,13 @@ def genera_traduzioni():
                 task = run_async(
                     enrich_vocab_with_ui(
                         vocab=vocab,
+                        missing_terms=missing_terms,
                         target_langs=target_langs,
                         progress_bar=progress_bar,
                         status_text=status_text,
                         timer_text=timer_text,
                         ws=ws,
-                        saved_badge=saved_badge,
-                        df=df,
-                        cols_to_translate=cols_to_translate
+                        saved_badge=saved_badge
                     )
                 )
                 
