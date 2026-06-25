@@ -115,45 +115,37 @@ def genera_traduzioni():
             if not TRANSLATION_SHEET_ID:
                 st.error("TRANSLATION_SHEET_ID non configurato nei secrets.")
                 return
-    
+
             with st.spinner("Caricamento vocabolario..."):
                 vocab, ws = load_vocab(TRANSLATION_SHEET_ID, TRANSLATION_TAB_NAME)
     
-            with st.spinner("Analisi termini mancanti..."):
-                # Passiamo anche target_langs per controllare se mancano traduzioni parziali
-                missing_terms = extract_missing_terms(df, cols_to_translate, vocab, target_langs)
+            # Avviamo direttamente la sincronizzazione unificata
+            with st.spinner("Sincronizzazione e Traduzione in corso..."):
+                progress_bar = st.progress(0)
+                saved_badge = st.empty()
+                status_text = st.empty()
+                timer_text = st.empty()
     
-            st.info(f"Termini da tradurre con AI: {len(missing_terms)}")
-    
-            # Inizializziamo i componenti grafici di avanzamento all'esterno
-            progress_bar = st.progress(0)
-            saved_badge = st.empty()
-            status_text = st.empty()
-            timer_text = st.empty()
-    
-            with st.spinner("Sincronizzazione database e traduzioni in corso..."):
-                # Lanciamo SEMPRE la funzione: gestirà internamente se fare AI o solo sincronizzazione file
                 task = run_async(
                     enrich_vocab_with_ui(
-                        vocab,
-                        missing_terms,
-                        target_langs,
-                        progress_bar,
-                        status_text,
-                        timer_text,
-                        ws,
-                        saved_badge,
-                        df,
-                        cols_to_translate
+                        vocab=vocab,
+                        target_langs=target_langs,
+                        progress_bar=progress_bar,
+                        status_text=status_text,
+                        timer_text=timer_text,
+                        ws=ws,
+                        saved_badge=saved_badge,
+                        df=df,
+                        cols_to_translate=cols_to_translate
                     )
                 )
                 
                 if asyncio.isfuture(task):
                     asyncio.get_event_loop().run_until_complete(task)
-    
+
                 progress_bar.progress(1.0)
                 timer_text.empty()
-    
+
             with st.spinner("Applicazione traduzioni al CSV..."):
                 dfs_by_lang = apply_translations(df, cols_to_translate, target_langs, vocab)
     
