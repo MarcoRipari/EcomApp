@@ -33,10 +33,34 @@ def genera_traduzioni():
     st.title("🌍 Genera Traduzioni")
     st.markdown("Carica un file CSV per tradurre le colonne desiderate utilizzando OpenAI e un vocabolario su Google Sheets.")
     
-    uploaded_file = st.file_uploader("Carica CSV", type="csv", key="trad_csv_uploader")
+    # Permettiamo il caricamento di più file contemporaneamente
+    uploaded_files = st.file_uploader("Carica uno o più CSV (1 per lingua)", type="csv", accept_multiple_files=True, key="trad_csv_uploader")
     
-    if uploaded_file:
-        df = read_csv_auto_encoding(uploaded_file)
+    if uploaded_files:
+        dfs = []
+        for f in uploaded_files:
+            current_df = read_csv_auto_encoding(f)
+            dfs.append(current_df)
+        
+        # Uniamo i file prendendo come riferimento le colonne chiave (Codice, Var, Colore)
+        # per consolidare tutte le lingue (it, de, en, fr, es) in un unico DataFrame
+        df = dfs[0]
+        if len(dfs) > 1:
+            with st.spinner("Consolidamento dei file CSV in corso..."):
+                for next_df in dfs[1:]:
+                    # Identifichiamo le colonne in comune su cui fare il merge (es. Codice, Var, Colore)
+                    common_cols = [c for c in ["Codice", "Var", "Colore"] if c in df.columns and c in next_df.columns]
+                    if common_cols:
+                        # Uniamo i dataframe mantenendo tutte le colonne non duplicate
+                        df = pd.merge(df, next_df, on=common_cols, how="outer", suffixes=('', '_drop'))
+                        # Eliminiamo eventuali colonne duplicate nate dal merge
+                        df = df.loc[:, ~df.columns.str.endswith('_drop')]
+                    else:
+                        # Fallback se non ci sono colonne chiave: unione semplice per riga o indice
+                        df = pd.concat([df, next_df], axis=1)
+                        df = df.loc[:, ~df.columns.duplicated()]
+    
+        st.success(f"📊 Unione completata! Rilevate {len(df)} righe totali dalle sorgenti.")
         st.dataframe(df.head())
     
         st.subheader("Seleziona colonne da tradurre")
