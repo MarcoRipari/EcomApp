@@ -189,7 +189,7 @@ async def enrich_vocab_with_ui(
 ):
     start_time = time.time()
     
-    # Area Log visiva in Streamlit per monitorare i blocchi effettivi
+    # Area Log visiva in Streamlit
     st.markdown("### 📋 Log Avanzamento Sincronizzazione")
     log_area = st.empty()
     logs = ["🎬 Avvio del processo di allineamento database..."]
@@ -210,7 +210,7 @@ async def enrich_vocab_with_ui(
                 batch_data = [{"range": f"A{r}:F{r}", "values": [v]} for r, v in buffer_updates.items()]
                 ws.batch_update(batch_data, value_input_option="RAW")
                 buffer_updates.clear()
-                await asyncio.sleep(1.0) # Pausa anti-quota 429
+                await asyncio.sleep(1.0) # Pausa di sicurezza anti-quota
             except Exception as e:
                 log_msg(f"❌ Errore scrittura batch [{fase_label}]: {e}")
                 
@@ -219,15 +219,36 @@ async def enrich_vocab_with_ui(
                 log_msg(f"⏳ [{fase_label}] Inserimento di {len(buffer_new_rows)} nuove righe reali (append)...")
                 ws.append_rows(buffer_new_rows, value_input_option="RAW")
                 buffer_new_rows.clear()
-                await asyncio.sleep(1.0) # Pausa anti-quota 429
+                await asyncio.sleep(1.0) # Pausa di sicurezza anti-quota
             except Exception as e:
                 log_msg(f"❌ Errore append [{fase_label}]: {e}")
 
     # ========================================================
-    # STEP 1: ALLINEAMENTO ESCLUSIVO DELLE DIFFERENZE DA FILE
+    # STEP 1: ALLINEAMENTO CHIRURGICO DELLE SOLE DIFFERENZE REALI
     # ========================================================
     log_msg("📂 STEP 1: Analisi differenze tra file di input e foglio Google...")
     
+    # Rileviamo lo stato attuale del foglio Google rileggendo rapidamente i record correnti 
+    # per fare un confronto reale (cella per cella) ed evitare di riscrivere dati identici.
+    try:
+        all_records = ws.get_all_records()
+        # Creiamo una mappa rapida { termine_italiano: {en, fr, de, es, col_name} } dello stato attuale del server
+        gsheet_state = {}
+        for row_idx, row in enumerate(all_records, start=2): # start=2 perché la riga 1 è l'intestazione
+            it_val = str(row.get("italiano", "")).strip()
+            if it_val:
+                gsheet_state[it_val] = {
+                    "row_number": row_idx,
+                    "en": str(row.get("en", "")).strip(),
+                    "fr": str(row.get("fr", "")).strip(),
+                    "de": str(row.get("de", "")).strip(),
+                    "es": str(row.get("es", "")).strip(),
+                    "col_name": str(row.get("colonna", "")).strip()
+                }
+    except Exception as e:
+        log_msg(f"⚠️ Impossibile mappare lo stato remoto del foglio: {e}. Uso fallback.")
+        gsheet_state = {}
+
     # Identifichiamo i termini unici presenti nel file corrente
     current_file_terms = set()
     term_to_col_map = {}
@@ -249,10 +270,6 @@ async def enrich_vocab_with_ui(
         data = vocab[key]
         t = data["translations"]
         
-        # Se non ci sono traduzioni nel vocabolario per questa chiave, saltiamo
-        if not any(str(v).strip() != "" for v in t.values()):
-            continue
-
         orig_col = data.get("col_name", term_to_col_map[key])
         clean_col = re.sub(r'\s*\([^)]*\)', '', str(orig_col)).strip()
             
@@ -265,55 +282,44 @@ async def enrich_vocab_with_ui(
             clean_col
         ]
 
-        if data["row_number"] is None:
-            # È un termine completamente nuovo ereditato dal file (non esiste la chiave IT sul foglio)
+        # CONTROLLO REALE: Verifichiamo se il termine esiste già sul server
+        if key in gsheet_state:
+            state = gsheet_state[key]
+            row_num = state["row_number"]
+            
+            # Confrontiamo i valori attuali in memoria (dal file input) con quelli reali sul foglio Google
+            has_changes = (
+                t.get("en", "").strip() != state["en"] or
+                t.get("fr", "").strip() != state["fr"] or
+                t.get("de", "").strip() != state["de"] or
+                t.get("es", "").strip() != state["es"] or
+                clean_col != state["col_name"]
+            )
+            
+            if has_changes:
+                # Viene aggiunto al buffer di aggiornamento SOLO se c'è almeno una variazione di testo!
+                buffer_updates[row_num] = row_data
+                count_file_sync += 1
+        else:
+            # È un termine nuovo (non esiste sul foglio Google)
             if row_data not in buffer_new_rows:
                 buffer_new_rows.append(row_data)
                 count_file_sync += 1
-        else:
-            # Il termine esiste già sul foglio Google. CONTROLLO CELLA PER CELLA:
-            # Recuperiamo i valori storici attualmente scritti sul foglio gsheet (tramite la riga originale)
-            # confrontandoli con quelli presenti nel dizionario 't' aggiornato dal file locale.
-            try:
-                # Per scrupolo leggiamo i valori attuali delle colonne EN, FR, DE, ES nel foglio (se disponibili nel dizionario)
-                # Se c'è anche solo una minima differenza tra foglio Google e file locale, procediamo all'aggiornamento.
-                # In caso contrario, saltiamo la riga per risparmiare chiamate API.
-                
-                # Se non abbiamo un record storico tracciabile o differisce, aggiorniamo, altrimenti ignoriamo.
-                # NOTA: Assumiamo che se i dati in memoria coincidono con quelli vecchi non serve riscriverli.
-                pass 
-            except Exception:
-                pass
 
-            # VERIFICA DELLE DIFFERENZE REALI:
-            # Se la riga inserita ha un valore identico a quello già presente in 'vocab', non dobbiamo aggiungerla a buffer_updates
-            # Dal foglio avevamo caricato la riga. Verifichiamo se differisce.
-            # Se non abbiamo modifiche reali, evitiamo il batch_update.
-            
-            # Per farlo in modo pulito ed efficiente senza fare chiamate HTTP singole:
-            # Verifichiamo se nel caricamento iniziale (load_vocab) i campi storici differiscono da quelli attuali nel file.
-            # Poiché 'load_vocab' popola inizialmente 'vocab' e i file di input lo sovrascrivono/arricchiscono,
-            # possiamo confrontare se l'arricchimento ha prodotto modifiche o meno.
-            
-            # Se lo script ha rilevato che le celle locali contengono dati che sul foglio mancavano o erano diversi:
-            # (Ad esempio, il file locale contiene una traduzione francese che sul foglio era vuota)
-            buffer_updates[data["row_number"]] = row_data
-            count_file_sync += 1
-
-        # Svuotamento se raggiungiamo il blocco da 25 elementi REALI modificati
+        # Svuotamento buffer regolare solo se raggiungiamo i 25 elementi REALI modificati
         if len(buffer_updates) >= SAVE_TRANSLATE_EVERY or len(buffer_new_rows) >= SAVE_TRANSLATE_EVERY:
             await flush_buffers("Modifiche da File")
 
-    # Svuotiamo i residui reali dello Step 1
+    # Svuotiamo i residui delle modifiche reali dello Step 1 (qui finiranno i tuoi 3/4 termini)
     await flush_buffers("Modifiche da File Finali")
-    log_msg(f"✅ STEP 1 Completato. Sincronizzati solo {count_file_sync} elementi realmente variati/nuovi da file.")
+    log_msg(f"✅ STEP 1 Completato. Sincronizzati solo {count_file_sync} elementi realmente modificati o nuovi.")
 
     # ========================================================
     # STEP 2: GENERAZIONE CON AI PER I TERMINI VERAMENTE MANCANTI
     # ========================================================
     total_ai = len(missing_terms)
     if total_ai > 0:
-        log_msg(f"🤖 STEP 2: Avvio traduzione AI per {total_ai} termini mancanti (accumulo a blocchi di 25)...")
+        log_msg(f"🤖 STEP 2: Avvio traduzione AI per {total_ai} termini mancanti...")
         
         for i, (term, info) in enumerate(missing_terms.items(), start=1):
             key = term.strip()
@@ -354,8 +360,11 @@ async def enrich_vocab_with_ui(
                 clean_col
             ]
 
-            if vocab[key]["row_number"] is not None:
-                buffer_updates[vocab[key]["row_number"]] = row_data
+            # Per l'AI, cerchiamo il numero di riga aggiornato dal gsheet_state appena letto
+            current_row_num = gsheet_state.get(key, {}).get("row_number", vocab[key]["row_number"])
+
+            if current_row_num is not None:
+                buffer_updates[current_row_num] = row_data
             else:
                 buffer_new_rows.append(row_data)
 
@@ -376,7 +385,7 @@ async def enrich_vocab_with_ui(
     log_msg("🏁 Processo concluso con successo.")
     progress_bar.progress(1.0)
     saved_badge.markdown(f"✅ **Sincronizzazione completata!**")
-    status_text.text("✅ Google Sheets aggiornato correttamente con sole modifiche effettive.")
+    status_text.text("✅ Google Sheets allineato correttamente.")
 
 def extract_missing_terms(df, columns, vocab, target_langs):
     """
