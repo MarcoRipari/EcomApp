@@ -191,100 +191,128 @@ async def enrich_vocab_with_ui(
     buffer_updates = {}       # { row_number: [valori_riga] } per righe esistenti
     buffer_new_rows = []      # [ [valori_riga], ... ] per nuovi record
 
-    for i, (term, info) in enumerate(missing_terms.items(), start=1):
-        key = term.strip()
-        col_name = info["col_name"]
-        langs_to_translate = info["langs"]
+    # ========================================================
+    # 1. TRADUZIONE CON AI PER I TERMINI COMPLETAMENTE MANCANTI
+    # ========================================================
+    if total > 0:
+        for i, (term, info) in enumerate(missing_terms.items(), start=1):
+            key = term.strip()
+            col_name = info["col_name"]
+            langs_to_translate = info["langs"]
 
-        elapsed = time.time() - start_time
-        avg_time = elapsed / i
-        remaining = avg_time * (total - i)
+            elapsed = time.time() - start_time
+            avg_time = elapsed / i
+            remaining = avg_time * (total - i)
 
-        progress_bar.progress(i / total)
-        status_text.text(f"🔤 Traduzione: {term} ({i}/{total})")
-        timer_text.text(f"⏱️ Trascorso: {format_time(elapsed)} | Stimato: {format_time(remaining)}")
+            progress_bar.progress(i / total)
+            status_text.text(f"🔤 Traduzione AI: {term} ({i}/{total})")
+            timer_text.text(f"⏱️ Trascorso: {format_time(elapsed)} | Stimato: {format_time(remaining)}")
 
-        # Inizializzazione della struttura in memoria se il termine è nuovo
-        if key not in vocab:
-            vocab[key] = {
-                "translations": {lang: "" for lang in target_langs},
-                "row_number": None
-            }
+            if key not in vocab:
+                vocab[key] = {
+                    "translations": {lang: "" for lang in target_langs},
+                    "row_number": None
+                }
 
-        try:
-            translations = await translate_term(term, langs_to_translate, col_name)
-            for lang in langs_to_translate:
-                vocab[key]["translations"][lang] = translations.get(lang, "")
-        except Exception as e:
-            st.warning(f"Errore traduzione '{term}': {e}")
+            try:
+                translations = await translate_term(term, langs_to_translate, col_name)
+                for lang in langs_to_translate:
+                    vocab[key]["translations"][lang] = translations.get(lang, "")
+            except Exception as e:
+                st.warning(f"Errore traduzione '{term}': {e}")
 
-        # Prepariamo l'array dei dati per la riga del foglio Google
-        t = vocab[key]["translations"]
+            # Prepariamo la riga per Google Sheets
+            t = vocab[key]["translations"]
+            row_data = [
+                key,
+                t.get("en", ""),
+                t.get("fr", ""),
+                t.get("de", ""),
+                t.get("es", ""),
+                col_name if vocab[key]["row_number"] is None else col_name + " (aggiornato AI)"
+            ]
+
+            # Smistamento nei rispettivi buffer
+            if vocab[key]["row_number"] is not None:
+                buffer_updates[vocab[key]["row_number"]] = row_data
+            else:
+                buffer_new_rows.append(row_data)
+
+            # Svuotamento batch se raggiungono la soglia (SAVE_TRANSLATE_EVERY = 25)
+            if len(buffer_updates) >= SAVE_TRANSLATE_EVERY:
+                try:
+                    batch_data = [
+                        {"range": f"A{row_num}:F{row_num}", "values": [values]}
+                        for row_num, values in buffer_updates.items()
+                    ]
+                    ws.batch_update(batch_data, value_input_option="RAW")
+                    buffer_updates.clear()
+                    saved_badge.markdown(f"💾 **Aggiornamenti intermedi AI salvati ({i}/{total})**")
+                except Exception as e:
+                    st.error(f"Errore salvataggio blocco aggiornamenti AI: {e}")
+
+            if len(buffer_new_rows) >= SAVE_TRANSLATE_EVERY:
+                try:
+                    ws.append_rows(buffer_new_rows, value_input_option="RAW")
+                    buffer_new_rows.clear()
+                    saved_badge.markdown(f"💾 **Nuovi record intermedi AI salvati ({i}/{total})**")
+                except Exception as e:
+                    st.error(f"Errore salvataggio blocco nuovi record AI: {e}")
+    else:
+        status_text.text("ℹ️ Nessun termine da tradurre con l'AI. Controllo dati da file...")
+
+    # ========================================================
+    # 2. SINCRONIZZAZIONE DI TUTTI I DATI APPRESI DAI FILE DI INPUT
+    # ========================================================
+    status_text.text("💾 Sincronizzazione traduzioni recuperate dai file di input su Google Sheets...")
+    
+    for key, data in vocab.items():
+        t = data["translations"]
+        
+        # Saltiamo i termini che non hanno alcuna traduzione valida
+        if not any(str(v).strip() != "" for v in t.values()):
+            continue
+            
         row_data = [
             key,
             t.get("en", ""),
             t.get("fr", ""),
             t.get("de", ""),
             t.get("es", ""),
-            col_name if vocab[key]["row_number"] is None else col_name + " (aggiornato)"
+            "Importato da File" if data["row_number"] is None else "Aggiornato da File"
         ]
 
-        # Assegnazione al rispettivo buffer di blocco
-        if vocab[key]["row_number"] is not None:
-            buffer_updates[vocab[key]["row_number"]] = row_data
-        else:
-            buffer_new_rows.append(row_data)
-
-        # ========================================================
-        # SALVATAGGIO A BLOCCHI MIRATO (ANTI-CRASH)
-        # ========================================================
-        # Se il buffer degli aggiornamenti raggiunge la soglia, svuota su Google Sheets
-        if len(buffer_updates) >= SAVE_TRANSLATE_EVERY:
-            try:
-                batch_data = [
-                    {"range": f"A{row_num}:F{row_num}", "values": [values]}
-                    for row_num, values in buffer_updates.items()
-                ]
-                ws.batch_update(batch_data, value_input_option="RAW")
-                buffer_updates.clear()
-                saved_badge.markdown(f"💾 **Aggiornati salvati alla riga {i}/{total}**")
-            except Exception as e:
-                st.error(f"Errore salvataggio blocco aggiornamenti: {e}")
-
-        # Se il buffer dei nuovi record raggiunge la soglia, svuota su Google Sheets
-        if len(buffer_new_rows) >= SAVE_TRANSLATE_EVERY:
-            try:
-                ws.append_rows(buffer_new_rows, value_input_option="RAW")
-                buffer_new_rows.clear()
-                saved_badge.markdown(f"💾 **Nuovi record salvati alla riga {i}/{total}**")
-            except Exception as e:
-                st.error(f"Errore salvataggio blocco nuovi record: {e}")
-
-    # ========================================================
-    # INSERIMENTO RIGHE EREDITATE DA CSV (Spostato prima dei residui)
-    # ========================================================
-    # Recuperiamo anche tutti i termini che sono stati popolati dai CSV di input 
-    # ma che non erano presenti sul foglio Google e non avevano bisogno di AI
-    for key, data in vocab.items():
         if data["row_number"] is None:
-            if any(str(v).strip() != "" for v in data["translations"].values()):
-                t = data["translations"]
-                already_buffered = any(r[0] == key for r in buffer_new_rows)
-                if not already_buffered:
-                    buffer_new_rows.append([
-                        key, t.get("en", ""), t.get("fr", ""), t.get("de", ""), t.get("es", ""), "Importato da CSV"
-                    ])
-                    
-                    # Se accumulando questi dati superiamo di nuovo i 25 elementi, scarichiamo a blocchi
-                    if len(buffer_new_rows) >= SAVE_TRANSLATE_EVERY:
-                        try:
-                            ws.append_rows(buffer_new_rows, value_input_option="RAW")
-                            buffer_new_rows.clear()
-                        except Exception as e:
-                            print(f"Errore nell'append intermedio dati CSV: {e}")
+            # È un termine totalmente nuovo ereditato dai file di input
+            already_buffered = any(r[0] == key for r in buffer_new_rows)
+            if not already_buffered:
+                buffer_new_rows.append(row_data)
+                
+                if len(buffer_new_rows) >= SAVE_TRANSLATE_EVERY:
+                    try:
+                        ws.append_rows(buffer_new_rows, value_input_option="RAW")
+                        buffer_new_rows.clear()
+                    except Exception as e:
+                        print(f"Errore nell'append blocco dati file: {e}")
+        else:
+            # Il termine esisteva già su Google Sheets, ma potrebbe essere stato arricchito dal file di input
+            # Controlliamo se nel buffer degli updates non sia già presente un aggiornamento più recente (es. da AI)
+            if data["row_number"] not in buffer_updates:
+                buffer_updates[data["row_number"]] = row_data
+                
+                if len(buffer_updates) >= SAVE_TRANSLATE_EVERY:
+                    try:
+                        batch_data = [
+                            {"range": f"A{row_num}:F{row_num}", "values": [values]}
+                            for row_num, values in buffer_updates.items()
+                        ]
+                        ws.batch_update(batch_data, value_input_option="RAW")
+                        buffer_updates.clear()
+                    except Exception as e:
+                        print(f"Errore nel batch blocco aggiornamenti file: {e}")
 
     # ========================================================
-    # SALVATAGGIO FINALE PER I RESIDUI RIMASTI FUORI DAL BLOCCO
+    # 3. SALVATAGGIO FINALE DELLE RIGHE RESIDUE NEI BUFFER
     # ========================================================
     if buffer_updates or buffer_new_rows:
         status_text.text("💾 Salvataggio ultimi record rimasti...")
@@ -305,8 +333,8 @@ async def enrich_vocab_with_ui(
             except Exception as e:
                 print(f"Errore nell'append finale: {e}")
 
-    saved_badge.markdown(f"✅ **Sincronizzazione completata con successo!**")
-    status_text.text("✅ Google Sheets aggiornato.")
+    saved_badge.markdown(f"✅ **Sincronizzazione e database completati con successo!**")
+    status_text.text("✅ Google Sheets aggiornato con i dati di AI e File di input.")
 
 def extract_missing_terms(df, columns, vocab, target_langs):
     """
