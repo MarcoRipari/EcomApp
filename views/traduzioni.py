@@ -142,7 +142,9 @@ def genera_traduzioni():
                         status_text,
                         timer_text,
                         ws,
-                        saved_badge
+                        saved_badge,
+                        df,
+                        cols_to_translate
                     )
                 )
                 
