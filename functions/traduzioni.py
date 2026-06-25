@@ -433,15 +433,21 @@ def apply_translations(df, columns, langs, vocab):
 
     for lang in langs:
         df_lang = df.copy()
-        cols_to_drop = []
+        
+        # 1. Identifichiamo tutte le colonne delle ALTRE lingue estere nate dal merge dei 4 file
+        # Se stiamo creando il file per 'de', vogliamo eliminare 'en', 'fr', 'es' per non sporcare l'output
+        other_langs_cols = [
+            col for col in df_lang.columns 
+            if any(col.endswith(f"({l})") for l in AVAILABLE_LANGS if l != lang)
+        ]
+        df_lang.drop(columns=other_langs_cols, errors='ignore', inplace=True)
 
-        # 1. Identifichiamo prima le colonne native del file Excel che corrispondono 
-        # alla lingua che stiamo generando (es. se lang='de', cerchiamo le colonne che finiscono con '(de)')
-        # e le eliminiamo subito per evitare duplicati o sovrascritture anomale di Pandas.
+        # 2. Cancelliamo la colonna target (es. '(de)') se era già presente, per rigenerarla pulita
         cols_already_present = [col for col in df_lang.columns if col.endswith(f"({lang})")]
         df_lang.drop(columns=cols_already_present, errors='ignore', inplace=True)
 
-        # 2. Procediamo normalmente a generare le colonne tradotte partendo dall'italiano
+        # 3. Rigeneriamo la colonna della lingua partendo dall'italiano
+        cols_to_drop = []
         for col in df.columns:
             base = get_base_name(col)
             col_lang = get_lang(col)
@@ -454,18 +460,17 @@ def apply_translations(df, columns, langs, vocab):
                         return ""
                     key = str(val).strip()
                     if key in vocab:
-                        # Recupera il valore. Se per qualche motivo è vuoto sul foglio, 
-                        # restituisce la chiave in italiano come fallback invece di lasciare vuoto
-                        res = vocab[key].get(lang, "")
+                        res = vocab[key]["translations"].get(lang, "")
                         return res if res != "" else key
                     return key
               
                 df_lang[new_col_name] = df_lang[col].apply(translate_cell)
-                
-                # Rimuoviamo la colonna sorgente (it) dall'output di questa specifica lingua
                 cols_to_drop.append(col)
         
+        # Elimina le colonne (it) se l'output finale deve contenere solo la lingua target, 
+        # oppure commenta questa riga se vuoi mantenere sia (it) che (lingua_target) nel file finale
         df_lang.drop(columns=cols_to_drop, errors='ignore', inplace=True)
+        
         dfs_by_lang[lang] = df_lang
 
     return dfs_by_lang
