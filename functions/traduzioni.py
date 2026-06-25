@@ -186,21 +186,22 @@ async def enrich_vocab_with_ui(
     saved_badge
 ):
     total = len(missing_terms)
+    if total == 0:
+        return
+
     start_time = time.time()
     
     # Buffer per la gestione a blocchi (batch)
     buffer_updates = {}       # { row_number: [valori_riga] } per righe esistenti
     buffer_new_rows = []      # [ [valori_riga], ... ] per nuovi record
-    
-    processed_in_batch = 0    # Contatore per far scattare il salvataggio ogni 25 iterazioni
+    processed_in_batch = 0    # Contatore per far scattare il salvataggio ogni 25 elementi
 
-    # 1. SEMAFORO: Limita a 15 le chiamate OpenAI concorrenti simultanee (evita errori 429)
+    # SEMAFORO: Limita a 15 le chiamate OpenAI concorrenti simultanee (evita errori di rate limit)
     sem = asyncio.Semaphore(15)
 
-    # 2. WORKER INTERNO: Avvolge la chiamata e restituisce i metadati insieme al risultato
+    # WORKER ASINCRONO: Gestisce la singola chiamata OpenAI in parallelo
     async def worker(term_key, term_info):
         async with sem:
-            t_term = term_key.strip()
             t_col_name = term_info["col_name"]
             t_langs = term_info["langs"]
             try:
@@ -209,17 +210,17 @@ async def enrich_vocab_with_ui(
             except Exception as e:
                 return term_key, term_info, e
 
-    # 3. CREAZIONE DEI TASK: Lanciamo tutte le traduzioni nello stesso istante
+    # Lanciamo tutte le traduzioni simultaneamente (Concorrenza di massa)
     tasks = [worker(term, info) for term, info in missing_terms.items()]
 
-    # 4. LOOP CONCORRENTE: Intercettiamo i risultati nell'esatto momento in cui completano
+    # Consumiamo i task non appena vengono completati (in ordine di arrivo)
     for i, future in enumerate(asyncio.as_completed(tasks), start=1):
         term, info, result = await future
         key = term.strip()
         col_name = info["col_name"]
         langs_to_translate = info["langs"]
 
-        # Calcolo tempi ed aggiornamento UI (sarà fluidissimo perché i dati arrivano a raffiche)
+        # Calcolo tempi ed aggiornamento UI dinamico
         elapsed = time.time() - start_time
         avg_time = elapsed / i
         remaining = avg_time * (total - i)
@@ -235,14 +236,14 @@ async def enrich_vocab_with_ui(
                 "row_number": None
             }
 
-        # Gestione dei risultati o degli errori del worker
+        # Gestione del risultato o dell'eventuale errore del worker
         if isinstance(result, Exception):
             st.warning(f"Errore traduzione '{term}': {result}")
         else:
             for lang in langs_to_translate:
                 vocab[key]["translations"][lang] = result.get(lang, "")
 
-        # Prepariamo l'array dei dati per la riga del foglio Google
+        # Prepariamo l'array dei dati per la riga del foglio Google Sheets
         t = vocab[key]["translations"]
         row_data = [
             key,
@@ -262,12 +263,11 @@ async def enrich_vocab_with_ui(
         processed_in_batch += 1
 
         # ========================================================
-        # SALVATAGGIO A BLOCCHI (ANTI-CRASH) - OGNI 25 ELEMENTI COMPLETATI
+        # SALVATAGGIO A BLOCCHI (ANTI-CRASH) - OGNI 25 ELEMENTI
         # ========================================================
         if processed_in_batch >= SAVE_TRANSLATE_EVERY:
             status_text.text("💾 Salvataggio blocco su Google Sheets...")
             
-            # 1. Svuota il batch delle righe modificate
             if buffer_updates:
                 try:
                     batch_data = [
@@ -279,7 +279,6 @@ async def enrich_vocab_with_ui(
                 except Exception as e:
                     st.error(f"Errore salvataggio blocco aggiornamenti: {e}")
 
-            # 2. Svuota il batch dei nuovi record
             if buffer_new_rows:
                 try:
                     ws.append_rows(buffer_new_rows, value_input_option="RAW")
@@ -288,7 +287,7 @@ async def enrich_vocab_with_ui(
                     st.error(f"Errore salvataggio blocco nuovi record: {e}")
 
             saved_badge.markdown(f"💾 **Salvataggi intermedi completati alla riga {i}/{total}**")
-            processed_in_batch = 0  # Resetta il contatore del blocco
+            processed_in_batch = 0
 
     # ========================================================
     # SALVATAGGIO FINALE PER I RESIDUI RIMASTI FUORI DAL BLOCCO
