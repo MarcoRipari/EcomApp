@@ -184,13 +184,12 @@ async def enrich_vocab_with_ui(
     timer_text,
     ws,
     saved_badge,
-    df,                  # <-- AGGIUNTO: passiamo il DataFrame corrente
-    cols_to_translate    # <-- AGGIUNTO: passiamo le colonne selezionate
+    df,
+    cols_to_translate
 ):
-    total = len(missing_terms)
     start_time = time.time()
     
-    # Area Log visiva in Streamlit
+    # Area Log visiva in Streamlit per monitorare i blocchi
     st.markdown("### 📋 Log Avanzamento Sincronizzazione")
     log_area = st.empty()
     logs = ["🎬 Avvio del processo di allineamento database..."]
@@ -199,93 +198,37 @@ async def enrich_vocab_with_ui(
         logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
         log_area.code("\n".join(logs[-10:]))
 
-    # Buffer per gspread (batch da 25)
-    buffer_updates = {}       
-    buffer_new_rows = []      
+    # Buffer unici riutilizzabili (Batch size = 25)
+    buffer_updates = {}       # { row_number: [valori_riga] }
+    buffer_new_rows = []      # [ [valori_riga], ... ]
 
-    # ========================================================
-    # 1. FASE AI (SE CI SONO TERMINI TOTALMENTE MANCANTI)
-    # ========================================================
-    if total > 0:
-        log_msg(f"🤖 Rilevati {total} termini da elaborare con OpenAI.")
-        for i, (term, info) in enumerate(missing_terms.items(), start=1):
-            key = term.strip()
-            col_name = info["col_name"]
-            langs_to_translate = info["langs"]
-
-            elapsed = time.time() - start_time
-            avg_time = elapsed / i
-            remaining = avg_time * (total - i)
-
-            progress_bar.progress(i / total)
-            status_text.text(f"🔤 Traduzione AI: {term} ({i}/{total})")
-            timer_text.text(f"⏱️ Trascorso: {format_time(elapsed)} | Rimasto: {format_time(remaining)}")
-
-            if key not in vocab:
-                vocab[key] = {
-                    "translations": {lang: "" for lang in target_langs},
-                    "row_number": None,
-                    "col_name": col_name
-                }
-
+    async def flush_buffers(fase_label):
+        """Funzione interna per svuotare i buffer su Google Sheets ed evitare ridondanze"""
+        if buffer_updates:
             try:
-                log_msg(f"🧠 Richiesta OpenAI per: '{key}'")
-                translations = await translate_term(term, langs_to_translate, col_name)
-                for lang in langs_to_translate:
-                    vocab[key]["translations"][lang] = translations.get(lang, "")
+                log_msg(f"⏳ [{fase_label}] Scrittura batch di {len(buffer_updates)} aggiornamenti su Google Sheets...")
+                batch_data = [{"range": f"A{r}:F{r}", "values": [v]} for r, v in buffer_updates.items()]
+                ws.batch_update(batch_data, value_input_option="RAW")
+                buffer_updates.clear()
+                await asyncio.sleep(1.0) # Pausa di sicurezza anti-quota 429
             except Exception as e:
-                log_msg(f"❌ Errore OpenAI su '{key}': {e}")
-
-            clean_col = re.sub(r'\s*\([^)]*\)', '', col_name).strip()
-            t = vocab[key]["translations"]
-            row_data = [key, t.get("en", ""), t.get("fr", ""), t.get("de", ""), t.get("es", ""), clean_col]
-
-            if vocab[key]["row_number"] is not None:
-                buffer_updates[vocab[key]["row_number"]] = row_data
-            else:
-                buffer_new_rows.append(row_data)
-
-            if len(buffer_updates) >= SAVE_TRANSLATE_EVERY:
-                try:
-                    log_msg(f"⏳ Scrittura batch {SAVE_TRANSLATE_EVERY} aggiornamenti AI...")
-                    batch_data = [{"range": f"A{r}:F{r}", "values": [v]} for r, v in buffer_updates.items()]
-                    ws.batch_update(batch_data, value_input_option="RAW")
-                    buffer_updates.clear()
-                    await asyncio.sleep(1.0)
-                except Exception as e:
-                    log_msg(f"❌ Errore Batch AI: {e}")
-
-            if len(buffer_new_rows) >= SAVE_TRANSLATE_EVERY:
-                try:
-                    log_msg(f"⏳ Scrittura batch {SAVE_TRANSLATE_EVERY} nuove righe AI...")
-                    ws.append_rows(buffer_new_rows, value_input_option="RAW")
-                    buffer_new_rows.clear()
-                    await asyncio.sleep(1.0)
-                except Exception as e:
-                    log_msg(f"❌ Errore Append AI: {e}")
-    else:
-        log_msg("ℹ️ Nessun termine da inviare ad OpenAI.")
-        status_text.text("ℹ️ Nessun termine da tradurre con l'AI. Controllo dati da file...")
+                log_msg(f"❌ Errore scrittura batch [{fase_label}]: {e}")
+                
+        if buffer_new_rows:
+            try:
+                log_msg(f"⏳ [{fase_label}] Inserimento di {len(buffer_new_rows)} nuove righe (append)...")
+                ws.append_rows(buffer_new_rows, value_input_option="RAW")
+                buffer_new_rows.clear()
+                await asyncio.sleep(1.0) # Pausa di sicurezza anti-quota 429
+            except Exception as e:
+                log_msg(f"❌ Errore append [{fase_label}]: {e}")
 
     # ========================================================
-    # 2. FASE FILE DI INPUT (SOLO I TERMINI DEL FILE ATTUALE)
+    # STEP 1: CARICAMENTO DEI TERMINI GIÀ TRADOTTI NEI FILE DI INPUT
     # ========================================================
-    log_msg("📂 Passaggio alla Fase 2: Allineamento record dai file Excel/CSV attuali...")
+    log_msg("📂 STEP 1: Estrazione termini già tradotti presenti nei file di input...")
     
-    # Svuotamento preventivo dei residui della fase AI
-    if buffer_updates:
-        try:
-            batch_data = [{"range": f"A{r}:F{r}", "values": [v]} for r, v in buffer_updates.items()]
-            ws.batch_update(batch_data, value_input_option="RAW")
-            buffer_updates.clear()
-        except Exception: pass
-    if buffer_new_rows:
-        try:
-            ws.append_rows(buffer_new_rows, value_input_option="RAW")
-            buffer_new_rows.clear()
-        except Exception: pass
-
-    # ESTRAZIONE CHIRURGICA: Troviamo solo i termini unici presenti nel file caricato ora
+    # Identifichiamo tutti i termini unici presenti nel file corrente
     current_file_terms = set()
     term_to_col_map = {}
     for col in cols_to_translate:
@@ -297,10 +240,7 @@ async def enrich_vocab_with_ui(
                     current_file_terms.add(val_str)
                     term_to_col_map[val_str] = col
 
-    log_msg(f"🔮 Rilevati {len(current_file_terms)} termini unici nei file di input correnti. Avvio verifica...")
-    count_sync = 0
-    
-    # Cicliamo SOLO ed esclusivamente sui termini del file corrente!
+    count_file_sync = 0
     for key in current_file_terms:
         if key not in vocab:
             continue
@@ -308,7 +248,7 @@ async def enrich_vocab_with_ui(
         data = vocab[key]
         t = data["translations"]
         
-        # Se non ha traduzioni compilate nel vocabolario (né da file né da AI), non serve aggiornare il foglio
+        # Sincronizziamo sul foglio SOLO se il file di input ha fornito traduzioni concrete
         if not any(str(v).strip() != "" for v in t.values()):
             continue
 
@@ -321,61 +261,94 @@ async def enrich_vocab_with_ui(
             t.get("fr", ""),
             t.get("de", ""),
             t.get("es", ""),
-            clean_col  # Mantiene il nome pulito della colonna originaria
+            clean_col
         ]
 
         if data["row_number"] is None:
-            # È un termine nuovo inserito tramite file
-            # Per evitare duplicati nel buffer controlliamo se è già pronto per l'invio
             if row_data not in buffer_new_rows:
                 buffer_new_rows.append(row_data)
-                if len(buffer_new_rows) >= SAVE_TRANSLATE_EVERY:
-                    try:
-                        count_sync += len(buffer_new_rows)
-                        log_msg(f"📥 Scrittura blocco {SAVE_TRANSLATE_EVERY} nuovi termini da file...")
-                        ws.append_rows(buffer_new_rows, value_input_option="RAW")
-                        buffer_new_rows.clear()
-                        await asyncio.sleep(1.0)
-                    except Exception as e:
-                        log_msg(f"❌ Errore inserimento righe da file: {e}")
+                count_file_sync += 1
         else:
-            # È una riga vecchia su Google Sheets che è stata arricchita col file corrente
             buffer_updates[data["row_number"]] = row_data
-            if len(buffer_updates) >= SAVE_TRANSLATE_EVERY:
-                try:
-                    count_sync += len(buffer_updates)
-                    log_msg(f"📥 Aggiornamento blocco {SAVE_TRANSLATE_EVERY} righe storiche arricchite...")
-                    batch_data = [{"range": f"A{r}:F{r}", "values": [v]} for r, v in buffer_updates.items()]
-                    ws.batch_update(batch_data, value_input_option="RAW")
-                    buffer_updates.clear()
-                    await asyncio.sleep(1.0)
-                except Exception as e:
-                    log_msg(f"❌ Errore aggiornamento righe da file: {e}")
+            count_file_sync += 1
+
+        # Svuotamento preventivo al raggiungimento dei 25 elementi da file
+        if len(buffer_updates) >= SAVE_TRANSLATE_EVERY or len(buffer_new_rows) >= SAVE_TRANSLATE_EVERY:
+            await flush_buffers("Dati da File")
+
+    # Svuotiamo i residui dello Step 1 prima di passare all'AI
+    await flush_buffers("Dati da File Finali")
+    log_msg(f"✅ STEP 1 Completato. Sincronizzati da file {count_file_sync} termini.")
 
     # ========================================================
-    # 3. SALVATAGGIO REQUISITI ULTIMI BLOCCHI RESIDUI (< 25)
+    # STEP 2: GENERAZIONE CON AI PER I TERMINI VERAMENTE MANCANTI
     # ========================================================
-    if buffer_updates or buffer_new_rows:
-        log_msg("📥 Invio degli ultimi record rimasti nei buffer dei file correnti...")
+    total_ai = len(missing_terms)
+    if total_ai > 0:
+        log_msg(f"🤖 STEP 2: Avvio traduzione AI per {total_ai} termini orfani...")
         
-        if buffer_updates:
-            try:
-                count_sync += len(buffer_updates)
-                batch_data = [{"range": f"A{r}:F{r}", "values": [v]} for r, v in buffer_updates.items()]
-                ws.batch_update(batch_data, value_input_option="RAW")
-            except Exception as e:
-                log_msg(f"❌ Errore batch finale: {e}")
+        for i, (term, info) in enumerate(missing_terms.items(), start=1):
+            key = term.strip()
+            col_name = info["col_name"]
+            langs_to_translate = info["langs"]
 
-        if buffer_new_rows:
-            try:
-                count_sync += len(buffer_new_rows)
-                ws.append_rows(buffer_new_rows, value_input_option="RAW")
-            except Exception as e:
-                log_msg(f"❌ Errore append finale: {e}")
+            elapsed = time.time() - start_time
+            avg_time = elapsed / i
+            remaining = avg_time * (total_ai - i)
 
-    log_msg(f"🏁 Fine. Sincronizzati {count_sync} record relativi al file corrente.")
+            progress_bar.progress(i / total_ai)
+            status_text.text(f"🔤 Traduzione AI: {term} ({i}/{total_ai})")
+            timer_text.text(f"⏱️ Trascorso: {format_time(elapsed)} | Rimasto: {format_time(remaining)}")
+
+            if key not in vocab:
+                vocab[key] = {
+                    "translations": {lang: "" for lang in target_langs},
+                    "row_number": None,
+                    "col_name": col_name
+                }
+
+            try:
+                log_msg(f"🧠 Chiamata OpenAI ({i}/{total_ai}) per: '{key}'")
+                translations = await translate_term(term, langs_to_translate, col_name)
+                for lang in langs_to_translate:
+                    vocab[key]["translations"][lang] = translations.get(lang, "")
+            except Exception as e:
+                log_msg(f"❌ Errore OpenAI su '{key}': {e}")
+
+            clean_col = re.sub(r'\s*\([^)]*\)', '', col_name).strip()
+            t = vocab[key]["translations"]
+            row_data = [
+                key,
+                t.get("en", ""),
+                t.get("fr", ""),
+                t.get("de", ""),
+                t.get("es", ""),
+                clean_col
+            ]
+
+            if vocab[key]["row_number"] is not None:
+                buffer_updates[vocab[key]["row_number"]] = row_data
+            else:
+                buffer_new_rows.append(row_data)
+
+            # SALVATAGGIO DI SICUREZZA ANTI-SPRECO TOKEN (Ogni 25 elementi tradotti dall'AI)
+            if len(buffer_updates) >= SAVE_TRANSLATE_EVERY or len(buffer_new_rows) >= SAVE_TRANSLATE_EVERY:
+                await flush_buffers("Blocco Intermedio AI")
+                saved_badge.markdown(f"💾 **Traduzioni AI salvate parzialmente sul foglio ({i}/{total_ai})**")
+
+        # Svuotamento finale dei residui dell'AI (< 25)
+        await flush_buffers("Residui Finali AI")
+    else:
+        log_msg("ℹ️ STEP 2: Nessun termine da inviare ad OpenAI (0 mancanti).")
+        status_text.text("ℹ️ Nessun termine da tradurre con l'AI.")
+
+    # ========================================================
+    # FINE CHUSURA PROCESSO
+    # ========================================================
+    log_msg("🏁 Processo concluso con successo.")
+    progress_bar.progress(1.0)
     saved_badge.markdown(f"✅ **Sincronizzazione completata!**")
-    status_text.text("✅ Database Google Sheets aggiornato con successo.")
+    status_text.text("✅ Google Sheets aggiornato correttamente con File e AI.")
 
 def extract_missing_terms(df, columns, vocab, target_langs):
     """
