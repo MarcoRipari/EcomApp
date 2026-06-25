@@ -34,62 +34,62 @@ def genera_traduzioni():
     st.markdown("Carica un file CSV per tradurre le colonne desiderate utilizzando OpenAI e un vocabolario su Google Sheets.")
     
     # Permettiamo il caricamento di più file contemporaneamente
-uploaded_files = st.file_uploader(
-    "Carica uno o più CSV (1 per lingua)", 
-    type="csv", 
-    accept_multiple_files=True, 
-    key="trad_csv_uploader"
-)
-
-if uploaded_files:
-    dfs = []
-    file_names = []
+    uploaded_files = st.file_uploader(
+        "Carica uno o più CSV (1 per lingua)", 
+        type="csv", 
+        accept_multiple_files=True, 
+        key="trad_csv_uploader"
+    )
     
-    for f in uploaded_files:
-        current_df = read_csv_auto_encoding(f)
-        if not current_df.empty:
-            dfs.append(current_df)
-            file_names.append(f.name)
-            
-    if dfs:
-        # --- VERIFICA STRUTTURA E IDENTICI ELEMENTI NELLA PRIMA COLONNA ---
-        base_df = dfs[0]
-        first_col_name = base_df.columns[0]  # Di solito "Codice" o simile
-        base_series = base_df[first_col_name].astype(str).str.strip().tolist()
+    if uploaded_files:
+        dfs = []
+        file_names = []
         
-        all_identical = True
-        for idx, next_df in enumerate(dfs[1:], start=1):
-            next_col_name = next_df.columns[0]
-            next_series = next_df[next_col_name].astype(str).str.strip().tolist()
+        for f in uploaded_files:
+            current_df = read_csv_auto_encoding(f)
+            if not current_df.empty:
+                dfs.append(current_df)
+                file_names.append(f.name)
+                
+        if dfs:
+            # --- VERIFICA STRUTTURA E IDENTICI ELEMENTI NELLA PRIMA COLONNA ---
+            base_df = dfs[0]
+            first_col_name = base_df.columns[0]  # Di solito "Codice" o simile
+            base_series = base_df[first_col_name].astype(str).str.strip().tolist()
             
-            # Verifichiamo se la lunghezza o gli elementi della prima colonna differiscono
-            if base_series != next_series:
-                st.error(
-                    f"❌ Errore di mismatch: Il file `{file_names[idx]}` non ha gli stessi elementi nella "
-                    f"prima colonna rispetto a `{file_names[0]}` (o l'ordine delle righe è differente)."
-                )
-                all_identical = False
-                break
-        
-        if all_identical:
-            # --- CONSOLIDAMENTO DEI FILE CSV ---
-            df = base_df.copy()
-            if len(dfs) > 1:
-                with st.spinner("Consolidamento dei file CSV in corso..."):
-                    # Uniamo i file usando come chiavi le colonne di base identificative del record
-                    # Se non trova le chiavi classiche, usa la prima colonna per fare il merge esatto
-                    common_keys = [c for c in ["Codice", "Var", "Colore"] if c in df.columns]
-                    if not common_keys:
-                        common_keys = [first_col_name]
-                        
-                    for next_df in dfs[1:]:
-                        # Eseguiamo un outer merge basato sulle chiavi
-                        df = pd.merge(df, next_df, on=common_keys, how="outer", suffixes=('', '_drop'))
-                        # Rimuoviamo le colonne duplicate create dal merge
-                        df = df.loc[:, ~df.columns.str.endswith('_drop')]
+            all_identical = True
+            for idx, next_df in enumerate(dfs[1:], start=1):
+                next_col_name = next_df.columns[0]
+                next_series = next_df[next_col_name].astype(str).str.strip().tolist()
+                
+                # Verifichiamo se la lunghezza o gli elementi della prima colonna differiscono
+                if base_series != next_series:
+                    st.error(
+                        f"❌ Errore di mismatch: Il file `{file_names[idx]}` non ha gli stessi elementi nella "
+                        f"prima colonna rispetto a `{file_names[0]}` (o l'ordine delle righe è differente)."
+                    )
+                    all_identical = False
+                    break
             
-            st.success(f"📊 Unione completata con successo! Rilevate {len(df)} righe totali.")
-            st.dataframe(df.head())
+            if all_identical:
+                # --- CONSOLIDAMENTO DEI FILE CSV ---
+                df = base_df.copy()
+                if len(dfs) > 1:
+                    with st.spinner("Consolidamento dei file CSV in corso..."):
+                        # Uniamo i file usando come chiavi le colonne di base identificative del record
+                        # Se non trova le chiavi classiche, usa la prima colonna per fare il merge esatto
+                        common_keys = [c for c in ["Codice", "Var", "Colore"] if c in df.columns]
+                        if not common_keys:
+                            common_keys = [first_col_name]
+                            
+                        for next_df in dfs[1:]:
+                            # Eseguiamo un outer merge basato sulle chiavi
+                            df = pd.merge(df, next_df, on=common_keys, how="outer", suffixes=('', '_drop'))
+                            # Rimuoviamo le colonne duplicate create dal merge
+                            df = df.loc[:, ~df.columns.str.endswith('_drop')]
+                
+                st.success(f"📊 Unione completata con successo! Rilevate {len(df)} righe totali.")
+                st.dataframe(df.head())
     
         st.subheader("Seleziona colonne da tradurre")
         cols_to_translate = st.multiselect(
