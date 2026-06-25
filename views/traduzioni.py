@@ -35,8 +35,8 @@ def genera_traduzioni():
     
     # Permettiamo il caricamento di più file contemporaneamente
     uploaded_files = st.file_uploader(
-        "Carica uno o più CSV (1 per lingua)", 
-        type="csv", 
+        "Carica uno o più file (CSV o Excel)", 
+        type=["csv", "xlsx", "xls"], # Aggiunti i formati Excel
         accept_multiple_files=True, 
         key="trad_csv_uploader"
     )
@@ -46,8 +46,14 @@ def genera_traduzioni():
         file_names = []
         
         for f in uploaded_files:
-            current_df = read_csv_auto_encoding(f)
-            if not current_df.empty:
+            if f.name.endswith(('.xlsx', '.xls')):
+                # Lettura file Excel (richiede la libreria openpyxl che di solito è già presente)
+                current_df = pd.read_excel(f)
+            else:
+                # Lettura del classico CSV tramite la tua funzione di auto-encoding
+                current_df = read_csv_auto_encoding(f)
+                
+            if current_df is not None and not current_df.empty:
                 dfs.append(current_df)
                 file_names.append(f.name)
                 
