@@ -314,15 +314,32 @@ async def enrich_vocab_with_ui(
     saved_badge.markdown(f"✅ **Sincronizzazione completata con successo!**")
     status_text.text("✅ Google Sheets aggiornato.")
 
-def extract_missing_terms(df, columns, vocab, target_langs):
-    """
-    Analizza le colonne (it). Se nel df sono presenti le colonne delle lingue estere,
-    recupera le traduzioni esistenti. Se mancano o sono vuote, controlla su Google Sheets.
-    Se mancano ovunque, le passa all'AI.
-    """
+def extract_missing_terms(df, cols_to_translate, target_langs, vocab):
+    # 🌟 FIX DI SICUREZZA: Se vocab è una lista (es. righe grezze del foglio), 
+    # significa che non è stato convertito in dizionario mappato.
+    if isinstance(vocab, list):
+        st.warning("⚠️ Rilevato formato vocab non corretto. Inizializzazione dizionario di emergenza.")
+        vocab_dict = {}
+        for idx, riga in enumerate(vocab, start=1):
+            if not riga or len(riga) < 1:
+                continue
+            it_val = riga[0].strip()
+            if it_val and it_val != "it": # Salta l'intestazione
+                vocab_dict[it_val] = {
+                    "translations": {
+                        "en": riga[1] if len(riga) > 1 else "",
+                        "fr": riga[2] if len(riga) > 2 else "",
+                        "de": riga[3] if len(riga) > 3 else "",
+                        "es": riga[4] if len(riga) > 4 else ""
+                    },
+                    "row_number": idx # Recuperiamo l'esatta riga per il batch_update futuro
+                }
+        vocab = vocab_dict
+        
     missing = {}
     
-    for col in columns:
+    # 🌟 CORRETTO: Cambiato 'columns' con 'cols_to_translate' coerentemente con gli argomenti della funzione
+    for col in cols_to_translate:
         if col in df.columns:
             # Estraiamo il nome pulito senza la dicitura " (it)"
             base_col_name = col.replace(" (it)", "").strip()
