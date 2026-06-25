@@ -435,6 +435,13 @@ def apply_translations(df, columns, langs, vocab):
         df_lang = df.copy()
         cols_to_drop = []
 
+        # 1. Identifichiamo prima le colonne native del file Excel che corrispondono 
+        # alla lingua che stiamo generando (es. se lang='de', cerchiamo le colonne che finiscono con '(de)')
+        # e le eliminiamo subito per evitare duplicati o sovrascritture anomale di Pandas.
+        cols_already_present = [col for col in df_lang.columns if col.endswith(f"({lang})")]
+        df_lang.drop(columns=cols_already_present, errors='ignore', inplace=True)
+
+        # 2. Procediamo normalmente a generare le colonne tradotte partendo dall'italiano
         for col in df.columns:
             base = get_base_name(col)
             col_lang = get_lang(col)
@@ -442,18 +449,20 @@ def apply_translations(df, columns, langs, vocab):
             if base in selected_bases and col_lang == "it":
                 new_col_name = f"{base} ({lang})"
                 
-                # Definizione pulita della funzione interna (4 spazi di indentazione rispetto a 'if')
                 def translate_cell(val):
                     if pd.isna(val):
                         return ""
                     key = str(val).strip()
-                    
-                    # Gestione della nuova struttura dati di vocab
                     if key in vocab:
-                        return vocab[key]["translations"].get(lang, key)
+                        # Recupera il valore. Se per qualche motivo è vuoto sul foglio, 
+                        # restituisce la chiave in italiano come fallback invece di lasciare vuoto
+                        res = vocab[key].get(lang, "")
+                        return res if res != "" else key
                     return key
               
                 df_lang[new_col_name] = df_lang[col].apply(translate_cell)
+                
+                # Rimuoviamo la colonna sorgente (it) dall'output di questa specifica lingua
                 cols_to_drop.append(col)
         
         df_lang.drop(columns=cols_to_drop, errors='ignore', inplace=True)
