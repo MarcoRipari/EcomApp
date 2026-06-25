@@ -294,29 +294,66 @@ async def enrich_vocab_with_ui(
     status_text.text("✅ Google Sheets aggiornato.")
 
 def extract_missing_terms(df, columns, vocab, target_langs):
+    """
+    Analizza le colonne (it). Per ogni riga, verifica se nei campi specchio 
+    (es. colonna (de) sullo stesso df) esiste già la traduzione. 
+    Se esiste, popola il vocabolario. Se manca ovunque, la manda all'AI.
+    """
     missing = {}
+    
     for col in columns:
         if col in df.columns:
-            for value in df[col].dropna():
-                key = str(value).strip()
+            # Ricaviamo il nome base della colonna (es. "Descrizione")
+            base_col_name = col.replace(" (it)", "").strip()
+            
+            for idx, row in df.iterrows():
+                if pd.isna(row[col]):
+                    continue
+                
+                key = str(row[col]).strip()
                 if key == "" or key in MANUAL_TRANSLATIONS:
                     continue
 
-                langs_to_translate = []
+                # Inizializziamo il termine nel vocabolario se totalmente nuovo
                 if key not in vocab:
-                    langs_to_translate = list(target_langs)
-                else:
-                    # Accediamo alla struttura nidificata
-                    saved_langs = vocab[key]["translations"]
-                    for lang in target_langs:
-                        if lang not in saved_langs or pd.isna(saved_langs[lang]) or str(saved_langs[lang]).strip() == "":
-                            langs_to_translate.append(lang)
+                    vocab[key] = {
+                        "translations": {lang: "" for lang in target_langs},
+                        "row_number": None
+                    }
 
+                langs_to_translate = []
+                
+                for lang in target_langs:
+                    # 1. Controlliamo se nel CSV esiste la colonna specchio per questa lingua
+                    csv_lang_col = f"{base_col_name} ({lang})"
+                    csv_translation = ""
+                    if csv_lang_col in df.columns and pd.notna(row[csv_lang_col]):
+                        csv_translation = str(row[csv_lang_col]).strip()
+
+                    # 2. Se il CSV ha già la traduzione, la importiamo nel nostro database locale
+                    if csv_translation != "":
+                        # Aggiorna la memoria interna salvando il dato del CSV
+                        vocab[key]["translations"][lang] = csv_translation
+                        # Se il record non ha ancora una riga assegnata su Google Sheets, 
+                        # verrà inserito alla fine come nuovo, altrimenti aggiornato.
+                        continue 
+
+                    # 3. Se il CSV è vuoto, verifichiamo se la traduzione è già presente su Google Sheets
+                    saved_langs = vocab[key]["translations"]
+                    if lang not in saved_langs or pd.isna(saved_langs[lang]) or str(saved_langs[lang]).strip() == "":
+                        # Manca sia nel CSV che su Google Sheets: serve l'AI
+                        langs_to_translate.append(lang)
+
+                # Se per questo termine ci sono lingue scoperte, lo passiamo all'arricchimento UI
                 if langs_to_translate:
                     if key in missing:
                         missing[key]["langs"] = list(set(missing[key]["langs"] + langs_to_translate))
                     else:
-                        missing[key] = {"col_name": col, "langs": langs_to_translate}
+                        missing[key] = {
+                            "col_name": col,
+                            "langs": langs_to_translate
+                        }
+                        
     return missing
 
 LANG_RE = re.compile(r"\(([^)]+)\)$")
