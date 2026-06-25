@@ -43,6 +43,8 @@ pdfplumber
 PyPDF2
 geopy
 holidays
+xlrd>=2.0.1
+openpyxl
 
 # UI / UX
 streamlit-option-menu
