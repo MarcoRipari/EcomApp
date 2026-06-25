@@ -187,7 +187,7 @@ async def enrich_vocab_with_ui(
     total = len(missing_terms)
     start_time = time.time()
     
-    # Buffer per la gestione a blocchi (batch)
+    # Buffer per la gestione a blocchi (batch da 25)
     buffer_updates = {}       # { row_number: [valori_riga] } per righe esistenti
     buffer_new_rows = []      # [ [valori_riga], ... ] per nuovi record
 
@@ -238,7 +238,7 @@ async def enrich_vocab_with_ui(
             else:
                 buffer_new_rows.append(row_data)
 
-            # Svuotamento batch se raggiungono la soglia (SAVE_TRANSLATE_EVERY = 25)
+            # Svuotamento batch regolare ogni 25 elementi per l'AI
             if len(buffer_updates) >= SAVE_TRANSLATE_EVERY:
                 try:
                     batch_data = [
@@ -247,6 +247,7 @@ async def enrich_vocab_with_ui(
                     ]
                     ws.batch_update(batch_data, value_input_option="RAW")
                     buffer_updates.clear()
+                    await asyncio.sleep(1.0)  # Pausa di sicurezza anti-quota 429
                     saved_badge.markdown(f"💾 **Aggiornamenti intermedi AI salvati ({i}/{total})**")
                 except Exception as e:
                     st.error(f"Errore salvataggio blocco aggiornamenti AI: {e}")
@@ -255,6 +256,7 @@ async def enrich_vocab_with_ui(
                 try:
                     ws.append_rows(buffer_new_rows, value_input_option="RAW")
                     buffer_new_rows.clear()
+                    await asyncio.sleep(1.0)  # Pausa di sicurezza anti-quota 429
                     saved_badge.markdown(f"💾 **Nuovi record intermedi AI salvati ({i}/{total})**")
                 except Exception as e:
                     st.error(f"Errore salvataggio blocco nuovi record AI: {e}")
@@ -262,14 +264,30 @@ async def enrich_vocab_with_ui(
         status_text.text("ℹ️ Nessun termine da tradurre con l'AI. Controllo dati da file...")
 
     # ========================================================
-    # 2. SINCRONIZZAZIONE DI TUTTI I DATI APPRESI DAI FILE DI INPUT
+    # 2. SINCRONIZZAZIONE DATI APPRESI DAI FILE DI INPUT (PULITA)
     # ========================================================
-    status_text.text("💾 Sincronizzazione traduzioni recuperate dai file di input su Google Sheets...")
+    status_text.text("💾 Sincronizzazione traduzioni recuperate dai file di input...")
     
+    # Puliamo i vecchi residui dei buffer prima di iniziare la fase dei file
+    if buffer_updates:
+        try:
+            batch_data = [{"range": f"A{r}:F{r}", "values": [v]} for r, v in buffer_updates.items()]
+            ws.batch_update(batch_data, value_input_option="RAW")
+            buffer_updates.clear()
+        except Exception: pass
+        
+    if buffer_new_rows:
+        try:
+            ws.append_rows(buffer_new_rows, value_input_option="RAW")
+            buffer_new_rows.clear()
+        except Exception: pass
+
+    # Cicliamo SOLO sulle chiavi che erano effettivamente presenti nei file di input correnti,
+    # evitando di scansionare l'intero database storico di Google Sheets a vuoto.
     for key, data in vocab.items():
         t = data["translations"]
         
-        # Saltiamo i termini che non hanno alcuna traduzione valida
+        # Saltiamo se non ci sono traduzioni valide ereditate dal file
         if not any(str(v).strip() != "" for v in t.values()):
             continue
             
@@ -283,36 +301,30 @@ async def enrich_vocab_with_ui(
         ]
 
         if data["row_number"] is None:
-            # È un termine totalmente nuovo ereditato dai file di input
-            already_buffered = any(r[0] == key for r in buffer_new_rows)
-            if not already_buffered:
-                buffer_new_rows.append(row_data)
-                
-                if len(buffer_new_rows) >= SAVE_TRANSLATE_EVERY:
-                    try:
-                        ws.append_rows(buffer_new_rows, value_input_option="RAW")
-                        buffer_new_rows.clear()
-                    except Exception as e:
-                        print(f"Errore nell'append blocco dati file: {e}")
+            buffer_new_rows.append(row_data)
+            if len(buffer_new_rows) >= SAVE_TRANSLATE_EVERY:
+                try:
+                    ws.append_rows(buffer_new_rows, value_input_option="RAW")
+                    buffer_new_rows.clear()
+                    await asyncio.sleep(1.2)  # Controllo flusso anti-429 per l'append
+                except Exception as e:
+                    print(f"Errore append riga da file: {e}")
         else:
-            # Il termine esisteva già su Google Sheets, ma potrebbe essere stato arricchito dal file di input
-            # Controlliamo se nel buffer degli updates non sia già presente un aggiornamento più recente (es. da AI)
-            if data["row_number"] not in buffer_updates:
-                buffer_updates[data["row_number"]] = row_data
-                
-                if len(buffer_updates) >= SAVE_TRANSLATE_EVERY:
-                    try:
-                        batch_data = [
-                            {"range": f"A{row_num}:F{row_num}", "values": [values]}
-                            for row_num, values in buffer_updates.items()
-                        ]
-                        ws.batch_update(batch_data, value_input_option="RAW")
-                        buffer_updates.clear()
-                    except Exception as e:
-                        print(f"Errore nel batch blocco aggiornamenti file: {e}")
+            buffer_updates[data["row_number"]] = row_data
+            if len(buffer_updates) >= SAVE_TRANSLATE_EVERY:
+                try:
+                    batch_data = [
+                        {"range": f"A{row_num}:F{row_num}", "values": [values]}
+                        for row_num, values in buffer_updates.items()
+                    ]
+                    ws.batch_update(batch_data, value_input_option="RAW")
+                    buffer_updates.clear()
+                    await asyncio.sleep(1.2)  # Controllo flusso anti-429 per il batch
+                except Exception as e:
+                    print(f"Errore batch update da file: {e}")
 
     # ========================================================
-    # 3. SALVATAGGIO FINALE DELLE RIGHE RESIDUE NEI BUFFER
+    # 3. SALVATAGGIO RESIDUI FINALI (ULTIMO BLOCCO < 25)
     # ========================================================
     if buffer_updates or buffer_new_rows:
         status_text.text("💾 Salvataggio ultimi record rimasti...")
@@ -325,16 +337,16 @@ async def enrich_vocab_with_ui(
                 ]
                 ws.batch_update(batch_data, value_input_option="RAW")
             except Exception as e:
-                print(f"Errore nel batch finale: {e}")
+                print(f"Errore nel batch finale residui: {e}")
 
         if buffer_new_rows:
             try:
                 ws.append_rows(buffer_new_rows, value_input_option="RAW")
             except Exception as e:
-                print(f"Errore nell'append finale: {e}")
+                print(f"Errore nell'append finale residui: {e}")
 
     saved_badge.markdown(f"✅ **Sincronizzazione e database completati con successo!**")
-    status_text.text("✅ Google Sheets aggiornato con i dati di AI e File di input.")
+    status_text.text("✅ Google Sheets aggiornato correttamente.")
 
 def extract_missing_terms(df, columns, vocab, target_langs):
     """
