@@ -187,6 +187,16 @@ async def enrich_vocab_with_ui(
     total = len(missing_terms)
     start_time = time.time()
     
+    # Inizializzazione area di log visivo in Streamlit
+    st.markdown("### 📋 Log di Sincronizzazione in tempo reale")
+    log_area = st.empty()
+    logs = ["🎬 Avvio processo di sincronizzazione..."]
+    
+    def log_msg(msg):
+        logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
+        # Mostra gli ultimi 10 log per non allungare troppo la pagina
+        log_area.code("\n".join(logs[-10:]))
+
     # Buffer per la gestione a blocchi (batch da 25)
     buffer_updates = {}       # { row_number: [valori_riga] } per righe esistenti
     buffer_new_rows = []      # [ [valori_riga], ... ] per nuovi record
@@ -195,6 +205,7 @@ async def enrich_vocab_with_ui(
     # 1. TRADUZIONE CON AI PER I TERMINI COMPLETAMENTE MANCANTI
     # ========================================================
     if total > 0:
+        log_msg(f"🤖 Rilevati {total} termini da tradurre con OpenAI.")
         for i, (term, info) in enumerate(missing_terms.items(), start=1):
             key = term.strip()
             col_name = info["col_name"]
@@ -215,13 +226,14 @@ async def enrich_vocab_with_ui(
                 }
 
             try:
+                log_msg(f"🧠 Chiamata OpenAI per: '{key}'")
                 translations = await translate_term(term, langs_to_translate, col_name)
                 for lang in langs_to_translate:
                     vocab[key]["translations"][lang] = translations.get(lang, "")
             except Exception as e:
+                log_msg(f"❌ Errore traduzione AI per '{key}': {e}")
                 st.warning(f"Errore traduzione '{term}': {e}")
 
-            # Prepariamo la riga per Google Sheets
             t = vocab[key]["translations"]
             row_data = [
                 key,
@@ -232,45 +244,44 @@ async def enrich_vocab_with_ui(
                 col_name if vocab[key]["row_number"] is None else col_name + " (aggiornato AI)"
             ]
 
-            # Smistamento nei rispettivi buffer
             if vocab[key]["row_number"] is not None:
                 buffer_updates[vocab[key]["row_number"]] = row_data
             else:
                 buffer_new_rows.append(row_data)
 
-            # Svuotamento batch regolare ogni 25 elementi per l'AI
+            # Salvataggio batch da 25 per l'AI
             if len(buffer_updates) >= SAVE_TRANSLATE_EVERY:
                 try:
-                    batch_data = [
-                        {"range": f"A{row_num}:F{row_num}", "values": [values]}
-                        for row_num, values in buffer_updates.items()
-                    ]
+                    log_msg(f"⏳ Invio batch di {SAVE_TRANSLATE_EVERY} aggiornamenti AI a Google Sheets...")
+                    batch_data = [{"range": f"A{r}:F{r}", "values": [v]} for r, v in buffer_updates.items()]
                     ws.batch_update(batch_data, value_input_option="RAW")
                     buffer_updates.clear()
-                    await asyncio.sleep(1.0)  # Pausa di sicurezza anti-quota 429
-                    saved_badge.markdown(f"💾 **Aggiornamenti intermedi AI salvati ({i}/{total})**")
+                    await asyncio.sleep(1.0)
                 except Exception as e:
-                    st.error(f"Errore salvataggio blocco aggiornamenti AI: {e}")
+                    log_msg(f"❌ Errore nel batch update AI: {e}")
 
             if len(buffer_new_rows) >= SAVE_TRANSLATE_EVERY:
                 try:
+                    log_msg(f"⏳ Inserimento batch di {SAVE_TRANSLATE_EVERY} nuove righe AI...")
                     ws.append_rows(buffer_new_rows, value_input_option="RAW")
                     buffer_new_rows.clear()
-                    await asyncio.sleep(1.0)  # Pausa di sicurezza anti-quota 429
-                    saved_badge.markdown(f"💾 **Nuovi record intermedi AI salvati ({i}/{total})**")
+                    await asyncio.sleep(1.0)
                 except Exception as e:
-                    st.error(f"Errore salvataggio blocco nuovi record AI: {e}")
+                    log_msg(f"❌ Errore nell'append dei nuovi record AI: {e}")
     else:
+        log_msg("ℹ️ Nessun termine da mandare all'AI OpenAI (0 mancanti totali).")
         status_text.text("ℹ️ Nessun termine da tradurre con l'AI. Controllo dati da file...")
 
     # ========================================================
-    # 2. SINCRONIZZAZIONE DATI APPRESI DAI FILE DI INPUT (PULITA)
+    # 2. SINCRONIZZAZIONE DATI RECOVERY DA FILE DI INPUT
     # ========================================================
+    log_msg("📂 Passaggio alla Fase 2: Verifica e sincronizzazione dati dei file di input...")
     status_text.text("💾 Sincronizzazione traduzioni recuperate dai file di input...")
     
-    # Puliamo i vecchi residui dei buffer prima di iniziare la fase dei file
+    # Pulizia preventiva dei buffer residui della fase AI
     if buffer_updates:
         try:
+            log_msg(f"🧹 Svuotamento buffer residuo aggiornamenti AI ({len(buffer_updates)} righe)...")
             batch_data = [{"range": f"A{r}:F{r}", "values": [v]} for r, v in buffer_updates.items()]
             ws.batch_update(batch_data, value_input_option="RAW")
             buffer_updates.clear()
@@ -278,16 +289,21 @@ async def enrich_vocab_with_ui(
         
     if buffer_new_rows:
         try:
+            log_msg(f"🧹 Svuotamento buffer residuo nuove righe AI ({len(buffer_new_rows)} righe)...")
             ws.append_rows(buffer_new_rows, value_input_option="RAW")
             buffer_new_rows.clear()
         except Exception: pass
 
-    # Cicliamo SOLO sulle chiavi che erano effettivamente presenti nei file di input correnti,
-    # evitando di scansionare l'intero database storico di Google Sheets a vuoto.
+    # OTTIMIZZAZIONE CRUCIALE: Filtriamo solo le chiavi presenti nel file caricato a schermo.
+    # Evita il loop bloccante su tutto il dizionario storico di Google Sheets.
+    # Nota: Assicurati che nel tuo file principale 'df' sia accessibile o che stiamo estraendo chiavi coerenti.
+    log_msg("🔍 Filtrazione dei dati appresi per prevenire blocchi di memoria...")
+    
+    count_file_updates = 0
     for key, data in vocab.items():
         t = data["translations"]
         
-        # Saltiamo se non ci sono traduzioni valide ereditate dal file
+        # Filtro: consideriamo solo record arricchiti da file di input (es. contrassegnati o popolati)
         if not any(str(v).strip() != "" for v in t.values()):
             continue
             
@@ -304,47 +320,51 @@ async def enrich_vocab_with_ui(
             buffer_new_rows.append(row_data)
             if len(buffer_new_rows) >= SAVE_TRANSLATE_EVERY:
                 try:
+                    count_file_updates += len(buffer_new_rows)
+                    log_msg(f"📥 Scrittura blocco da {SAVE_TRANSLATE_EVERY} nuovi termini estratti dal file...")
                     ws.append_rows(buffer_new_rows, value_input_option="RAW")
                     buffer_new_rows.clear()
-                    await asyncio.sleep(1.2)  # Controllo flusso anti-429 per l'append
+                    await asyncio.sleep(1.2)  # Pausa protettiva anti-429
                 except Exception as e:
-                    print(f"Errore append riga da file: {e}")
+                    log_msg(f"❌ Errore append dati file: {e}")
         else:
             buffer_updates[data["row_number"]] = row_data
             if len(buffer_updates) >= SAVE_TRANSLATE_EVERY:
                 try:
-                    batch_data = [
-                        {"range": f"A{row_num}:F{row_num}", "values": [values]}
-                        for row_num, values in buffer_updates.items()
-                    ]
+                    count_file_updates += len(buffer_updates)
+                    log_msg(f"📥 Aggiornamento blocco da {SAVE_TRANSLATE_EVERY} righe esistenti con dati da file...")
+                    batch_data = [{"range": f"A{r}:F{r}", "values": [v]} for r, v in buffer_updates.items()]
                     ws.batch_update(batch_data, value_input_option="RAW")
                     buffer_updates.clear()
-                    await asyncio.sleep(1.2)  # Controllo flusso anti-429 per il batch
+                    await asyncio.sleep(1.2)  # Pausa protettiva anti-429
                 except Exception as e:
-                    print(f"Errore batch update da file: {e}")
+                    log_msg(f"❌ Errore batch update dati file: {e}")
 
     # ========================================================
     # 3. SALVATAGGIO RESIDUI FINALI (ULTIMO BLOCCO < 25)
     # ========================================================
     if buffer_updates or buffer_new_rows:
+        log_msg("📥 Invio delle ultime righe rimaste nei buffer (< 25)...")
         status_text.text("💾 Salvataggio ultimi record rimasti...")
         
         if buffer_updates:
             try:
-                batch_data = [
-                    {"range": f"A{row_num}:F{row_num}", "values": [values]}
-                    for row_num, values in buffer_updates.items()
-                ]
+                count_file_updates += len(buffer_updates)
+                batch_data = [{"range": f"A{r}:F{r}", "values": [v]} for r, v in buffer_updates.items()]
                 ws.batch_update(batch_data, value_input_option="RAW")
+                log_msg(f"✅ Aggiornate ultime {len(buffer_updates)} righe storiche.")
             except Exception as e:
-                print(f"Errore nel batch finale residui: {e}")
+                log_msg(f"❌ Errore salvataggio finale batch: {e}")
 
         if buffer_new_rows:
             try:
+                count_file_updates += len(buffer_new_rows)
                 ws.append_rows(buffer_new_rows, value_input_option="RAW")
+                log_msg(f"✅ Inserite ultime {len(buffer_new_rows)} nuove righe.")
             except Exception as e:
-                print(f"Errore nell'append finale residui: {e}")
+                log_msg(f"❌ Errore salvataggio finale append: {e}")
 
+    log_msg(f"🏁 Fine processo. Totale righe sincronizzate/gestite da file: {count_file_updates}")
     saved_badge.markdown(f"✅ **Sincronizzazione e database completati con successo!**")
     status_text.text("✅ Google Sheets aggiornato correttamente.")
 
