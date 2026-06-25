@@ -177,7 +177,6 @@ async def translate_term(term, target_langs, col_name):
 
 async def enrich_vocab_with_ui(
     vocab,
-    missing_terms,
     target_langs,
     progress_bar,
     status_text,
@@ -197,21 +196,21 @@ async def enrich_vocab_with_ui(
         logs.append(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}")
         log_area.code("\n".join(logs[-10:]))
 
-    # Mappatura nativa colonne Google Sheets
+    # Mappatura nativa delle colonne su Google Sheets (IT=1, EN=2, FR=3, DE=4, ES=5, Colonna=6)
     COL_MAPPING = {"en": 2, "fr": 3, "de": 4, "es": 5}
 
-    # BUFFER UNIFICATI PER COSTRUIRE I BLOCCHI DA 25 (Salva-Token / Salva-Quota)
-    buffer_cell_updates = []  # Struttura gspread: [{'range': '...', 'values': [[...]]}]
-    buffer_new_rows = []      # Per i termini completamente nuovi (append)
+    # BUFFER UNIFICATO CONTINUO (Batch size = 25)
+    buffer_cell_updates = []  # Struttura: [{'range': '...', 'values': [[...]]}]
+    buffer_new_rows = []      # Struttura: [[valori_riga], ...]
 
     async def flush_all_buffers(fase_label):
-        """Invia i dati accumulati in blocchi su Google Sheets per evitare il superamento dei limiti"""
+        """Invia i dati accumulati nel buffer continuo su Google Sheets"""
         if buffer_cell_updates:
             try:
-                log_msg(f"⏳ [{fase_label}] Invio batch di {len(buffer_cell_updates)} celle su Google Sheets...")
+                log_msg(f"⏳ [{fase_label}] Invio batch di {len(buffer_cell_updates)} celle modificate su Google Sheets...")
                 ws.batch_update(buffer_cell_updates, value_input_option="RAW")
                 buffer_cell_updates.clear()
-                await asyncio.sleep(0.8)  # Pausa di sicurezza
+                await asyncio.sleep(0.8)  # Pausa di sicurezza anti-quota
             except Exception as e:
                 log_msg(f"❌ Errore batch_update [{fase_label}]: {e}")
 
@@ -220,102 +219,125 @@ async def enrich_vocab_with_ui(
                 log_msg(f"⏳ [{fase_label}] Inserimento di {len(buffer_new_rows)} nuove righe sul foglio...")
                 ws.append_rows(buffer_new_rows, value_input_option="RAW")
                 buffer_new_rows.clear()
-                await asyncio.sleep(0.8)
+                await asyncio.sleep(0.8)  # Pausa di sicurezza anti-quota
             except Exception as e:
                 log_msg(f"❌ Errore append_rows [{fase_label}]: {e}")
 
+    def clean_val(val):
+        if pd.isna(val) or val is None:
+            return ""
+        s = str(val).strip()
+        return "" if s.lower() == "nan" else s
+
     # ========================================================
-    # STEP 1: ESTRAZIONE E FUSIONE DATI (INPUT VS GOOGLE SHEETS)
+    # LOGICA 1 & 2: UNIONE DEGLI INPUT ED ESTRAZIONE TERMINI REALI
     # ========================================================
-    log_msg("📂 Analisi e fusione dei dati in corso...")
+    log_msg("📂 FASE 1: Riconciliazione e fusione dati (Input vs Google Sheets)...")
     
-    # Rileviamo i termini unici presenti nel file caricato a schermo
-    current_file_terms = set()
-    term_to_col_map = {}
-    for col in cols_to_translate:
-        if col in df.columns:
-            for val in df[col].dropna().unique():
-                val_str = str(val).strip()
-                if val_str:
-                    current_file_terms.add(val_str)
-                    term_to_col_map[val_str] = col
-
-    count_changes = 0
-
-    for key in current_file_terms:
-        if key not in vocab:
-            continue
-            
-        data = vocab[key]
-        row_num = data.get("row_number")
-        t = data["translations"]  # Questo contiene i dati letti dai file di input locale
-        
-        orig_col = data.get("col_name", term_to_col_map[key])
-        clean_col = re.sub(r'\s*\([^)]*\)', '', str(orig_col)).strip()
-
-        # Recuperiamo lo stato memorizzato all'avvio dal foglio Google (original_translations)
-        # Se non esiste, significa che non c'erano dati storici sul foglio per questa chiave
-        original_t = data.get("original_translations", {})
-
-        if row_num is not None:
-            # --- IL TERMINE ESISTE GIÀ SUL FOGLIO GOOGLE ---
-            for lang in target_langs:
-                valore_locale = str(t.get(lang, "")).strip()
-                valore_storico = str(original_t.get(lang, "")).strip()
-
-                # LOGICA 1: Il file di input NON ha questa lingua, ma sul foglio Google c'è.
-                # Recuperiamo il valore del foglio per non perderlo e non cancellare la cella.
-                if not valore_locale and valore_storico:
-                    t[lang] = valore_storico
+    file_vocab = {}
+    for _, row in df.iterrows():
+        for col in cols_to_translate:
+            if col in df.columns:
+                it_val = clean_val(row[col])
+                if not it_val:
                     continue
+                
+                base = get_base_name(col)
+                if it_val not in file_vocab:
+                    file_vocab[it_val] = {
+                        "translations": {lang: "" for lang in target_langs},
+                        "col_name": col
+                    }
+                
+                # Raccoglie le lingue presenti nel file di input
+                for lang in target_langs:
+                    lang_col = f"{base} ({lang})"
+                    if lang_col in df.columns:
+                        v_file = clean_val(row[lang_col])
+                        if v_file:
+                            file_vocab[it_val]["translations"][lang] = v_file
 
-                # LOGICA 2: Il file di input HA la traduzione. Verifichiamo se è diversa dal foglio.
-                if valore_locale and valore_locale != valore_storico:
+    # ========================================================
+    # LOGICA 3 & 4: CONFRONTO CHIRURGICO CELLA PER CELLA
+    # ========================================================
+    terms_to_translate_ai = {}
+    count_file_changes = 0
+
+    for it_val, file_info in file_vocab.items():
+        clean_col = re.sub(r'\s*\([^)]*\)', '', str(file_info["col_name"])).strip()
+        
+        if it_val in vocab:
+            # Il termine esiste sul foglio Google
+            row_num = vocab[it_val].get("row_number")
+            gsheet_langs = vocab[it_val].get("translations", {})
+            ai_langs_for_term = []
+            
+            for lang in target_langs:
+                val_file = file_info["translations"].get(lang, "")
+                val_gsheet = clean_val(gsheet_langs.get(lang, ""))
+                
+                # 3. Vuoto nel file di input, ma presente nel foglio -> lo preserviamo in memoria senza toccare il foglio
+                if not val_file and val_gsheet:
+                    vocab[it_val]["translations"][lang] = val_gsheet
+                
+                # 4. Presente nel file di input ed è DIVERSO dal foglio -> va nel buffer di aggiornamento immediato
+                elif val_file and val_file != val_gsheet:
                     col_idx = COL_MAPPING.get(lang.lower())
-                    if col_idx:
+                    if col_idx and row_num:
                         col_letter = chr(64 + col_idx)
                         buffer_cell_updates.append({
                             "range": f"{col_letter}{row_num}",
-                            "values": [[valore_locale]]
+                            "values": [[val_file]]
                         })
-                        count_changes += 1
-                        
-                        # Aggiorniamo il riferimento storico locale per stabilizzare i cicli successivi
-                        if "original_translations" in data:
-                            data["original_translations"][lang] = valore_locale
-
-            # Controllo nota colonna (F)
-            valore_nota_storico = str(data.get("original_col_name", "")).strip()
-            if clean_col and clean_col != valore_nota_storico:
-                buffer_cell_updates.append({
-                    "range": f"F{row_num}",
-                    "values": [[clean_col]]
-                })
-                count_changes += 1
-                data["original_col_name"] = clean_col
+                        vocab[it_val]["translations"][lang] = val_file
+                        count_file_changes += 1
+                
+                # 4b. Uguali -> ignoriamo completamente
+                elif val_file and val_file == val_gsheet:
+                    continue
+                
+                # 5. Vuoto sia nel file che nel foglio -> lo marchiamo per l'AI
+                elif not val_file and not val_gsheet:
+                    ai_langs_for_term.append(lang)
+            
+            if ai_langs_for_term:
+                terms_to_translate_ai[it_val] = {
+                    "col_name": file_info["col_name"],
+                    "langs": ai_langs_for_term
+                }
         else:
-            # --- IL TERMINE È TOTALMENTE NUOVO ---
-            row_data = [key, t.get("en", ""), t.get("fr", ""), t.get("de", ""), t.get("es", ""), clean_col]
-            if row_data not in buffer_new_rows:
-                buffer_new_rows.append(row_data)
-                count_changes += 1
+            # Il termine è completamente nuovo rispetto al foglio Google
+            vocab[it_val] = {
+                "translations": file_info["translations"].copy(),
+                "row_number": None
+            }
+            ai_langs_for_term = [lang for lang in target_langs if not file_info["translations"].get(lang, "")]
+            
+            if ai_langs_for_term:
+                terms_to_translate_ai[it_val] = {
+                    "col_name": file_info["col_name"],
+                    "langs": ai_langs_for_term
+                }
+            else:
+                # Se è già completo dall'input, lo carichiamo come riga nuova intera
+                t = file_info["translations"]
+                buffer_new_rows.append([it_val, t.get("en", ""), t.get("fr", ""), t.get("de", ""), t.get("es", ""), clean_col])
+                count_file_changes += 1
 
-        # Se il buffer parziale raggiunge i 25 elementi accumulati dalle differenze file, scarica su GSheet
-        if len(buffer_cell_updates) >= SAVE_TRANSLATE_EVERY or len(buffer_new_rows) >= SAVE_TRANSLATE_EVERY:
+        # Scarico intermedio del buffer continuo se raggiunge i 25 elementi già in questa fase
+        if (len(buffer_cell_updates) + len(buffer_new_rows)) >= SAVE_TRANSLATE_EVERY:
             await flush_all_buffers("Allineamento File")
 
-    # Svuotiamo i residui dello Step 1 (qui finiranno le tue 3/4 modifiche reali dei file)
-    await flush_all_buffers("Allineamento File Finali")
-    log_msg(f"✅ Allineamento file completato. Sincronizzate {count_changes} variazioni reali.")
+    log_msg(f"✅ Riconciliazione completata. Rilevate {count_file_changes} variazioni reali dai file.")
 
     # ========================================================
-    # STEP 2: GENERAZIONE CON AI (CONTINUA SULLO STESSO BUFFER)
+    # LOGICA 5 & 6: GENERAZIONE AI SULLO STESSO BUFFER CONTINUO
     # ========================================================
-    total_ai = len(missing_terms)
+    total_ai = len(terms_to_translate_ai)
     if total_ai > 0:
-        log_msg(f"🤖 Avvio traduzione AI per {total_ai} termini orfani...")
+        log_msg(f"🤖 FASE 2: Avvio traduzione AI per {total_ai} termini veramente orfani...")
         
-        for i, (term, info) in enumerate(missing_terms.items(), start=1):
+        for i, (term, info) in enumerate(terms_to_translate_ai.items(), start=1):
             key = term.strip()
             col_name = info["col_name"]
             langs_to_translate = info["langs"]
@@ -325,16 +347,12 @@ async def enrich_vocab_with_ui(
             remaining = avg_time * (total_ai - i)
 
             progress_bar.progress(i / total_ai)
-            status_text.text(f"🔤 AI: {term[:20]}... ({i}/{total_ai})")
+            status_text.text(f"🔤 Traduzione AI: {key[:20]}... ({i}/{total_ai})")
             timer_text.text(f"⏱️ Trascorso: {format_time(elapsed)} | Rimasto: {format_time(remaining)}")
 
             try:
-                log_msg(f"🧠 Chiamata OpenAI ({i}/{total_ai}) per: '{key[:30]}...'")
+                log_msg(f"🧠 Chiamata OpenAI ({i}/{total_ai}) per: '{key[:25]}...'")
                 translations = await translate_term(term, langs_to_translate, col_name)
-                
-                if key not in vocab:
-                    vocab[key] = {"translations": {}, "row_number": None}
-                
                 for lang in langs_to_translate:
                     vocab[key]["translations"][lang] = translations.get(lang, "")
             except Exception as e:
@@ -346,7 +364,7 @@ async def enrich_vocab_with_ui(
             row_num = vocab[key].get("row_number")
             
             if row_num is not None:
-                # Se il termine esisteva già sul foglio, aggiungiamo le singole celle generate al buffer corrente
+                # Record esistente: iniettiamo nel buffer solo le singole celle generate dall'AI
                 for lang in langs_to_translate:
                     val_ai = t.get(lang, "")
                     col_idx = COL_MAPPING.get(lang.lower())
@@ -356,31 +374,27 @@ async def enrich_vocab_with_ui(
                             "range": f"{col_letter}{row_num}",
                             "values": [[val_ai]]
                         })
-                
-                buffer_cell_updates.append({
-                    "range": f"F{row_num}",
-                    "values": [[clean_col]]
-                })
             else:
-                # Se è un termine del tutto nuovo tradotto dall'AI, va in append_rows
+                # Record nuovo completato dall'AI: va in append_rows come riga intera
                 row_data = [key, t.get("en", ""), t.get("fr", ""), t.get("de", ""), t.get("es", ""), clean_col]
                 buffer_new_rows.append(row_data)
 
-            # IL BUFFER CONTA ANCHE LE INIEZIONI AI: Scatta ogni 25 elementi cumulativi totali
-            if len(buffer_cell_updates) >= SAVE_TRANSLATE_EVERY or len(buffer_new_rows) >= SAVE_TRANSLATE_EVERY:
+            # IL BUFFER CONTA IL CUMULATIVO TOTALE: Scatta rigidamente ogni 25 elementi (File + AI)
+            if (len(buffer_cell_updates) + len(buffer_new_rows)) >= SAVE_TRANSLATE_EVERY:
                 await flush_all_buffers("Blocco Intermedio AI")
-                saved_badge.markdown(f"💾 **Traduzioni AI salvate nel foglio ({i}/{total_ai})**")
-
-        # Svuotamento definitivo di tutti i residui finali dell'AI
-        await flush_all_buffers("Residui Finali AI")
+                saved_badge.markdown(f"💾 **Traduzioni salvate nel foglio ({i}/{total_ai})**")
     else:
-        log_msg("ℹ️ Nessun termine rimasto da tradurre con l'AI (0 mancanti).")
+        log_msg("ℹ️ FASE 2: Nessun termine orfano da inviare ad OpenAI (0 mancanti).")
         status_text.text("ℹ️ Nessun termine da tradurre con l'AI.")
 
-    log_msg("🏁 Processo terminato con successo.")
+    # SVUOTAMENTO FINALE DEI RESIDUI RIMASTI NEL BUFFER CONTINUO
+    if buffer_cell_updates or buffer_new_rows:
+        await flush_all_buffers("Residui Finali Sincronizzazione")
+
+    log_msg("🏁 Processo concluso con successo.")
     progress_bar.progress(1.0)
     saved_badge.markdown(f"✅ **Sincronizzazione completata!**")
-    status_text.text("✅ Google Sheets aggiornato e protetto da sprechi di token.")
+    status_text.text("✅ Google Sheets aggiornato senza sprechi di quota.")
 
 def extract_missing_terms(df, columns, vocab, target_langs):
     """
