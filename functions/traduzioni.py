@@ -6,6 +6,7 @@ import time
 import os
 import io
 import pandas as pd
+from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from deep_translator import GoogleTranslator
 from openai import AsyncOpenAI
