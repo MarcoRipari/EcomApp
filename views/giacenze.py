@@ -28,6 +28,7 @@ def giacenze_importa():
         "OUTLET_FW26": "1LxLWykK_cwf4eVVF61oDNM4hxUzCyIQoGLC-EP1Z8t0",
         "Base_Dati_Retag": "1mvMi-ybuLdIF3GnAnl2GLqR2Bxic1nBD3Bxt1GQZTec",
         "Base_Dati_Rtm_27.02.26": "14f6UkpgH-hoU12c81wpaXb-Sb9a9R3G_Myujxvk7zm0",
+        "30.06.26_Base_Dati_Retag_26/1+26/2": "12bjlbGOuiYfKrRRe0TPOhaJ64vwts3csdTMdwTMG3Rg",
         "SELE-OUTLET-PE26": "1eR3ZOE6IzGgYP4mPnyGBfWiDof4Gpv9olOVu_G_k1dg",
         "LISTA-SKUS-PE26": "1wvHZpS8Y45V4MWKgVv_WZx7t98p3Z83EXWc_e9vNFwc",
         "VERTBAUDET-SELE-FALCOTTO-DE": "1PR26oSayhiVvdm6dDyX1iwfbTJ-RoWZ-EGvin5rIfvA"
