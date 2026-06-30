@@ -25,6 +25,7 @@ def giacenze_importa():
         "VECCHIA STAGIONE": "13DnpAX7M9wymMR1YIH5IP28y_UaCPajBUIcoHca562U",
         "NUOVA STAGIONE": "1YbU9twZgJECIsbxhRft-7yGGuH37xzVdOkz7jJIL5aQ",
         "SELE-SALDI-26-1": "1idaTt1PcyZo4NVu7B1Nfc5zUUhLq0dFmaF-M5r1YB7A",
+        "OUTLET_FW26": "1LxLWykK_cwf4eVVF61oDNM4hxUzCyIQoGLC-EP1Z8t0",
         "Base_Dati_Retag": "1mvMi-ybuLdIF3GnAnl2GLqR2Bxic1nBD3Bxt1GQZTec",
         "Base_Dati_Rtm_27.02.26": "14f6UkpgH-hoU12c81wpaXb-Sb9a9R3G_Myujxvk7zm0",
         "SELE-OUTLET-PE26": "1eR3ZOE6IzGgYP4mPnyGBfWiDof4Gpv9olOVu_G_k1dg",
