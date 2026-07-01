@@ -85,17 +85,21 @@ def giacenze_importa():
     # --- 5. PULSANTI ---
     col1, col2, col3, col4 = st.columns(4)
 
-    def start_process(tipo):
-        st.session_state.import_logs = {k: "⏳ In coda" for k in SHEETS_CONFIG.keys() if SHEETS_CONFIG[k] in targets_finali}
+    def start_process(tipo, selection):
+        if selection == "MANUALE":
+            st.session_state.import_logs = {manual_id: "⏳ In coda"}
+        else:
+            st.session_state.import_logs = {k: "⏳ In coda" for k in SHEETS_CONFIG.keys() if SHEETS_CONFIG[k] in targets_finali}
+            
         st.session_state.target_rimanenti = targets_finali.copy()
         st.session_state.import_in_corso = tipo
         st.session_state.current_row_index = 0
         st.session_state.anagrafica_data = None # Reset dati temporanei
         st.rerun()
 
-    if col1.button("Anagrafica", use_container_width=True): start_process("ANAGRAFICA")
-    if col2.button("Giacenze", use_container_width=True): start_process("GIACENZE")
-    if col3.button("Tutto", use_container_width=True): start_process("TOTALE")
+    if col1.button("Anagrafica", use_container_width=True): start_process("ANAGRAFICA", sheet_selection)
+    if col2.button("Giacenze", use_container_width=True): start_process("GIACENZE", sheet_selection)
+    if col3.button("Tutto", use_container_width=True): start_process("TOTALE", sheet_selection)
     if col4.button("Dropbox", use_container_width=True):
         if st.session_state.file_bytes_for_upload:
             with st.spinner("Upload Dropbox..."):
