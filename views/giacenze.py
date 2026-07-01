@@ -31,7 +31,7 @@ def giacenze_importa():
         "30.06.26_Base_Dati_Retag_26/1+26/2": "12bjlbGOuiYfKrRRe0TPOhaJ64vwts3csdTMdwTMG3Rg",
         "SELE-OUTLET-PE26": "1eR3ZOE6IzGgYP4mPnyGBfWiDof4Gpv9olOVu_G_k1dg",
         "LISTA-SKUS-PE26": "1wvHZpS8Y45V4MWKgVv_WZx7t98p3Z83EXWc_e9vNFwc",
-        "VERTBAUDET-SELE-FALCOTTO-DE": "1PR26oSayhiVvdm6dDyX1iwfbTJ-RoWZ-EGvin5rIfvA"
+        "VERTBAUDET-SELE-FALCOTTO-DE": "1PR26oSayhiVvdm6dDyX1iwfbTJ-RoWZ-EGvin5rIfvA",
     }
 
     SHEETS_CONFIG_TEST = {
@@ -70,9 +70,11 @@ def giacenze_importa():
     df_input = st.session_state.df_input
 
     # --- 4. INPUT UTENTE ---
-    options = ["COMPLETO"] + list(SHEETS_CONFIG.keys())
+    options = ["COMPLETO"] + list(SHEETS_CONFIG.keys() + ["MANUALE"])
     sheet_selection = st.selectbox("Seleziona target:", options)
     targets_finali = list(SHEETS_CONFIG.values()) if sheet_selection == "COMPLETO" else [SHEETS_CONFIG[sheet_selection]]
+    if(sheet_selection == "MANUALE"):
+        targets_finali = st.text_input("Inserisce l'id del foglio")
     
     # Riferimento al nome del foglio (tab)
     nome_sheet_tab = st.text_input("Nome del TAB", value="GIACENZE")
