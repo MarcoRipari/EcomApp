@@ -72,9 +72,12 @@ def giacenze_importa():
     # --- 4. INPUT UTENTE ---
     options = ["COMPLETO"] + list(SHEETS_CONFIG.keys()) + ["MANUALE"]
     sheet_selection = st.selectbox("Seleziona target:", options)
-    targets_finali = list(SHEETS_CONFIG.values()) if sheet_selection == "COMPLETO" else [SHEETS_CONFIG[sheet_selection]]
-    if(sheet_selection == "MANUALE"):
+    if sheet_selection == "COMPLETO":
+        targets_finali = list(SHEETS_CONFIG.values())
+    else if sheet_selection == "MANUALE":
         targets_finali = st.text_input("Inserisce l'id del foglio")
+    else:
+        targets_finali = [SHEETS_CONFIG[sheet_selection]]
     
     # Riferimento al nome del foglio (tab)
     nome_sheet_tab = st.text_input("Nome del TAB", value="GIACENZE")
