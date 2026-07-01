@@ -73,7 +73,7 @@ def giacenze_importa():
     sheet_selection = st.selectbox("Seleziona target:", options)
     if sheet_selection == "COMPLETO":
         targets_finali = list(SHEETS_CONFIG.values())
-    else if: sheet_selection == "MANUALE":
+    elif: sheet_selection == "MANUALE":
         targets_finali = st.text_input("Inserisce l'id del foglio")
     else:
         targets_finali = [SHEETS_CONFIG[sheet_selection]]
