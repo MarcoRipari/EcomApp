@@ -95,16 +95,19 @@ def load_vocab(sheet_id, tab):
     if df.empty:
         return vocab, ws
 
-    # Usiamo enumerate o row index per tracciare la posizione esatta sul foglio
     for idx, row in df.iterrows():
-        it = str(row["it"]).strip()
+        if pd.isna(row.get("it")):
+            continue
+        # Normalizziamo la stringa italiana (rimuoviamo spazi extra o newline)
+        it = " ".join(str(row["it"]).split()).strip() 
+        
         vocab[it] = {
             "translations": {
-                lang: row.get(lang)
+                lang.strip().lower(): str(row.get(lang)).strip() if pd.notna(row.get(lang)) else ""
                 for lang in row.index
-                if lang != "it" and pd.notna(row.get(lang))
+                if lang.strip().lower() != "it"
             },
-            "row_number": idx + 2  # Salvia mo il numero di riga esatto su Google Sheets
+            "row_number": idx + 2
         }
 
     return vocab, ws
@@ -348,11 +351,13 @@ def extract_missing_terms(df, cols_to_translate, target_langs, vocab):
                 if pd.isna(row[col]):
                     continue
                 
-                key = str(row[col]).strip()
-                if key == "" or key in MANUAL_TRANSLATIONS:
+                raw_key = str(row[col]).strip()
+                if raw_key == "" or raw_key in MANUAL_TRANSLATIONS:
                     continue
+                
+                # Normalizzazione identica a quella di load_vocab
+                key = " ".join(raw_key.split()).strip()
 
-                # Se il termine non è presente nel vocabolario, lo inizializziamo
                 if key not in vocab:
                     vocab[key] = {
                         "translations": {lang: "" for lang in target_langs},
@@ -481,19 +486,19 @@ def apply_translations(df, columns, langs, vocab):
         for col in df.columns:
             base = get_base_name(col)
             col_lang = get_lang(col)
-
             if base in selected_bases and col_lang == "it":
                 new_col_name = f"{base} ({lang})"
                 
                 def translate_cell(val):
                     if pd.isna(val):
                         return ""
-                    key = str(val).strip()
+                    # Normalizzazione per il match
+                    key = " ".join(str(val).split()).strip()
                     if key in vocab:
                         res = vocab[key]["translations"].get(lang, "")
-                        return res if res != "" else key
-                    return key
-              
+                        return res if res != "" else str(val).strip()
+                    return str(val).strip()
+                    
                 df_lang[new_col_name] = df_lang[col].apply(translate_cell)
                 cols_to_drop.append(col)
         
