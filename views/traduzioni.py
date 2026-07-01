@@ -103,7 +103,6 @@ def genera_traduzioni():
                     mime='text/csv',
                 )
                 st.dataframe(df.head())
-                st.stop()
     
         st.subheader("Seleziona colonne da tradurre")
         cols_to_translate = st.multiselect(
