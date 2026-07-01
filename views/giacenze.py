@@ -75,7 +75,8 @@ def giacenze_importa():
     if sheet_selection == "COMPLETO":
         targets_finali = list(SHEETS_CONFIG.values())
     elif sheet_selection == "MANUALE":
-        targets_finali = list(st.text_input("Inserisce l'id del foglio"))
+        manual_id = st.text_input("Inserisce l'id del foglio")
+        targets_finali = list(manual_id)
     else:
         targets_finali = [SHEETS_CONFIG[sheet_selection]]
     
@@ -111,7 +112,10 @@ def giacenze_importa():
     # --- 6. CORE LOOP CON AUTO-RESUME ---
     if st.session_state.import_in_corso and st.session_state.target_rimanenti:
         current_id = st.session_state.target_rimanenti[0]
-        nome_leggibile = next((k for k, v in SHEETS_CONFIG.items() if v == current_id), f"ID: {current_id[:5]}")
+        if sheet_selection == "MANUALE":
+            nome_leggibile = manual_id
+        else:
+            nome_leggibile = next((k for k, v in SHEETS_CONFIG.items() if v == current_id), f"ID: {current_id[:5]}")
         
         try:
             # A. ANAGRAFICA
