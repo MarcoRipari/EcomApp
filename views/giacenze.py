@@ -75,7 +75,7 @@ def giacenze_importa():
         targets_finali = list(SHEETS_CONFIG.values())
     elif sheet_selection == "MANUALE":
         targets_finali = st.text_input("Inserisce l'id del foglio")
-    else
+    else:
         targets_finali = [SHEETS_CONFIG[sheet_selection]]
     
     # Riferimento al nome del foglio (tab)
