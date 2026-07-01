@@ -70,7 +70,7 @@ def giacenze_importa():
     df_input = st.session_state.df_input
 
     # --- 4. INPUT UTENTE ---
-    options = ["COMPLETO"] + list(SHEETS_CONFIG.keys() + ["MANUALE"])
+    options = ["COMPLETO"] + list(SHEETS_CONFIG.keys()) + ["MANUALE"]
     sheet_selection = st.selectbox("Seleziona target:", options)
     targets_finali = list(SHEETS_CONFIG.values()) if sheet_selection == "COMPLETO" else [SHEETS_CONFIG[sheet_selection]]
     if(sheet_selection == "MANUALE"):
