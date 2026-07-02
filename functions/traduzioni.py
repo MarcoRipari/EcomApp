@@ -473,11 +473,16 @@ def apply_translations(df, columns, langs, vocab):
         ]
         df_lang.drop(columns=other_langs_cols, errors='ignore', inplace=True)
 
-        # 2. Cancelliamo la colonna target (es. '(de)') se era già presente, per rigenerarla pulita
-        cols_already_present = [col for col in df_lang.columns if col.endswith(f"({lang})")]
-        df_lang.drop(columns=cols_already_present, errors='ignore', inplace=True)
-
-        # 3. Rigeneriamo la colonna della lingua partendo dall'italiano
+        # 2. Rigeneriamo/completiamo la colonna della lingua partendo dall'italiano.
+        # 🔧 FIX: NON cancelliamo più a priori la colonna "(lang)" originale del file
+        # caricato. Testi IT identici su più righe (es. stessa "Descrizione" riusata
+        # su varianti/colori diversi) possono avere traduzioni leggermente diverse
+        # riga per riga: usare solo il vocabolario (indicizzato per testo IT) faceva
+        # sì che l'ultima riga processata sovrascrivesse la traduzione di tutte le
+        # altre righe con lo stesso testo IT, "rubando" la traduzione corretta di
+        # una riga e assegnandola a un'altra. Ora la traduzione già presente nella
+        # riga stessa ha SEMPRE priorità; il vocabolario è solo un fallback per le
+        # righe che non hanno quella colonna lingua compilata nel file caricato.
         cols_to_drop = []
         for col in df.columns:
             base = get_base_name(col)
@@ -485,8 +490,18 @@ def apply_translations(df, columns, langs, vocab):
 
             if base in selected_bases and col_lang == "it":
                 new_col_name = f"{base} ({lang})"
-                
-                def translate_cell(val):
+                # Colonna con la traduzione già presente in questa riga del file caricato (se c'è)
+                original_col = f"{base} ({lang})"
+                original_series = df[original_col] if original_col in df.columns else None
+
+                def translate_cell(val, idx):
+                    # 1. Priorità assoluta: la traduzione già presente in QUESTA riga
+                    if original_series is not None:
+                        orig_val = original_series.loc[idx]
+                        if pd.notna(orig_val) and str(orig_val).strip() != "":
+                            return str(orig_val).strip()
+
+                    # 2. Fallback: vocabolario (righe senza traduzione propria nel file)
                     if pd.isna(val):
                         return ""
                     key = str(val).strip()
@@ -494,8 +509,10 @@ def apply_translations(df, columns, langs, vocab):
                         res = vocab[key]["translations"].get(lang, "")
                         return res if res != "" else key
                     return key
-              
-                df_lang[new_col_name] = df_lang[col].apply(translate_cell)
+
+                df_lang[new_col_name] = [
+                    translate_cell(v, idx) for idx, v in df_lang[col].items()
+                ]
                 cols_to_drop.append(col)
         
         # Elimina le colonne (it) se l'output finale deve contenere solo la lingua target, 
