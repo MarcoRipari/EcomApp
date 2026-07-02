@@ -372,6 +372,14 @@ def extract_missing_terms(df, cols_to_translate, target_langs, vocab):
                     # 2. Se c'è una traduzione nel CSV, la importiamo in memoria e saltiamo l'AI
                     if csv_translation != "":
                         vocab[key]["translations"][lang] = csv_translation
+                        # 🔧 FIX: se questo termine era già stato marcato come "mancante"
+                        # per questa lingua da una riga precedente (stesso testo IT duplicato
+                        # su più righe, con colonne compilate in modo non uniforme), lo
+                        # rimuoviamo dalla coda AI: ora abbiamo la traduzione dal CSV.
+                        if key in missing and lang in missing[key]["langs"]:
+                            missing[key]["langs"].remove(lang)
+                            if not missing[key]["langs"]:
+                                del missing[key]
                         continue
 
                     # 3. Se la colonna non esiste nel CSV o la cella è vuota, guardiamo Google Sheets
