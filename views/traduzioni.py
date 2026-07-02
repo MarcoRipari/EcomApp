@@ -95,13 +95,6 @@ def genera_traduzioni():
                             df = df.loc[:, ~df.columns.str.endswith('_drop')]
                 
                 st.success(f"📊 Unione completata con successo! Rilevate {len(df)} righe totali.")
-                csv_debug = df.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label="📥 Scarica CSV consolidato (Debug)",
-                    data=csv_debug,
-                    file_name='consolidato_debug.csv',
-                    mime='text/csv',
-                )
                 st.dataframe(df.head())
     
         st.subheader("Seleziona colonne da tradurre")
