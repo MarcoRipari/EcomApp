@@ -95,19 +95,16 @@ def load_vocab(sheet_id, tab):
     if df.empty:
         return vocab, ws
 
+    # Usiamo enumerate o row index per tracciare la posizione esatta sul foglio
     for idx, row in df.iterrows():
-        if pd.isna(row.get("it")):
-            continue
-        # Normalizziamo la stringa italiana (rimuoviamo spazi extra o newline)
-        it = " ".join(str(row["it"]).split()).strip() 
-        
+        it = str(row["it"]).strip()
         vocab[it] = {
             "translations": {
-                lang.strip().lower(): str(row.get(lang)).strip() if pd.notna(row.get(lang)) else ""
+                lang: row.get(lang)
                 for lang in row.index
-                if lang.strip().lower() != "it"
+                if lang != "it" and pd.notna(row.get(lang))
             },
-            "row_number": idx + 2
+            "row_number": idx + 2  # Salvia mo il numero di riga esatto su Google Sheets
         }
 
     return vocab, ws
@@ -351,13 +348,11 @@ def extract_missing_terms(df, cols_to_translate, target_langs, vocab):
                 if pd.isna(row[col]):
                     continue
                 
-                raw_key = str(row[col]).strip()
-                if raw_key == "" or raw_key in MANUAL_TRANSLATIONS:
+                key = str(row[col]).strip()
+                if key == "" or key in MANUAL_TRANSLATIONS:
                     continue
-                
-                # Normalizzazione identica a quella di load_vocab
-                key = " ".join(raw_key.split()).strip()
 
+                # Se il termine non è presente nel vocabolario, lo inizializziamo
                 if key not in vocab:
                     vocab[key] = {
                         "translations": {lang: "" for lang in target_langs},
@@ -375,20 +370,13 @@ def extract_missing_terms(df, cols_to_translate, target_langs, vocab):
                         csv_translation = str(row[csv_lang_col]).strip()
 
                     # 2. Se c'è una traduzione nel CSV, la importiamo in memoria e saltiamo l'AI
-                    if csv_translation != "" and csv_translation.lower() != "nan":
+                    if csv_translation != "":
                         vocab[key]["translations"][lang] = csv_translation
-                        
-                        # 🌟 FIX: Se una riga precedente (vuota) aveva segnato questa lingua come "missing", 
-                        # adesso che abbiamo trovato la traduzione la rimuoviamo immediatamente dai mancanti.
-                        if key in missing and lang in missing[key]["langs"]:
-                            missing[key]["langs"].remove(lang)
-                            if not missing[key]["langs"]:
-                                del missing[key]
                         continue
 
                     # 3. Se la colonna non esiste nel CSV o la cella è vuota, guardiamo Google Sheets
                     saved_langs = vocab[key]["translations"]
-                    if lang not in saved_langs or pd.isna(saved_langs[lang]) or str(saved_langs[lang]).strip() == "" or str(saved_langs[lang]).strip().lower() == "nan":
+                    if lang not in saved_langs or pd.isna(saved_langs[lang]) or str(saved_langs[lang]).strip() == "":
                         # Manca ovunque: segnamo come da tradurre con AI
                         langs_to_translate.append(lang)
 
@@ -486,19 +474,19 @@ def apply_translations(df, columns, langs, vocab):
         for col in df.columns:
             base = get_base_name(col)
             col_lang = get_lang(col)
+
             if base in selected_bases and col_lang == "it":
                 new_col_name = f"{base} ({lang})"
                 
                 def translate_cell(val):
                     if pd.isna(val):
                         return ""
-                    # Normalizzazione per il match
-                    key = " ".join(str(val).split()).strip()
+                    key = str(val).strip()
                     if key in vocab:
                         res = vocab[key]["translations"].get(lang, "")
-                        return res if res != "" else str(val).strip()
-                    return str(val).strip()
-                    
+                        return res if res != "" else key
+                    return key
+              
                 df_lang[new_col_name] = df_lang[col].apply(translate_cell)
                 cols_to_drop.append(col)
         
