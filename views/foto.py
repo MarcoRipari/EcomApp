@@ -8,7 +8,9 @@ from utils import *
 load_functions_from("functions", globals())
 
 foto_sheet_id = st.secrets["FOTO_GSHEET_ID"]
-sheet_ordini = get_sheet(foto_sheet_id, "ORDINI")
+# 🔧 FIX: niente più chiamata a get_sheet() a livello di modulo (veniva eseguita
+# ad ogni import, cioè ad ogni avvio "freddo" dell'app). Recuperiamo il foglio
+# solo dove serve davvero, dentro foto_import_ordini().
 
 map_cod_cli = {
   "0019243.016":"ECOM",
@@ -71,7 +73,7 @@ def foto_dashboard():
       
   
   if st.button("Aggiorna"):
-    load_df_foto()
+    load_df_foto(force_reload=True)
       
   filtro_foto = st.selectbox("📌 Filtro", ["Tutti", "Solo da scattare", "Solo già scattate", "Solo da riscattare", "Disponibili da prelevare", "Disponibili per Matias", "Disponibili per Matteo"], key=st.session_state.df_foto_filtro)
   if df.empty:
@@ -104,6 +106,7 @@ def foto_dashboard():
 def foto_riscattare():
   st.title("Riscattare")
 
+  load_df_foto()  # 🔧 necessario ora che il caricamento non è più automatico all'import
   lista_da_riscattare = get_da_riscattare()
   
   sku_input = st.text_input("Inserisci SKU")
@@ -134,6 +137,7 @@ def foto_import_ordini():
     
     if st.button("Carica su GSheet"):
       with st.spinner("Upload su GSheet in corso..."):
+        sheet_ordini = get_sheet(foto_sheet_id, "ORDINI")
         sheet_ordini.append_rows(data, value_input_option="RAW")
         st.success("Caricati correttamente su GSheet")
 
