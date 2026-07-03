@@ -144,9 +144,13 @@ def foto_import_ordini():
 def foto_aggiungi_prelevate():
   st.header("Aggiungi prelevate")
   st.markdown("Aggiungi la lista delle paia prelevate")
-  
-  sheet = get_sheet(foto_sheet_id, "CONSEGNATE")
-  sheet_len = len(pd.DataFrame(sheet.get_all_values()))
+
+  # 🔧 FIX: sheet.get_all_values() veniva eseguito qui, cioè ad ogni rerun della
+  # pagina (compreso ogni singolo carattere digitato nella text_area sottostante,
+  # che in Streamlit causa un rerun completo dello script). sheet_len serve solo
+  # per calcolare la riga di partenza al momento dell'append, quindi lo spostiamo
+  # dentro il click del bottone "Carica su GSheet", dove è l'unico posto in cui
+  # è davvero necessario.
   oggi = datetime.today().date().strftime('%d/%m/%Y')
   text_input = st.text_area("Lista paia prelevate", height=400, width=800)
   
@@ -162,6 +166,7 @@ def foto_aggiungi_prelevate():
       st.subheader(f"SKU trovate: {len(skus_clean)}")
   
       if st.button("Carica su GSheet"):
+          sheet = get_sheet(foto_sheet_id, "CONSEGNATE")
           # Leggi SKU già presenti nel foglio
           existing_skus = sheet.col_values(1)
           # Rimuovi eventuali apostrofi e converti in str per confronto
@@ -171,6 +176,7 @@ def foto_aggiungi_prelevate():
           skus_to_append_clean = [sku for sku in skus_clean if sku not in existing_skus_clean]
   
           if skus_to_append_clean:
+              sheet_len = len(existing_skus)  # riusiamo la lettura già fatta sopra invece di un'altra get_all_values()
               # Aggiungi apostrofo solo al momento dell'append per forzare formato testo
               rows_to_append = [[f"'{sku}", f"{oggi}", f"=IMAGE(SOSTITUISCI(SETTINGS!$B$4;\"*SKU*\";MINUSC($A{(sheet_len+1)+i})))", f"=SE(VAL.NON.DISP(CONFRONTA(INDIRETTO(\"LISTA!$D\"&CONFRONTA($A{(sheet_len+1)+i};LISTA!A:A;0));SPLIT(SETTINGS(\"brandMatias\");\",\");0));SE(VAL.NON.DISP(CONFRONTA(INDIRETTO(\"LISTA!$D\"&CONFRONTA($A{(sheet_len+1)+i};LISTA!A:A;0));SPLIT(SETTINGS(\"brandMatteo\");\",\");0));\"\";\"MATTEO\");\"MATIAS\")", "ECOM"] for i, sku in enumerate(skus_to_append_clean)]
               
