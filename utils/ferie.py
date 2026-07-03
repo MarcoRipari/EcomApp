@@ -10,17 +10,33 @@ load_functions_from("functions", globals())
 ferie_sheet_id = st.secrets["FERIE_GSHEET_ID"]
 
 def dettaglio_dipendente(nome):
-  sheet = get_sheet(ferie_sheet_id, "DIPENDENTI")
-  lista = pd.DataFrame(sheet.get_all_records())
+  lista = get_dipendenti()
   dettaglio = lista[lista['NOME'] == nome]
   dettaglio['TOTALE'] = pd.to_numeric(dettaglio['TOTALE'], errors='coerce')
   return dettaglio
-  
+
+# 🔧 FIX: nessuna di queste letture era cachata. La pagina "Report" da sola fa
+# 6 chiamate a Google Sheets (get_dipendenti + lettura FERIE, ciascuna = get_sheet
+# + get_all_records) ad OGNI rerun -- cioè ad ogni interazione con qualunque widget
+# della pagina (cambio filtro, modifica riga, selezione dipendente). "Aggiungi ferie"
+# rilegge i dipendenti e rifà check_overlaps ad ogni data selezionata. Con più
+# utenti che usano contemporaneamente la sezione, la quota "richieste/minuto" di
+# Google Sheets si esaurisce facilmente -> 429. Cachiamo le letture con un TTL
+# breve (i dati restano freschi comunque entro 30s) e invalidiamo esplicitamente
+# la cache subito dopo ogni scrittura, cosicché chi salva vede subito il risultato
+# aggiornato mentre chi sta solo guardando non genera letture inutili.
+@st.cache_data(ttl=30, show_spinner=False)
 def get_dipendenti():
   sheet = get_sheet(ferie_sheet_id, "DIPENDENTI")
   dipendenti = pd.DataFrame(sheet.get_all_records())
   dipendenti = dipendenti.sort_values(by='NOME', ascending=True)
   return dipendenti
+
+@st.cache_data(ttl=30, show_spinner=False)
+def get_ferie_storico():
+  sheet = get_sheet(ferie_sheet_id, "FERIE")
+  data = sheet.get_all_records()
+  return pd.DataFrame(data) if data else pd.DataFrame()
 
 def update_dipendente_budget(nome, nuovo_budget):
     sheet = get_sheet(ferie_sheet_id, "DIPENDENTI")
@@ -35,6 +51,7 @@ def update_dipendente_budget(nome, nuovo_budget):
         # Trova la colonna 'TOTALE'
         col_idx = df.columns.get_loc('TOTALE') + 1
         sheet.update_cell(row_to_update, col_idx, nuovo_budget)
+        get_dipendenti.clear()  # 🔧 la cache va invalidata subito, altrimenti il rerun mostrerebbe ancora il valore vecchio
         return True
     except Exception as e:
         st.error(f"Errore durante l'aggiornamento: {e}")
@@ -66,7 +83,7 @@ def add_ferie(riga):
     sheet = get_sheet(ferie_sheet_id, "FERIE")
     
     try:
-        esistenti = sheet.get_all_records()
+        esistenti = get_ferie_storico().to_dict("records")  # 🔧 riusa la lettura cachata invece di un'altra chiamata a Sheets
 
         for record in esistenti:
             # Pulizia chiavi del record (toglie spazi e rende maiuscolo)
@@ -107,6 +124,7 @@ def add_ferie(riga):
     
     try:
         sheet.append_row(riga_da_salvare)
+        get_ferie_storico.clear()  # 🔧 invalida la cache: la nuova riga deve essere visibile subito
         return True
     except Exception as e:
         return f"🚨 Errore salvataggio: {e}"
@@ -119,13 +137,16 @@ def sync_ferie_changes(nome_dipendente, edited_df):
     sheet = get_sheet(ferie_sheet_id, "FERIE")
     try:
         # 1. Recupera tutti i dati attuali
-        all_data = pd.DataFrame(sheet.get_all_records())
+        all_data = get_ferie_storico()
 
         # 2. Rimuove tutte le righe del dipendente corrente dal dataframe globale
         df_others = all_data[all_data['NOME'] != nome_dipendente].copy()
 
         # 3. Prepara le nuove righe del dipendente ricalcolando i giorni lavorativi
         new_rows = edited_df.copy()
+        # 🔧 Guardia difensiva: forziamo comunque NOME sul dipendente selezionato,
+        # nel caso l'editor permetta in futuro righe con NOME vuoto.
+        new_rows['NOME'] = nome_dipendente
         new_rows['GIORNI LAVORATIVI'] = new_rows.apply(
             lambda r: calcola_giorni_lavorativi_esatti(
                 pd.to_datetime(r['DATA INIZIO']).date() if not isinstance(r['DATA INIZIO'], datetime) else r['DATA INIZIO'],
@@ -144,6 +165,7 @@ def sync_ferie_changes(nome_dipendente, edited_df):
         # Pulizia intestazioni e caricamento
         sheet.clear()
         sheet.update("A1", [final_df.columns.tolist()] + final_df.fillna("").values.tolist())
+        get_ferie_storico.clear()  # 🔧 invalida la cache: il foglio è stato riscritto, la vecchia versione non è più valida
         return True
     except Exception as e:
         st.error(f"Errore sincronizzazione: {e}")
@@ -154,10 +176,8 @@ def check_overlaps(inizio_nuovo, fine_nuovo, escludi_nome=None):
     Controlla se ci sono altre persone in ferie nelle date selezionate.
     Ritorna una lista di nomi che si sovrappongono.
     """
-    sheet = get_sheet(ferie_sheet_id, "FERIE")
     try:
-        data = sheet.get_all_records()
-        df = pd.DataFrame(data)
+        df = get_ferie_storico()  # 🔧 riusa la lettura cachata: veniva chiamato ad ogni singola data selezionata nell'UI
         if df.empty:
             return []
 
@@ -168,8 +188,9 @@ def check_overlaps(inizio_nuovo, fine_nuovo, escludi_nome=None):
                 continue
 
             try:
-                inizio_es = datetime.strptime(str(row.get('DATA INIZIO')), '%d-%m-%Y').date()
-                fine_es = datetime.strptime(str(row.get('DATA FINE')), '%d-%m-%Y').date()
+                # 🔧 stesso fix: accetta sia 'gg-mm-aaaa' che 'gg/mm/aaaa', come add_ferie
+                inizio_es = pd.to_datetime(row.get('DATA INIZIO'), dayfirst=True, errors='raise').date()
+                fine_es = pd.to_datetime(row.get('DATA FINE'), dayfirst=True, errors='raise').date()
 
                 if inizio_nuovo <= fine_es and inizio_es <= fine_nuovo:
                     overlaps.append(nome)
