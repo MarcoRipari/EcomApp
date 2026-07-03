@@ -12,9 +12,7 @@ def ferie():
     df_dipendenti = get_dipendenti() 
 
     # 2. Recupero i dati grezzi delle ferie solo per la sezione "In ferie questa settimana" e il "Dettaglio"
-    sheet = get_sheet(ferie_sheet_id, "FERIE")
-    data_ferie = sheet.get_all_records()
-    df_storico = pd.DataFrame(data_ferie) if data_ferie else pd.DataFrame()
+    df_storico = get_ferie_storico()  # 🔧 ora cachata: prima veniva riletta ad ogni interazione sulla pagina
 
     # --- SEZIONE 1: CHI È IN FERIE QUESTA SETTIMANA ---
     st.subheader("📅 In ferie questa settimana")
@@ -27,8 +25,12 @@ def ferie():
     if not df_storico.empty:
         for _, riga in df_storico.iterrows():
             try:
-                inizio_f = datetime.strptime(riga['DATA INIZIO'], '%d-%m-%Y').date()
-                fine_f = datetime.strptime(riga['DATA FINE'], '%d-%m-%Y').date()
+                # 🔧 FIX: prima si accettava solo il formato 'gg-mm-aaaa'. add_ferie()
+                # gestisce già righe storiche con 'gg/mm/aaaa' (slash), ma qui venivano
+                # silenziosamente saltate (except: continue) senza alcun avviso,
+                # facendo sparire quel dipendente dal riepilogo settimanale.
+                inizio_f = pd.to_datetime(riga['DATA INIZIO'], dayfirst=True, errors='raise').date()
+                fine_f = pd.to_datetime(riga['DATA FINE'], dayfirst=True, errors='raise').date()
                 if inizio_f <= fine_settimana and fine_f >= inizio_settimana:
                     assente_oggi = inizio_f <= oggi <= fine_f
                     chi_e_in_ferie.append({
@@ -95,7 +97,11 @@ def ferie():
             anni = ["Tutti"] + sorted(dettaglio_utente['DATA INIZIO'].dt.year.dropna().unique().astype(int).tolist(), reverse=True)
             anno_scelto = st.selectbox("Filtra per anno:", anni)
         with col_f2:
-            tipi = ["Tutti"] + sorted(dettaglio_utente['TIPO'].unique().tolist())
+            # 🔧 FIX: righe storiche con TIPO vuoto (NaN) facevano crashare sorted()
+            # mescolando stringhe e float nel confronto. Le escludiamo dalla lista
+            # delle opzioni del filtro (restano comunque visibili in tabella).
+            tipi_validi = dettaglio_utente['TIPO'].dropna()
+            tipi = ["Tutti"] + sorted(tipi_validi.unique().tolist())
             tipo_scelto = st.selectbox("Filtra per tipo:", tipi)
 
         dettaglio_completo = dettaglio_utente.sort_values(by='DATA INIZIO', ascending=False)
@@ -126,7 +132,14 @@ def ferie():
             },
             use_container_width=True,
             hide_index=True,
-            num_rows="dynamic",
+            # 🔧 FIX: era "dynamic" (permetteva di aggiungere righe), ma la colonna
+            # NOME è disabilitata -> una riga aggiunta qui avrebbe NOME vuoto e
+            # diventerebbe orfana (invisibile ai filtri futuri, perché il salvataggio
+            # cerca "NOME == dipendente_scelto"). Per aggiungere una nuova assenza
+            # c'è già la pagina "Aggiungi ferie", che fa anche il controllo
+            # sovrapposizioni e il calcolo dei giorni lavorativi. Qui si può solo
+            # modificare o eliminare le righe esistenti di questo dipendente.
+            num_rows="fixed",
             key=f"editor_{dipendente_scelto}"
         )
 
