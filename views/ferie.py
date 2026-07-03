@@ -132,14 +132,12 @@ def ferie():
             },
             use_container_width=True,
             hide_index=True,
-            # 🔧 FIX: era "dynamic" (permetteva di aggiungere righe), ma la colonna
-            # NOME è disabilitata -> una riga aggiunta qui avrebbe NOME vuoto e
-            # diventerebbe orfana (invisibile ai filtri futuri, perché il salvataggio
-            # cerca "NOME == dipendente_scelto"). Per aggiungere una nuova assenza
-            # c'è già la pagina "Aggiungi ferie", che fa anche il controllo
-            # sovrapposizioni e il calcolo dei giorni lavorativi. Qui si può solo
-            # modificare o eliminare le righe esistenti di questo dipendente.
-            num_rows="fixed",
+            # 🔧 Corretto: "fixed" toglieva anche la possibilità di ELIMINARE una riga
+            # (non solo di aggiungerne), che invece serve. Torniamo a "dynamic": il
+            # rischio di riga orfana con NOME vuoto è già risolto a monte in
+            # sync_ferie_changes, che forza NOME = dipendente_scelto su ogni riga
+            # salvata, indipendentemente da cosa arriva dall'editor.
+            num_rows="dynamic",
             key=f"editor_{dipendente_scelto}"
         )
 
