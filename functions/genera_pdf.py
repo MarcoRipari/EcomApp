@@ -5,6 +5,13 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet
 from io import BytesIO
 
+# 🔧 FIX: st.download_button valuta il parametro `data` ad ogni rerun dello script
+# (cioè ad ogni interazione con QUALSIASI widget della pagina, non solo al click
+# sul bottone). Senza cache, genera_pdf() -- che costruisce un intero documento
+# PDF con reportlab -- veniva rieseguito da zero ogni volta, per tutti e 6 i PDF
+# della dashboard (3 formati x 2 fotografi), anche solo cambiando un filtro.
+# @st.cache_data rigenera il PDF solo se cambiano davvero i dati o i parametri.
+@st.cache_data(show_spinner=False)
 def genera_pdf(df_disp, **param):
     # --- Parametri ---
     truncate_map = param.get("truncate_map", None)  # se None = niente troncamento
