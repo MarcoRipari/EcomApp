@@ -7,7 +7,10 @@ from utils import *
 load_functions_from("functions", globals())
 
 catalogo_sheet_id = st.secrets["CATALOGO_GSHEET_ID"]
-sheet_ordini = get_sheet(catalogo_sheet_id, "ORDINI")
+# 🔧 FIX: stesso problema già risolto in views/foto.py -- get_sheet() veniva
+# chiamato a livello di modulo, quindi ad ogni avvio "freddo" dell'app (import
+# eager di TUTTI i file in views/, indipendentemente dalla pagina richiesta),
+# prima ancora del login. Recuperiamo il foglio solo dentro la funzione che lo usa.
 
 map_cod_cli = {
   "0019243.016":"ECOM",
@@ -37,6 +40,7 @@ def catalogo_import_ordini():
 
             if st.button("Carica su GSheet"):
                 with st.spinner("Verifica spazio e upload in corso..."):
+                    sheet_ordini = get_sheet(catalogo_sheet_id, "ORDINI")
                     data = df_totale.fillna("").astype(str).values.tolist()
                     
                     # 1. Calcola la posizione di partenza
