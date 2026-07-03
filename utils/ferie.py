@@ -142,25 +142,36 @@ def sync_ferie_changes(nome_dipendente, edited_df):
         # 2. Rimuove tutte le righe del dipendente corrente dal dataframe globale
         df_others = all_data[all_data['NOME'] != nome_dipendente].copy()
 
-        # 3. Prepara le nuove righe del dipendente ricalcolando i giorni lavorativi
-        new_rows = edited_df.copy()
-        # 🔧 Guardia difensiva: forziamo comunque NOME sul dipendente selezionato,
-        # nel caso l'editor permetta in futuro righe con NOME vuoto.
-        new_rows['NOME'] = nome_dipendente
-        new_rows['GIORNI LAVORATIVI'] = new_rows.apply(
-            lambda r: calcola_giorni_lavorativi_esatti(
-                pd.to_datetime(r['DATA INIZIO']).date() if not isinstance(r['DATA INIZIO'], datetime) else r['DATA INIZIO'],
-                pd.to_datetime(r['DATA FINE']).date() if not isinstance(r['DATA FINE'], datetime) else r['DATA FINE']
-            ),
-            axis=1
-        )
+        # 🔧 FIX: se l'utente elimina tutte le righe rimaste per questo dipendente,
+        # edited_df arriva vuoto (0 righe). Su un DataFrame vuoto, operazioni
+        # riga-per-riga come .apply(axis=1) possono restituire una forma che
+        # pandas non riesce ad assegnare correttamente a una singola colonna,
+        # causando "Columns must be same length as key". Gestiamo il caso
+        # esplicitamente: se non ci sono righe da salvare, saltiamo il ricalcolo
+        # e scriviamo solo gli altri dipendenti (equivale a svuotare lo storico
+        # di questa persona, che è esattamente quello che l'utente ha chiesto).
+        if edited_df.empty:
+            final_df = df_others
+        else:
+            # 3. Prepara le nuove righe del dipendente ricalcolando i giorni lavorativi
+            new_rows = edited_df.copy()
+            # Guardia difensiva: forziamo comunque NOME sul dipendente selezionato,
+            # nel caso l'editor permetta righe con NOME vuoto.
+            new_rows['NOME'] = nome_dipendente
+            new_rows['GIORNI LAVORATIVI'] = new_rows.apply(
+                lambda r: calcola_giorni_lavorativi_esatti(
+                    pd.to_datetime(r['DATA INIZIO']).date() if not isinstance(r['DATA INIZIO'], datetime) else r['DATA INIZIO'],
+                    pd.to_datetime(r['DATA FINE']).date() if not isinstance(r['DATA FINE'], datetime) else r['DATA FINE']
+                ),
+                axis=1
+            )
 
-        # Formattazione date per GSheet
-        new_rows['DATA INIZIO'] = pd.to_datetime(new_rows['DATA INIZIO']).dt.strftime('%d-%m-%Y')
-        new_rows['DATA FINE'] = pd.to_datetime(new_rows['DATA FINE']).dt.strftime('%d-%m-%Y')
+            # Formattazione date per GSheet
+            new_rows['DATA INIZIO'] = pd.to_datetime(new_rows['DATA INIZIO']).dt.strftime('%d-%m-%Y')
+            new_rows['DATA FINE'] = pd.to_datetime(new_rows['DATA FINE']).dt.strftime('%d-%m-%Y')
 
-        # 4. Unisce i dati e riscrive il foglio
-        final_df = pd.concat([df_others, new_rows], ignore_index=True)
+            # 4. Unisce i dati
+            final_df = pd.concat([df_others, new_rows], ignore_index=True)
 
         # Pulizia intestazioni e caricamento
         sheet.clear()
