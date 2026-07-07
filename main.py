@@ -82,6 +82,7 @@ with st.sidebar:
                              {"main":"Foto", "name":"Storico", "icon":"book", "role":["guest","logistica","customer care","admin"]},
                              {"main":"Foto", "name":"Aggiungi prelevate", "icon":"hand-index", "role":["guest","logistica","customer care","admin"]},
                              {"main":"Ferie", "name":"Report", "icon":"list", "role":["admin"]},
+                             {"main":"Ferie", "name":"Calendario Ferie", "icon":"calendar3", "role":["admin"]},
                              {"main":"Ferie", "name":"Aggiungi ferie", "icon":"plus", "role":["admin"]},
                              {"main":"Ferie", "name":"Gestione dipendenti", "icon":"gear", "role":["admin"]},
                              {"main":"Admin", "name":"Aggiungi utente", "icon":"plus", "role":["admin"]}
@@ -209,6 +210,9 @@ elif page == "Foto - Aggiungi prelevate":
 
 elif page == "Ferie - Report":
     ferie()
+
+elif page == "Ferie - Calendario Ferie":
+    calendario_ferie_mensile()
 
 elif page == "Ferie - Aggiungi ferie":
     aggiungi_ferie()
