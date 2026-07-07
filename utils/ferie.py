@@ -1,6 +1,7 @@
 import streamlit as st
 import gspread
 import holidays
+import hashlib
 from datetime import datetime, timedelta
 
 from utils import *
@@ -8,6 +9,86 @@ from utils import *
 load_functions_from("functions", globals())
 
 ferie_sheet_id = st.secrets["FERIE_GSHEET_ID"]
+
+# --- Calendario ferie: costanti e helper ---
+_PALETTE_CALENDARIO = ["#4C6EF5", "#12B886", "#F59F00", "#E64980", "#7048E8",
+                       "#15AABF", "#FA5252", "#82C91E", "#228BE6", "#F76707"]
+_GIORNI_IT = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"]
+_MESI_IT = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"]
+
+def _colore_per_nome(nome):
+    # Colore stabile per dipendente (basato sul nome, non su hash() di Python
+    # che cambia ad ogni riavvio del processo) -- così i colori restano coerenti nel tempo
+    h = int(hashlib.md5(nome.encode("utf-8")).hexdigest(), 16)
+    return _PALETTE_CALENDARIO[h % len(_PALETTE_CALENDARIO)]
+
+def build_calendario_ferie_html(df_storico):
+    """Genera un calendario HTML/CSS minimale di 2 settimane (questa + prossima)
+    con le assenze di ogni dipendente evidenziate giorno per giorno."""
+    oggi = datetime.now().date()
+    inizio_settimana = oggi - timedelta(days=oggi.weekday())
+    giorni_totali = [inizio_settimana + timedelta(days=i) for i in range(14)]
+
+    assenze_per_giorno = {g: [] for g in giorni_totali}
+    if not df_storico.empty:
+        for _, riga in df_storico.iterrows():
+            try:
+                # Stesso parsing tollerante usato altrove: accetta sia 'gg-mm-aaaa' che 'gg/mm/aaaa'
+                inizio_f = pd.to_datetime(riga['DATA INIZIO'], dayfirst=True, errors='raise').date()
+                fine_f = pd.to_datetime(riga['DATA FINE'], dayfirst=True, errors='raise').date()
+            except Exception:
+                continue
+            for g in giorni_totali:
+                if inizio_f <= g <= fine_f:
+                    assenze_per_giorno[g].append(riga['NOME'])
+
+    parts = ['<div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif;">']
+
+    for settimana_idx in range(2):
+        settimana_giorni = giorni_totali[settimana_idx * 7:(settimana_idx + 1) * 7]
+        label = "Questa settimana" if settimana_idx == 0 else "Prossima settimana"
+        margine_top = "0" if settimana_idx == 0 else "20px"
+        parts.append(
+            f'<div style="font-size:12px; font-weight:700; color:#868e96; '
+            f'text-transform:uppercase; letter-spacing:0.6px; margin:{margine_top} 0 8px 2px;">{label}</div>'
+        )
+        parts.append('<div style="overflow-x:auto;">')
+        parts.append('<div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px; min-width:600px;">')
+
+        for g in settimana_giorni:
+            is_oggi = (g == oggi)
+            is_weekend = g.weekday() >= 5
+            nomi = assenze_per_giorno[g]
+
+            bg = "#EEF2FF" if is_oggi else ("#FAFAFA" if is_weekend else "#FFFFFF")
+            border = "2px solid #4C6EF5" if is_oggi else "1px solid #ECECEC"
+
+            chips = ""
+            for nome in nomi:
+                colore = _colore_per_nome(nome)
+                primo_nome = str(nome).split()[0] if nome else "?"
+                chips += (
+                    f'<div title="{nome}" style="background:{colore}22; color:{colore}; '
+                    f'border:1px solid {colore}55; border-radius:6px; padding:2px 6px; '
+                    f'font-size:11px; font-weight:600; margin-top:4px; white-space:nowrap; '
+                    f'overflow:hidden; text-overflow:ellipsis;">{primo_nome}</div>'
+                )
+
+            giorno_label = _GIORNI_IT[g.weekday()]
+            mese_label = f" {_MESI_IT[g.month - 1]}" if (g.day == 1 or g == giorni_totali[0]) else ""
+
+            parts.append(
+                f'<div style="background:{bg}; border:{border}; border-radius:10px; padding:8px; min-height:76px;">'
+                f'<div style="font-size:10px; color:#adb5bd; font-weight:700; text-transform:uppercase;">{giorno_label}</div>'
+                f'<div style="font-size:15px; font-weight:700; color:#333;">{g.day}{mese_label}</div>'
+                f'{chips}'
+                f'</div>'
+            )
+
+        parts.append('</div></div>')
+
+    parts.append('</div>')
+    return "".join(parts)
 
 def dettaglio_dipendente(nome):
   lista = get_dipendenti()
