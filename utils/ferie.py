@@ -2,7 +2,8 @@ import streamlit as st
 import gspread
 import holidays
 import hashlib
-from datetime import datetime, timedelta
+import calendar as _calendar_mod
+from datetime import datetime, timedelta, date
 
 from utils import *
 
@@ -15,6 +16,8 @@ _PALETTE_CALENDARIO = ["#4C6EF5", "#12B886", "#F59F00", "#E64980", "#7048E8",
                        "#15AABF", "#FA5252", "#82C91E", "#228BE6", "#F76707"]
 _GIORNI_IT = ["Lun", "Mar", "Mer", "Gio", "Ven", "Sab", "Dom"]
 _MESI_IT = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic"]
+_MESI_IT_LUNGO = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
+                  "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
 
 def _colore_per_nome(nome):
     # Colore stabile per dipendente (basato sul nome, non su hash() di Python
@@ -22,25 +25,39 @@ def _colore_per_nome(nome):
     h = int(hashlib.md5(nome.encode("utf-8")).hexdigest(), 16)
     return _PALETTE_CALENDARIO[h % len(_PALETTE_CALENDARIO)]
 
+def _assenze_nel_periodo(df_storico, giorni):
+    """Calcola, per ogni giorno della lista, quali dipendenti sono assenti."""
+    assenze = {g: [] for g in giorni}
+    if not df_storico.empty:
+        for _, riga in df_storico.iterrows():
+            try:
+                # Parsing tollerante: accetta sia 'gg-mm-aaaa' che 'gg/mm/aaaa'
+                inizio_f = pd.to_datetime(riga['DATA INIZIO'], dayfirst=True, errors='raise').date()
+                fine_f = pd.to_datetime(riga['DATA FINE'], dayfirst=True, errors='raise').date()
+            except Exception:
+                continue
+            for g in giorni:
+                if inizio_f <= g <= fine_f:
+                    assenze[g].append(riga['NOME'])
+    return assenze
+
+def _chip_html(nome, opacity="1"):
+    colore = _colore_per_nome(nome)
+    primo_nome = str(nome).split()[0] if nome else "?"
+    return (
+        f'<div title="{nome}" style="background:{colore}22; color:{colore}; '
+        f'border:1px solid {colore}55; border-radius:6px; padding:2px 6px; '
+        f'font-size:11px; font-weight:600; margin-top:4px; white-space:nowrap; '
+        f'overflow:hidden; text-overflow:ellipsis; opacity:{opacity};">{primo_nome}</div>'
+    )
+
 def build_calendario_ferie_html(df_storico):
     """Genera un calendario HTML/CSS minimale di 2 settimane (questa + prossima)
     con le assenze di ogni dipendente evidenziate giorno per giorno."""
     oggi = datetime.now().date()
     inizio_settimana = oggi - timedelta(days=oggi.weekday())
     giorni_totali = [inizio_settimana + timedelta(days=i) for i in range(14)]
-
-    assenze_per_giorno = {g: [] for g in giorni_totali}
-    if not df_storico.empty:
-        for _, riga in df_storico.iterrows():
-            try:
-                # Stesso parsing tollerante usato altrove: accetta sia 'gg-mm-aaaa' che 'gg/mm/aaaa'
-                inizio_f = pd.to_datetime(riga['DATA INIZIO'], dayfirst=True, errors='raise').date()
-                fine_f = pd.to_datetime(riga['DATA FINE'], dayfirst=True, errors='raise').date()
-            except Exception:
-                continue
-            for g in giorni_totali:
-                if inizio_f <= g <= fine_f:
-                    assenze_per_giorno[g].append(riga['NOME'])
+    assenze_per_giorno = _assenze_nel_periodo(df_storico, giorni_totali)
 
     parts = ['<div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif;">']
 
@@ -62,17 +79,7 @@ def build_calendario_ferie_html(df_storico):
 
             bg = "#EEF2FF" if is_oggi else ("#FAFAFA" if is_weekend else "#FFFFFF")
             border = "2px solid #4C6EF5" if is_oggi else "1px solid #ECECEC"
-
-            chips = ""
-            for nome in nomi:
-                colore = _colore_per_nome(nome)
-                primo_nome = str(nome).split()[0] if nome else "?"
-                chips += (
-                    f'<div title="{nome}" style="background:{colore}22; color:{colore}; '
-                    f'border:1px solid {colore}55; border-radius:6px; padding:2px 6px; '
-                    f'font-size:11px; font-weight:600; margin-top:4px; white-space:nowrap; '
-                    f'overflow:hidden; text-overflow:ellipsis;">{primo_nome}</div>'
-                )
+            chips = "".join(_chip_html(nome) for nome in nomi)
 
             giorno_label = _GIORNI_IT[g.weekday()]
             mese_label = f" {_MESI_IT[g.month - 1]}" if (g.day == 1 or g == giorni_totali[0]) else ""
@@ -87,6 +94,69 @@ def build_calendario_ferie_html(df_storico):
 
         parts.append('</div></div>')
 
+    parts.append('</div>')
+    return "".join(parts)
+
+def build_calendario_mensile_html(df_storico, anno, mese):
+    """Genera un calendario mensile completo (stile 'vero calendario', Lun-Dom),
+    con i giorni del mese precedente/successivo mostrati sfumati per riempire la griglia."""
+    oggi = datetime.now().date()
+    primo_giorno = date(anno, mese, 1)
+    ultimo_giorno_num = _calendar_mod.monthrange(anno, mese)[1]
+    ultimo_giorno = date(anno, mese, ultimo_giorno_num)
+
+    inizio_griglia = primo_giorno - timedelta(days=primo_giorno.weekday())
+    fine_griglia = ultimo_giorno + timedelta(days=(6 - ultimo_giorno.weekday()))
+
+    giorni_totali = []
+    g = inizio_griglia
+    while g <= fine_griglia:
+        giorni_totali.append(g)
+        g += timedelta(days=1)
+
+    assenze_per_giorno = _assenze_nel_periodo(df_storico, giorni_totali)
+
+    parts = ['<div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif;">']
+
+    # Intestazione giorni della settimana
+    parts.append('<div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px; margin-bottom:6px; min-width:600px;">')
+    for gi in _GIORNI_IT:
+        parts.append(
+            f'<div style="font-size:11px; font-weight:700; color:#adb5bd; '
+            f'text-transform:uppercase; text-align:center;">{gi}</div>'
+        )
+    parts.append('</div>')
+
+    parts.append('<div style="overflow-x:auto;">')
+    parts.append('<div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px; min-width:600px;">')
+
+    for g in giorni_totali:
+        is_oggi = (g == oggi)
+        is_weekend = g.weekday() >= 5
+        fuori_mese = (g.month != mese)
+        nomi = assenze_per_giorno[g]
+
+        if fuori_mese:
+            bg = "#FAFCFF" if is_oggi else "#FAFAFA"
+            border = "1px solid #F1F1F1"
+            colore_numero = "#c9c9c9"
+            opacity_chip = "0.5"
+        else:
+            bg = "#EEF2FF" if is_oggi else ("#FAFAFA" if is_weekend else "#FFFFFF")
+            border = "2px solid #4C6EF5" if is_oggi else "1px solid #ECECEC"
+            colore_numero = "#333"
+            opacity_chip = "1"
+
+        chips = "".join(_chip_html(nome, opacity_chip) for nome in nomi)
+
+        parts.append(
+            f'<div style="background:{bg}; border:{border}; border-radius:10px; padding:8px; min-height:76px;">'
+            f'<div style="font-size:15px; font-weight:700; color:{colore_numero};">{g.day}</div>'
+            f'{chips}'
+            f'</div>'
+        )
+
+    parts.append('</div></div>')
     parts.append('</div>')
     return "".join(parts)
 
