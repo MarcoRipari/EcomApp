@@ -14,43 +14,9 @@ def ferie():
     # 2. Recupero i dati grezzi delle ferie solo per la sezione "In ferie questa settimana" e il "Dettaglio"
     df_storico = get_ferie_storico()  # 🔧 ora cachata: prima veniva riletta ad ogni interazione sulla pagina
 
-    # --- SEZIONE 1: CHI È IN FERIE QUESTA SETTIMANA ---
-    st.subheader("📅 In ferie questa settimana")
-    oggi = datetime.now().date()
-    inizio_settimana = oggi - timedelta(days=oggi.weekday())
-    fine_settimana = inizio_settimana + timedelta(days=6)
-    st.info(f"Settimana dal **{inizio_settimana.strftime('%d/%m')}** al **{fine_settimana.strftime('%d/%m')}**")
-
-    chi_e_in_ferie = []
-    if not df_storico.empty:
-        for _, riga in df_storico.iterrows():
-            try:
-                # 🔧 FIX: prima si accettava solo il formato 'gg-mm-aaaa'. add_ferie()
-                # gestisce già righe storiche con 'gg/mm/aaaa' (slash), ma qui venivano
-                # silenziosamente saltate (except: continue) senza alcun avviso,
-                # facendo sparire quel dipendente dal riepilogo settimanale.
-                inizio_f = pd.to_datetime(riga['DATA INIZIO'], dayfirst=True, errors='raise').date()
-                fine_f = pd.to_datetime(riga['DATA FINE'], dayfirst=True, errors='raise').date()
-                if inizio_f <= fine_settimana and fine_f >= inizio_settimana:
-                    assente_oggi = inizio_f <= oggi <= fine_f
-                    chi_e_in_ferie.append({
-                        "Dipendente": riga['NOME'],
-                        "Dal": inizio_f.strftime('%d/%m'),
-                        "Al": fine_f.strftime('%d/%m'),
-                        "Oggi": assente_oggi
-                    })
-            except: continue
-
-    if chi_e_in_ferie:
-        cols_sett = st.columns(len(chi_e_in_ferie) if len(chi_e_in_ferie) < 4 else 4)
-        for i, assenza in enumerate(chi_e_in_ferie):
-            with cols_sett[i % 4]:
-                if assenza['Oggi']:
-                    st.error(f"🔴 **{assenza['Dipendente']}**\n\nAssente oggi\n\n{assenza['Dal']} ➡️ {assenza['Al']}")
-                else:
-                    st.warning(f"🟡 **{assenza['Dipendente']}**\n\n{assenza['Dal']} ➡️ {assenza['Al']}")
-    else:
-        st.write("✅ Nessuno è in ferie questa settimana.")
+    # --- SEZIONE 1: CALENDARIO FERIE (questa settimana + prossima) ---
+    st.subheader("📅 Chi è in ferie")
+    st.markdown(build_calendario_ferie_html(df_storico), unsafe_allow_html=True)
 
     st.divider()
 
