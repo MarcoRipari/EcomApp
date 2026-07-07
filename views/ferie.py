@@ -7,6 +7,48 @@ from utils import *
 
 load_functions_from("functions", globals())
 
+def calendario_ferie_mensile():
+    st.subheader("🗓️ Calendario Ferie")
+
+    oggi = datetime.now().date()
+    if "cal_ferie_anno" not in st.session_state:
+        st.session_state.cal_ferie_anno = oggi.year
+        st.session_state.cal_ferie_mese = oggi.month
+
+    col_prev, col_titolo, col_oggi, col_next = st.columns([1, 4, 1, 1])
+    with col_prev:
+        if st.button("◀", use_container_width=True, key="cal_ferie_prev"):
+            m = st.session_state.cal_ferie_mese - 1
+            a = st.session_state.cal_ferie_anno
+            if m < 1:
+                m = 12
+                a -= 1
+            st.session_state.cal_ferie_mese = m
+            st.session_state.cal_ferie_anno = a
+            st.rerun()
+    with col_titolo:
+        titolo = f"{_MESI_IT_LUNGO[st.session_state.cal_ferie_mese - 1]} {st.session_state.cal_ferie_anno}"
+        st.markdown(f"<h3 style='text-align:center; margin:4px 0;'>{titolo}</h3>", unsafe_allow_html=True)
+    with col_oggi:
+        if st.button("Oggi", use_container_width=True, key="cal_ferie_oggi"):
+            st.session_state.cal_ferie_anno = oggi.year
+            st.session_state.cal_ferie_mese = oggi.month
+            st.rerun()
+    with col_next:
+        if st.button("▶", use_container_width=True, key="cal_ferie_next"):
+            m = st.session_state.cal_ferie_mese + 1
+            a = st.session_state.cal_ferie_anno
+            if m > 12:
+                m = 1
+                a += 1
+            st.session_state.cal_ferie_mese = m
+            st.session_state.cal_ferie_anno = a
+            st.rerun()
+
+    df_storico = get_ferie_storico()
+    html = build_calendario_mensile_html(df_storico, st.session_state.cal_ferie_anno, st.session_state.cal_ferie_mese)
+    st.markdown(html, unsafe_allow_html=True)
+
 def ferie():
     # 1. Recupero l'anagrafica che ha già i calcoli (NOME, TOTALE, FATTE, RESIDUO)
     df_dipendenti = get_dipendenti() 
