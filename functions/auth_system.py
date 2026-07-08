@@ -23,6 +23,7 @@ def login(username: str, password: str) -> bool:
         res_user = supabase_admin.auth.admin.get_user_by_id(user_id)
         email = res_user.user.email
         output1 = res_user
+        output2 = email
         if not email:
             st.error("❌ Nessuna email trovata per questo utente")
             return False
