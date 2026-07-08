@@ -62,26 +62,34 @@ def ferie():
 
     st.divider()
 
-    # --- SEZIONE 2: RIEPILOGO DISPONIBILITÀ (Utilizzando i dati già pronti) ---
+    # --- SEZIONE 2: RIEPILOGO DISPONIBILITÀ (anno corrente, con riporto residuo anno precedente) ---
     st.subheader("📊 Riepilogo Disponibilità")
+    st.caption(f"Anno {datetime.now().year} — include il riporto del residuo (positivo o negativo) dell'anno precedente")
     cols = st.columns(3)
 
-    # Usiamo itertuples per scorrere i dati pronti dal foglio Dipendenti
+    anno_corrente = datetime.now().year
     for i, dip in enumerate(df_dipendenti.itertuples(index=False)):
-        # Recuperiamo i valori dalle colonne esistenti
-        fatte = float(dip.FATTE)
-        totale = float(dip.TOTALE)
-        residuo = float(dip.RESIDUO)
-        
-        percentuale = min(fatte / totale, 1.0) if totale > 0 else 0
+        riepilogo = calcola_riepilogo_ferie_annuale(df_storico, dip.NOME, dip.TOTALE)
+        dati_anno = riepilogo[anno_corrente]
+        usati = dati_anno["usati"]
+        disponibili = dati_anno["disponibili"]
+        residuo = dati_anno["residuo"]
+
+        # 🔧 Il residuo ora può includere il riporto dell'anno precedente e può
+        # andare in negativo (dipendente che ha usato più ferie di quante ne
+        # avesse a disposizione, es. per permessi orari). La barra di progresso
+        # non può visualizzare valori negativi, quindi la blocchiamo a 0 e
+        # mostriamo il colore rosso + il numero negativo reale nel testo.
+        percentuale = min(usati / disponibili, 1.0) if disponibili > 0 else 1.0
+        percentuale = max(percentuale, 0.0)
         colore_residuo = "red" if residuo < 5 else "#31333F"
 
         with cols[i % 3]:
             st.markdown(f"""
                 <div style="border: 1px solid #e6e9ef; padding: 20px; border-radius: 10px; background-color: #f9f9f9; height: 150px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
                     <h3 style="margin-top:0; color:#1E88E5; font-size: 18px;">{dip.NOME}</h3>
-                    <p style="margin-bottom:5px; font-size:14px; color: #555;">Godute: <b>{int(fatte)} gg</b> / {int(totale)}</p>
-                    <p style="color:{colore_residuo}; font-size:16px;">Residuo: <b>{int(residuo)} gg</b></p>
+                    <p style="margin-bottom:5px; font-size:14px; color: #555;">Godute: <b>{usati:g} gg</b> / {disponibili:g} disponibili</p>
+                    <p style="color:{colore_residuo}; font-size:16px;">Residuo: <b>{residuo:g} gg</b></p>
                 </div>
             """, unsafe_allow_html=True)
             st.progress(percentuale)
@@ -179,24 +187,41 @@ def ferie():
                 use_container_width=True
             )
 
-        # Riepilogo professionale usando i dati dell'anagrafica
+        # Riepilogo professionale usando il nuovo calcolo annuale con riporto
         info_dip = df_dipendenti[df_dipendenti['NOME'] == dipendente_scelto].iloc[0]
+        riepilogo_anni = calcola_riepilogo_ferie_annuale(df_storico, dipendente_scelto, info_dip.TOTALE)
+        anno_corrente = datetime.now().year
+        dati_anno_corrente = riepilogo_anni[anno_corrente]
 
+        # --- Recap veloce anni precedenti (solo un riassunto, niente dettaglio riga per riga) ---
+        anni_precedenti = sorted([a for a in riepilogo_anni if a < anno_corrente], reverse=True)
+        if anni_precedenti:
+            with st.expander("📜 Storico anni precedenti"):
+                for anno_prec in anni_precedenti:
+                    dati = riepilogo_anni[anno_prec]
+                    colore = "red" if dati["residuo"] < 0 else "#555"
+                    st.markdown(
+                        f"**{anno_prec}**: Usati {dati['usati']:g} gg &nbsp;|&nbsp; "
+                        f"Residuo fine anno: <span style='color:{colore};'>{dati['residuo']:g} gg</span>",
+                        unsafe_allow_html=True
+                    )
+
+        colore_residuo_card = "#d32f2f" if dati_anno_corrente["residuo"] < 0 else "#1E88E5"
         st.markdown(f"""
             <div style="background-color: #f0f7ff; border-left: 5px solid #1E88E5; padding: 15px; border-radius: 5px; margin-top: 20px;">
-                <h4 style="margin-top: 0; color: #1E88E5;">📋 Riepilogo {dipendente_scelto}</h4>
+                <h4 style="margin-top: 0; color: #1E88E5;">📋 Riepilogo {dipendente_scelto} — {anno_corrente}</h4>
                 <table style="width: 100%; border-collapse: collapse;">
                     <tr>
-                        <td style="padding: 5px 0;"><b>Giorni Totali Annui:</b></td>
-                        <td style="text-align: right;">{info_dip.TOTALE:g} gg</td>
+                        <td style="padding: 5px 0;"><b>Giorni Annui + Riporto:</b></td>
+                        <td style="text-align: right;">{dati_anno_corrente['disponibili']:g} gg</td>
                     </tr>
                     <tr>
-                        <td style="padding: 5px 0;"><b>Giorni Goduti:</b></td>
-                        <td style="text-align: right;">{info_dip.FATTE:g} gg</td>
+                        <td style="padding: 5px 0;"><b>Giorni Goduti (anno corrente):</b></td>
+                        <td style="text-align: right;">{dati_anno_corrente['usati']:g} gg</td>
                     </tr>
                     <tr style="border-top: 1px solid #ccc;">
-                        <td style="padding: 10px 0;"><b><span style="color: #d32f2f;">Residuo Attuale:</span></b></td>
-                        <td style="text-align: right; font-size: 1.2em; color: #d32f2f;"><b>{info_dip.RESIDUO:g} gg</b></td>
+                        <td style="padding: 10px 0;"><b><span style="color: {colore_residuo_card};">Residuo Attuale:</span></b></td>
+                        <td style="text-align: right; font-size: 1.2em; color: {colore_residuo_card};"><b>{dati_anno_corrente['residuo']:g} gg</b></td>
                     </tr>
                 </table>
             </div>
@@ -208,48 +233,112 @@ def aggiungi_ferie():
   dipendenti = get_dipendenti()
   nomi_dipendenti = dipendenti['NOME'].tolist()
 
+  modalita = st.radio(
+      "Tipo di inserimento",
+      ["Giorno intero", "Entrata posticipata / Uscita anticipata"],
+      horizontal=True
+  )
+
   nome = st.selectbox("Nome Dipendente", options=nomi_dipendenti)
 
-  col1, col2 = st.columns(2)
-  with col1:
-      data_inizio = st.date_input("Data inizio", format="DD/MM/YYYY")
-  with col2:
-      data_fine = st.date_input("Data fine", format="DD/MM/YYYY")
+  if modalita == "Giorno intero":
+      col1, col2 = st.columns(2)
+      with col1:
+          data_inizio = st.date_input("Data inizio", format="DD/MM/YYYY")
+      with col2:
+          data_fine = st.date_input("Data fine", format="DD/MM/YYYY")
 
-  if data_inizio <= data_fine:
-      sovrapposizioni = check_overlaps(data_inizio, data_fine, escludi_nome=nome)
-      if sovrapposizioni:
-          st.warning(f"⚠️ **Attenzione:** Nelle date selezionate sono già in ferie: {', '.join(sovrapposizioni)}")
+      if data_inizio <= data_fine:
+          sovrapposizioni = check_overlaps(data_inizio, data_fine, escludi_nome=nome)
+          if sovrapposizioni:
+              st.warning(f"⚠️ **Attenzione:** Nelle date selezionate sono già in ferie: {', '.join(sovrapposizioni)}")
 
-  tipo = st.selectbox("Tipo di assenza", ["Ferie", "Malattia", "Permesso", "Altro"])
+      tipo = st.selectbox("Tipo di assenza", ["Ferie", "Malattia", "Permesso", "Altro"])
 
-  if st.button("Inserisci ferie"):
-    
-    if not nome:
-      st.error("Il campo 'Nome' è obbligatorio.")
-    elif tipo == "":
-      st.error("Seleziona un 'Tipo' di assenza.")
-    elif data_fine < data_inizio:
-      st.error("Errore: la data di fine non può essere precedente alla data di inizio.")
-    else:
-      nuova_riga = [nome, data_inizio.strftime('%d-%m-%Y'), data_fine.strftime('%d-%m-%Y'), tipo]
-      upload = add_ferie(nuova_riga)
-      if upload is True:
-        st.success("Ferie inserite con successo!")
-        st.rerun()
+      if st.button("Inserisci ferie"):
+        if not nome:
+          st.error("Il campo 'Nome' è obbligatorio.")
+        elif tipo == "":
+          st.error("Seleziona un 'Tipo' di assenza.")
+        elif data_fine < data_inizio:
+          st.error("Errore: la data di fine non può essere precedente alla data di inizio.")
+        else:
+          nuova_riga = [nome, data_inizio.strftime('%d-%m-%Y'), data_fine.strftime('%d-%m-%Y'), tipo]
+          upload = add_ferie(nuova_riga)
+          if upload is True:
+            st.success("Ferie inserite con successo!")
+            st.rerun()
+          else:
+            st.error(f"{upload}")
+
+  else:
+      # --- Permesso orario: ritardo in entrata e/o uscita anticipata ---
+      riga_dip = dipendenti[dipendenti['NOME'] == nome].iloc[0]
+      orario = get_orario_dipendente(riga_dip)
+      ore_previste = ore_giornaliere_previste(orario)
+
+      st.caption(
+          f"Orario previsto per **{nome}**: "
+          f"{orario['mattina_inizio'].strftime('%H:%M')}–{orario['mattina_fine'].strftime('%H:%M')} / "
+          f"{orario['pomeriggio_inizio'].strftime('%H:%M')}–{orario['pomeriggio_fine'].strftime('%H:%M')} "
+          f"({ore_previste:g} ore/giorno). Modificabile in 'Gestione dipendenti'."
+      )
+
+      data_giorno = st.date_input("Data", format="DD/MM/YYYY", key="data_permesso_orario")
+
+      col1, col2 = st.columns(2)
+      with col1:
+          entrata_effettiva = st.time_input("Orario di entrata effettivo", value=orario["mattina_inizio"])
+      with col2:
+          uscita_effettiva = st.time_input("Orario di uscita effettivo", value=orario["pomeriggio_fine"])
+
+      frazione_anteprima = calcola_giorni_da_permesso_orario(orario, entrata_effettiva, uscita_effettiva)
+      if frazione_anteprima > 0:
+          st.info(f"Verranno sottratti **{frazione_anteprima:g} giorni** dal monte ferie di {nome}.")
       else:
-        st.error(f"{upload}")
+          st.caption("Nessuna ora mancante rispetto all'orario previsto.")
 
-@st.dialog("Modifica Budget Dipendente")
-def modifica_ferie_totali_modal(nome, ferie_attuale):
-    st.write(f"Modifica i giorni totali per: **{nome}**")
+      if st.button("Inserisci permesso orario"):
+          if not nome:
+              st.error("Il campo 'Nome' è obbligatorio.")
+          else:
+              esito = add_permesso_orario(nome, data_giorno, orario, entrata_effettiva, uscita_effettiva)
+              if esito is True:
+                  st.success("Permesso orario registrato con successo!")
+                  st.rerun()
+              else:
+                  st.warning(esito) if isinstance(esito, str) and esito.startswith("⚠️") else st.error(esito)
+
+@st.dialog("Modifica Dipendente")
+def modifica_ferie_totali_modal(nome, ferie_attuale, orario_attuale):
+    st.write(f"Stai modificando i dati per: **{nome}**")
     nuovo_budget = st.number_input("Giorni totali annui", value=int(ferie_attuale), min_value=0)
-    
+
+    st.markdown("**Orario di lavoro personale**")
+    col1, col2 = st.columns(2)
+    with col1:
+        mattina_inizio = st.time_input("Mattina - inizio", value=orario_attuale["mattina_inizio"])
+        pomeriggio_inizio = st.time_input("Pomeriggio - inizio", value=orario_attuale["pomeriggio_inizio"])
+    with col2:
+        mattina_fine = st.time_input("Mattina - fine", value=orario_attuale["mattina_fine"])
+        pomeriggio_fine = st.time_input("Pomeriggio - fine", value=orario_attuale["pomeriggio_fine"])
+
     if st.button("Salva Modifiche"):
-        if update_dipendente_budget(nome, nuovo_budget):
-            st.success(f"Ferie totali aggiornate per {nome}!")
-            st.rerun() # Ricarica l'app per vedere i nuovi dati
-      
+        ok_budget = update_dipendente_budget(nome, nuovo_budget)
+        ok_orario = update_orario_dipendente(nome, {
+            "mattina_inizio": mattina_inizio.strftime("%H:%M"),
+            "mattina_fine": mattina_fine.strftime("%H:%M"),
+            "pomeriggio_inizio": pomeriggio_inizio.strftime("%H:%M"),
+            "pomeriggio_fine": pomeriggio_fine.strftime("%H:%M"),
+        })
+        # 🔧 Se le colonne orario non esistono ancora sul foglio, update_orario_dipendente
+        # mostra già un errore chiaro (con i nomi delle colonne mancanti). In quel caso
+        # non nascondiamo comunque il successo del salvataggio del budget.
+        if ok_budget:
+            st.success(f"Dati aggiornati per {nome}!" if ok_orario else f"Budget aggiornato per {nome} (orario non salvato, vedi errore sopra).")
+        if ok_budget or ok_orario:
+            st.rerun()
+
 def gestione_dipendenti():
   st.header("Gestione dipendenti")
   dipendenti = get_dipendenti()
@@ -259,6 +348,11 @@ def gestione_dipendenti():
   # Cicliamo sulla lista anagrafica completa
   for i, dipendente in enumerate(dipendenti.itertuples(index=False)):
         with cols[i % 3]:
+            orario_dip = get_orario_dipendente(dipendenti[dipendenti['NOME'] == dipendente.NOME].iloc[0])
+            orario_label = (
+                f"{orario_dip['mattina_inizio'].strftime('%H:%M')}–{orario_dip['mattina_fine'].strftime('%H:%M')} / "
+                f"{orario_dip['pomeriggio_inizio'].strftime('%H:%M')}–{orario_dip['pomeriggio_fine'].strftime('%H:%M')}"
+            )
             # Visualizzazione Card
             st.markdown(f"""
                 <div style="
@@ -267,14 +361,15 @@ def gestione_dipendenti():
                     border-radius: 10px; 
                     background-color: #f9f9f9;
                     margin-bottom: 5px;
-                    height: 120px;
+                    height: 140px;
                     box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
                     <h3 style="margin-top:0; color:#1E88E5; font-size: 18px;">{dipendente.NOME}</h3>
-                    <p style="margin-bottom:5px; font-size:14px; color: #555;">Totale: <b>{dipendente.TOTALE} gg</b></p>
+                    <p style="margin-bottom:3px; font-size:14px; color: #555;">Totale annuo: <b>{dipendente.TOTALE} gg</b></p>
+                    <p style="margin-bottom:0; font-size:12px; color: #888;">🕐 {orario_label}</p>
                 </div>
             """, unsafe_allow_html=True)
             
             # Pulsante Modifica con icona
             # Usiamo una chiave unica (key) basata sul nome per distinguere i bottoni
             if st.button(f"📝 Modifica {dipendente.NOME}", key=f"edit_{dipendente.NOME}", use_container_width=True):
-                modifica_ferie_totali_modal(dipendente.NOME, dipendente.TOTALE)
+                modifica_ferie_totali_modal(dipendente.NOME, dipendente.TOTALE, orario_dip)
