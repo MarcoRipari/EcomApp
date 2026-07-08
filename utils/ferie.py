@@ -225,13 +225,13 @@ def add_permesso_orario(nome, data_giorno, orario_dipendente, entrata_effettiva,
     (TIPO='Ferie' con GIORNI LAVORATIVI frazionario), così rientra
     automaticamente nel conteggio annuale del monte ferie."""
     frazione_giorno = calcola_giorni_da_permesso_orario(orario_dipendente, entrata_effettiva, uscita_effettiva)
-    
+    frazione_formattata = "{:.2f}".format(round(frazione_giorno, 2))
     if frazione_giorno <= 0:
         return "⚠️ Nessuna ora mancante rispetto all'orario previsto: nulla da registrare."
 
     sheet = get_sheet(ferie_sheet_id, "FERIE")
     riga_da_salvare = [nome, data_giorno.strftime('%d-%m-%Y'), data_giorno.strftime('%d-%m-%Y'),
-                       "Ferie", round(frazione_giorno, 2)]
+                       "Ferie", frazione_formattata]
     try:
         sheet.append_row(riga_da_salvare, value_input_option='RAW')
         get_ferie_storico.clear()
