@@ -57,11 +57,13 @@ def login(username: str, password: str) -> bool:
 
       
 def login_password(email: str, password: str) -> bool:
+    output = 1
     try:
         res = supabase.auth.sign_in_with_password({
             "email": email,
             "password": password
         })
+        output = res
         if res.user is not None:
            
             # Recupera il profilo dell'utente usando user_id
@@ -87,7 +89,7 @@ def login_password(email: str, password: str) -> bool:
             st.error("❌ Email o password errati")
             return False
     except Exception as e:
-        st.write(res)
+        st.write(output)
         st.error(f"Errore login: {e}")
         return False
 
