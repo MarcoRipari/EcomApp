@@ -166,6 +166,152 @@ def dettaglio_dipendente(nome):
   dettaglio['TOTALE'] = pd.to_numeric(dettaglio['TOTALE'], errors='coerce')
   return dettaglio
 
+# --- Orari personalizzati e permessi orari (ritardi/uscite anticipate) ---
+# 🆕 Il foglio DIPENDENTI deve avere queste 4 colonne aggiuntive (testo 'HH:MM',
+# es. '08:00'): MATTINA INIZIO, MATTINA FINE, POMERIGGIO INIZIO, POMERIGGIO FINE.
+# Se mancano, si usa un orario standard di default (08:00-12:00 / 14:00-18:00)
+# così l'app non si rompe finché non le aggiungi manualmente su Google Sheets.
+ORARIO_DEFAULT = {"mattina_inizio": "08:00", "mattina_fine": "12:00",
+                   "pomeriggio_inizio": "14:00", "pomeriggio_fine": "18:00"}
+_DATA_RIF_ORARIO = date(2000, 1, 1)
+
+def _parse_ora(valore, default_str):
+    try:
+        return datetime.strptime(str(valore).strip(), "%H:%M").time()
+    except Exception:
+        return datetime.strptime(default_str, "%H:%M").time()
+
+def get_orario_dipendente(row_dipendente):
+    """Estrae l'orario personale di un dipendente dalla sua riga anagrafica
+    (accetta una pandas Series, es. da df.iloc[0]), con fallback sull'orario
+    standard se le colonne non sono ancora presenti nel foglio DIPENDENTI."""
+    getter = row_dipendente.get if hasattr(row_dipendente, "get") else (lambda k, d=None: getattr(row_dipendente, k, d))
+    return {
+        "mattina_inizio": _parse_ora(getter("MATTINA INIZIO", None), ORARIO_DEFAULT["mattina_inizio"]),
+        "mattina_fine": _parse_ora(getter("MATTINA FINE", None), ORARIO_DEFAULT["mattina_fine"]),
+        "pomeriggio_inizio": _parse_ora(getter("POMERIGGIO INIZIO", None), ORARIO_DEFAULT["pomeriggio_inizio"]),
+        "pomeriggio_fine": _parse_ora(getter("POMERIGGIO FINE", None), ORARIO_DEFAULT["pomeriggio_fine"]),
+    }
+
+def ore_giornaliere_previste(orario):
+    mattina = datetime.combine(_DATA_RIF_ORARIO, orario["mattina_fine"]) - datetime.combine(_DATA_RIF_ORARIO, orario["mattina_inizio"])
+    pomeriggio = datetime.combine(_DATA_RIF_ORARIO, orario["pomeriggio_fine"]) - datetime.combine(_DATA_RIF_ORARIO, orario["pomeriggio_inizio"])
+    return (mattina.total_seconds() + pomeriggio.total_seconds()) / 3600
+
+def calcola_giorni_da_permesso_orario(orario, entrata_effettiva, uscita_effettiva):
+    """Calcola la frazione di giorno di ferie consumata per un ritardo in
+    entrata e/o un'uscita anticipata in una singola giornata, rispetto
+    all'orario personale (mattina/pomeriggio) del dipendente."""
+    def _dt(t):
+        return datetime.combine(_DATA_RIF_ORARIO, t)
+
+    ore_previste = ore_giornaliere_previste(orario)
+    if ore_previste <= 0:
+        return 0.0
+
+    inizio_mattina_eff = max(_dt(entrata_effettiva), _dt(orario["mattina_inizio"]))
+    fine_mattina = _dt(orario["mattina_fine"])
+    ore_mattina = max(0.0, (fine_mattina - inizio_mattina_eff).total_seconds() / 3600) if inizio_mattina_eff < fine_mattina else 0.0
+
+    inizio_pom = _dt(orario["pomeriggio_inizio"])
+    fine_pom_eff = min(_dt(uscita_effettiva), _dt(orario["pomeriggio_fine"]))
+    ore_pomeriggio = max(0.0, (fine_pom_eff - inizio_pom).total_seconds() / 3600) if fine_pom_eff > inizio_pom else 0.0
+
+    ore_mancanti = max(0.0, ore_previste - (ore_mattina + ore_pomeriggio))
+    return round(ore_mancanti / ore_previste, 4)
+
+def add_permesso_orario(nome, data_giorno, orario_dipendente, entrata_effettiva, uscita_effettiva):
+    """Registra un ritardo/uscita anticipata come frazione di giorno di ferie
+    (TIPO='Ferie' con GIORNI LAVORATIVI frazionario), così rientra
+    automaticamente nel conteggio annuale del monte ferie."""
+    frazione_giorno = calcola_giorni_da_permesso_orario(orario_dipendente, entrata_effettiva, uscita_effettiva)
+    if frazione_giorno <= 0:
+        return "⚠️ Nessuna ora mancante rispetto all'orario previsto: nulla da registrare."
+
+    sheet = get_sheet(ferie_sheet_id, "FERIE")
+    riga_da_salvare = [nome, data_giorno.strftime('%d-%m-%Y'), data_giorno.strftime('%d-%m-%Y'),
+                       "Ferie", round(frazione_giorno, 2)]
+    try:
+        sheet.append_row(riga_da_salvare)
+        get_ferie_storico.clear()
+        return True
+    except Exception as e:
+        return f"🚨 Errore salvataggio: {e}"
+
+def update_orario_dipendente(nome, orario_dict):
+    """Aggiorna l'orario personale (mattina/pomeriggio) di un dipendente.
+    Richiede che il foglio DIPENDENTI abbia le colonne MATTINA INIZIO, MATTINA
+    FINE, POMERIGGIO INIZIO, POMERIGGIO FINE (testo 'HH:MM')."""
+    sheet = get_sheet(ferie_sheet_id, "DIPENDENTI")
+    data = sheet.get_all_records()
+    df = pd.DataFrame(data)
+
+    colonne_orario = ["MATTINA INIZIO", "MATTINA FINE", "POMERIGGIO INIZIO", "POMERIGGIO FINE"]
+    mancanti = [c for c in colonne_orario if c not in df.columns]
+    if mancanti:
+        st.error(
+            "Il foglio DIPENDENTI non ha ancora le colonne per gli orari personali: "
+            f"**{', '.join(mancanti)}**. Aggiungile manualmente su Google Sheets "
+            "(una per colonna, in formato testo 'HH:MM', es. '08:00') e riprova."
+        )
+        return False
+
+    try:
+        idx = df[df['NOME'] == nome].index[0]
+        row_to_update = idx + 2
+        sheet.update_cell(row_to_update, df.columns.get_loc("MATTINA INIZIO") + 1, orario_dict["mattina_inizio"])
+        sheet.update_cell(row_to_update, df.columns.get_loc("MATTINA FINE") + 1, orario_dict["mattina_fine"])
+        sheet.update_cell(row_to_update, df.columns.get_loc("POMERIGGIO INIZIO") + 1, orario_dict["pomeriggio_inizio"])
+        sheet.update_cell(row_to_update, df.columns.get_loc("POMERIGGIO FINE") + 1, orario_dict["pomeriggio_fine"])
+        get_dipendenti.clear()
+        return True
+    except Exception as e:
+        st.error(f"Errore durante l'aggiornamento dell'orario: {e}")
+        return False
+
+# --- Monte ferie annuale con riporto residuo ---
+def calcola_riepilogo_ferie_annuale(df_storico, nome, totale_annuo):
+    """
+    Calcola, anno per anno, i giorni di ferie usati e il residuo, con riporto
+    (positivo o negativo) del residuo dell'anno precedente. Considera solo
+    TIPO=='Ferie' (i permessi orari sono salvati anch'essi come 'Ferie' con
+    GIORNI LAVORATIVI frazionario, quindi rientrano automaticamente). Malattia/
+    Permesso/Altro NON intaccano il monte ferie.
+    NOTA: assume che il budget annuo (TOTALE) sia sempre stato lo stesso nel
+    tempo; se è cambiato, il riporto degli anni precedenti al cambiamento
+    potrebbe non essere accurato.
+    Ritorna {anno: {"usati":, "disponibili":, "residuo":}} per ogni anno dal
+    primo con dati fino all'anno corrente (incluso anche senza dati).
+    """
+    oggi_anno = datetime.now().year
+    totale_annuo = float(totale_annuo) if totale_annuo not in (None, "") else 0.0
+
+    date_valide = []
+    if not df_storico.empty and 'NOME' in df_storico.columns:
+        dip_ferie = df_storico[(df_storico['NOME'] == nome) & (df_storico.get('TIPO') == 'Ferie')]
+        for _, riga in dip_ferie.iterrows():
+            try:
+                inizio_f = pd.to_datetime(riga['DATA INIZIO'], dayfirst=True, errors='raise').date()
+            except Exception:
+                continue
+            giorni_val = pd.to_numeric(riga.get('GIORNI LAVORATIVI', 0), errors='coerce')
+            date_valide.append((inizio_f.year, float(giorni_val) if pd.notna(giorni_val) else 0.0))
+
+    anni = {a for a, _ in date_valide}
+    anni.add(oggi_anno)
+    anno_min, anno_max = min(anni), max(anni)
+
+    riepilogo = {}
+    residuo_precedente = 0.0
+    for anno in range(anno_min, anno_max + 1):
+        usati_anno = sum(g for a, g in date_valide if a == anno)
+        disponibili_anno = totale_annuo + residuo_precedente
+        residuo_anno = disponibili_anno - usati_anno
+        riepilogo[anno] = {"usati": usati_anno, "disponibili": disponibili_anno, "residuo": residuo_anno}
+        residuo_precedente = residuo_anno
+
+    return riepilogo
+
 # 🔧 FIX: nessuna di queste letture era cachata. La pagina "Report" da sola fa
 # 6 chiamate a Google Sheets (get_dipendenti + lettura FERIE, ciascuna = get_sheet
 # + get_all_records) ad OGNI rerun -- cioè ad ogni interazione con qualunque widget
