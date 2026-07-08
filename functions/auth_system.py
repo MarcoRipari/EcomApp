@@ -8,9 +8,12 @@ supabase: Client = create_client(supabase_url, supabase_key)
 supabase_admin = create_client(supabase_url, service_role_key)
 
 def login(username: str, password: str) -> bool:
+    output1 = 1
+    output2 = 2
     try:
         # 1. Recupera il profilo dallo username
         res_profile = supabase.table("profiles").select("*").eq("username", username).single().execute()
+        output1 = res_profile
         if not res_profile.data:
             st.error("❌ Username non trovato")
             return False
@@ -30,6 +33,7 @@ def login(username: str, password: str) -> bool:
             "email": email,
             "password": password
         })
+        output2 = res
         if res.user:
             # 4. Salva in session_state
             st.session_state.user = {
@@ -45,7 +49,8 @@ def login(username: str, password: str) -> bool:
             return False
 
     except Exception as e:
-        st.success(res)
+        st.success(output1)
+        st.write(output2)
         st.error(f"Errore login: {e}")
         return False
 
