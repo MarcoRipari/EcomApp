@@ -302,14 +302,35 @@ def add_permesso_orario(nome, data_giorno, orario_dipendente, assente_mattina, i
                          assente_pomeriggio, ingresso_pomeriggio, uscita_pomeriggio):
     """Registra un permesso orario (ritardo/uscita anticipata/assenza di mezza
     giornata) come frazione di giorno di ferie (TIPO='Ferie' con GIORNI
-    LAVORATIVI frazionario), così rientra automaticamente nel conteggio annuale."""
+    LAVORATIVI frazionario), così rientra automaticamente nel conteggio annuale.
+    Se un'assenza di mezza giornata viene compensata da ore extra lavorate
+    nell'altra metà (frazione risultante = 0), la riga viene comunque salvata
+    con 0 giorni scalati -- serve a documentare che quella mezza giornata è
+    stata segnata come assente, senza però consumare ferie."""
     frazione_giorno = calcola_giorni_da_permesso_orario(
         orario_dipendente, assente_mattina, ingresso_mattina, uscita_mattina,
         assente_pomeriggio, ingresso_pomeriggio, uscita_pomeriggio
     )
+
+    # 🔧 FIX: prima si evitava di salvare qualunque riga con frazione <= 0,
+    # ma questo cancellava anche il caso legittimo "pomeriggio assente ma
+    # mattina con ore extra che compensano" -- la frazione risultante è 0
+    # (corretto, non si scala nulla), ma l'assenza pomeridiana va comunque
+    # registrata per essere visibile nei calendari/nello storico. Salviamo
+    # quindi se è stata dichiarata un'assenza (checkbox) o se gli orari sono
+    # stati modificati rispetto a quelli previsti; se invece non è cambiato
+    # nulla, non c'è nulla da registrare.
+    ha_assenza_dichiarata = assente_mattina or assente_pomeriggio
+    ha_orari_modificati = (
+        ingresso_mattina != orario_dipendente["mattina_inizio"] or
+        uscita_mattina != orario_dipendente["mattina_fine"] or
+        ingresso_pomeriggio != orario_dipendente["pomeriggio_inizio"] or
+        uscita_pomeriggio != orario_dipendente["pomeriggio_fine"]
+    )
+    if not (ha_assenza_dichiarata or ha_orari_modificati):
+        return "⚠️ Nessuna variazione rispetto all'orario previsto: nulla da registrare."
+
     frazione_formattata = "{:.2f}".format(round(frazione_giorno, 2))
-    if frazione_giorno <= 0:
-        return "⚠️ Nessuna ora mancante rispetto all'orario previsto: nulla da registrare."
 
     sheet = get_sheet(ferie_sheet_id, "FERIE")
     riga_da_salvare = [nome, data_giorno.strftime('%d-%m-%Y'), data_giorno.strftime('%d-%m-%Y'),
@@ -394,6 +415,27 @@ def calcola_riepilogo_ferie_annuale(df_storico, nome, totale_annuo):
         residuo_precedente = residuo_anno
 
     return riepilogo
+
+def formatta_giorni_ore(valore_giorni, ore_per_giorno=8.0):
+    """Formatta un valore di giorni (anche frazionario, es. 4.625, che deriva
+    da un permesso orario) come 'Ng Hh' (giorni interi + ore residue) invece
+    di un numero decimale poco leggibile (es. '4.625 gg' o '4,62 gg', dove la
+    parte decimale non corrisponde intuitivamente a nulla). Assume sempre
+    1 giorno = ore_per_giorno ore (default 8) per convertire la parte
+    frazionaria in ore -- una semplificazione valida per la visualizzazione,
+    anche se un singolo dipendente potesse avere un monte ore giornaliero
+    diverso da 8 nel proprio orario personale."""
+    segno = "-" if valore_giorni < 0 else ""
+    valore_assoluto = abs(valore_giorni)
+    giorni_interi = int(valore_assoluto)
+    resto = valore_assoluto - giorni_interi
+    ore_residue = round(resto * ore_per_giorno)
+    if ore_residue >= ore_per_giorno:  # arrotondamento che tocca un giorno intero in più (es. 7.99h -> 8h)
+        giorni_interi += 1
+        ore_residue = 0
+    if ore_residue == 0:
+        return f"{segno}{giorni_interi}g"
+    return f"{segno}{giorni_interi}g {ore_residue}h"
 
 # 🔧 FIX: nessuna di queste letture era cachata. La pagina "Report" da sola fa
 # 6 chiamate a Google Sheets (get_dipendenti + lettura FERIE, ciascuna = get_sheet
