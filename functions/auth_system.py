@@ -16,7 +16,7 @@ def login(username: str, password: str) -> bool:
         if not res_profile.data:
             st.error("❌ Username non trovato")
             return False
-
+            
         user_id = res_profile.data["user_id"]
 
         # 2. Recupera l'utente auth per ottenere l'email (richiede service_role_key)
