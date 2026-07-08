@@ -10,20 +10,17 @@ supabase_admin = create_client(supabase_url, service_role_key)
 def login(username: str, password: str) -> bool:
     try:
         # 1. Recupera il profilo dallo username
-        res_profile = supabase.table("profiles").select("*").eq("username", username).limit(1).execute()
+        res_profile = supabase.table("profiles").select("*").eq("username", username).single().execute()
         if not res_profile.data:
             st.error("❌ Username non trovato")
             return False
 
-        # Estraiamo il dizionario dalla lista [0]
-        profile_data = res_profile.data[0]
-        user_id = profile_data["user_id"]
+        user_id = res_profile.data["user_id"]
 
         # 2. Recupera l'utente auth per ottenere l'email (richiede service_role_key)
         res_user = supabase_admin.auth.admin.get_user_by_id(user_id)
         email = res_user.user.email
-        output1 = res_user
-        output2 = email
+
         if not email:
             st.error("❌ Nessuna email trovata per questo utente")
             return False
@@ -33,15 +30,15 @@ def login(username: str, password: str) -> bool:
             "email": email,
             "password": password
         })
-        output2 = res
+
         if res.user:
             # 4. Salva in session_state
             st.session_state.user = {
                 "email": email,
-                "username": profile_data.get("username", ""),
-                "nome": profile_data.get("nome", ""),
-                "cognome": profile_data.get("cognome", ""),
-                "role": profile_data.get("role", "guest"),
+                "username": res_profile.data.get("username", ""),
+                "nome": res_profile.data.get("nome", ""),
+                "cognome": res_profile.data.get("cognome", ""),
+                "role": res_profile.data.get("role", "guest"),
             }
             return True
         else:
@@ -49,8 +46,6 @@ def login(username: str, password: str) -> bool:
             return False
 
     except Exception as e:
-        st.success(output1)
-        st.write(output2)
         st.error(f"Errore login: {e}")
         return False
 
@@ -58,35 +53,30 @@ def login(username: str, password: str) -> bool:
       
 def login_password(email: str, password: str) -> bool:
     try:
-        try:
-            res = supabase.auth.sign_in_with_password({
-                "email": email,
-                "password": password
-            })
-        except Exception:
-            st.error("❌ Email o password errati")
-            return False
-
+        res = supabase.auth.sign_in_with_password({
+            "email": email,
+            "password": password
+        })
         if res.user is not None:
-            # Recupera il profilo dell'utente usando limit(1)
-            profile = supabase.table("profiles").select("*").eq("user_id", res.user.id).limit(1).execute()
+           
+            # Recupera il profilo dell'utente usando user_id
+            profile = supabase.table("profiles").select("*").eq("user_id", res.user.id).single().execute()
             
-            if not profile.data:
-                st.error("❌ Profilo utente non trovato nel database")
+            if profile.data is None:
+                st.error("❌ Profilo utente non trovato")
                 return False
             
-            # Estraiamo il dizionario della riga trovato
-            profile_data = profile.data[0]
-            
-            # Salva tutto in session_state usando profile_data
+            # Salva tutto in session_state
             st.session_state.user = {
                 "data": res.user,
                 "email": res.user.email,
-                "nome": profile_data.get("nome", ""),
-                "cognome": profile_data.get("cognome", ""),
-                "username": profile_data.get("username", ""),
-                "role": profile_data.get("role", "guest")
+                "nome": profile.data["nome"],
+                "cognome": profile.data["cognome"],
+                "username": profile.data["username"],
+                "role": profile.data["role"]
             }
+            #st.session_state.user = res.user
+            #st.session_state.username = profile.data.get("username", res.user.email)
             return True
         else:
             st.error("❌ Email o password errati")
