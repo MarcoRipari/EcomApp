@@ -30,7 +30,6 @@ def login(username: str, password: str) -> bool:
             "email": email,
             "password": password
         })
-        st.write(res)
         if res.user:
             # 4. Salva in session_state
             st.session_state.user = {
@@ -46,6 +45,7 @@ def login(username: str, password: str) -> bool:
             return False
 
     except Exception as e:
+        st.success(res)
         st.error(f"Errore login: {e}")
         return False
 
@@ -82,6 +82,7 @@ def login_password(email: str, password: str) -> bool:
             st.error("❌ Email o password errati")
             return False
     except Exception as e:
+        st.write(res)
         st.error(f"Errore login: {e}")
         return False
 
