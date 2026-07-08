@@ -8,16 +8,16 @@ supabase: Client = create_client(supabase_url, supabase_key)
 supabase_admin = create_client(supabase_url, service_role_key)
 
 def login(username: str, password: str) -> bool:
-    output1 = 1
-    output2 = 2
     try:
         # 1. Recupera il profilo dallo username
         res_profile = supabase.table("profiles").select("*").eq("username", username).limit(1).execute()
         if not res_profile.data:
             st.error("❌ Username non trovato")
             return False
-            
-        user_id = res_profile.data["user_id"]
+
+        # Estraiamo il dizionario dalla lista [0]
+        profile_data = res_profile.data[0]
+        user_id = profile_data["user_id"]
 
         # 2. Recupera l'utente auth per ottenere l'email (richiede service_role_key)
         res_user = supabase_admin.auth.admin.get_user_by_id(user_id)
@@ -38,10 +38,10 @@ def login(username: str, password: str) -> bool:
             # 4. Salva in session_state
             st.session_state.user = {
                 "email": email,
-                "username": res_profile.data.get("username", ""),
-                "nome": res_profile.data.get("nome", ""),
-                "cognome": res_profile.data.get("cognome", ""),
-                "role": res_profile.data.get("role", "guest"),
+                "username": profile_data.get("username", ""),
+                "nome": profile_data.get("nome", ""),
+                "cognome": profile_data.get("cognome", ""),
+                "role": profile_data.get("role", "guest"),
             }
             return True
         else:
@@ -57,39 +57,41 @@ def login(username: str, password: str) -> bool:
 
       
 def login_password(email: str, password: str) -> bool:
-    output = 1
     try:
-        res = supabase.auth.sign_in_with_password({
-            "email": email,
-            "password": password
-        })
-        output = res
+        try:
+            res = supabase.auth.sign_in_with_password({
+                "email": email,
+                "password": password
+            })
+        except Exception:
+            st.error("❌ Email o password errati")
+            return False
+
         if res.user is not None:
-           
-            # Recupera il profilo dell'utente usando user_id
+            # Recupera il profilo dell'utente usando limit(1)
             profile = supabase.table("profiles").select("*").eq("user_id", res.user.id).limit(1).execute()
             
-            if profile.data is None:
-                st.error("❌ Profilo utente non trovato")
+            if not profile.data:
+                st.error("❌ Profilo utente non trovato nel database")
                 return False
             
-            # Salva tutto in session_state
+            # Estraiamo il dizionario della riga trovato
+            profile_data = profile.data[0]
+            
+            # Salva tutto in session_state usando profile_data
             st.session_state.user = {
                 "data": res.user,
                 "email": res.user.email,
-                "nome": profile.data["nome"],
-                "cognome": profile.data["cognome"],
-                "username": profile.data["username"],
-                "role": profile.data["role"]
+                "nome": profile_data.get("nome", ""),
+                "cognome": profile_data.get("cognome", ""),
+                "username": profile_data.get("username", ""),
+                "role": profile_data.get("role", "guest")
             }
-            #st.session_state.user = res.user
-            #st.session_state.username = profile.data.get("username", res.user.email)
             return True
         else:
             st.error("❌ Email o password errati")
             return False
     except Exception as e:
-        st.write(output)
         st.error(f"Errore login: {e}")
         return False
 
