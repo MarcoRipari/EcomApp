@@ -13,7 +13,6 @@ def login(username: str, password: str) -> bool:
     try:
         # 1. Recupera il profilo dallo username
         res_profile = supabase.table("profiles").select("*").eq("username", username).single().execute()
-        output1 = res_profile
         if not res_profile.data:
             st.error("❌ Username non trovato")
             return False
@@ -23,7 +22,7 @@ def login(username: str, password: str) -> bool:
         # 2. Recupera l'utente auth per ottenere l'email (richiede service_role_key)
         res_user = supabase_admin.auth.admin.get_user_by_id(user_id)
         email = res_user.user.email
-
+        output1 = res_user
         if not email:
             st.error("❌ Nessuna email trovata per questo utente")
             return False
