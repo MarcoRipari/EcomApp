@@ -46,7 +46,8 @@ def calendario_ferie_mensile():
             st.rerun()
 
     df_storico = get_ferie_storico()
-    html = build_calendario_mensile_html(df_storico, st.session_state.cal_ferie_anno, st.session_state.cal_ferie_mese)
+    df_dipendenti = get_dipendenti()
+    html = build_calendario_mensile_html(df_storico, st.session_state.cal_ferie_anno, st.session_state.cal_ferie_mese, df_dipendenti)
     st.markdown(html, unsafe_allow_html=True)
 
 def ferie():
@@ -58,7 +59,7 @@ def ferie():
 
     # --- SEZIONE 1: CALENDARIO FERIE (questa settimana + prossima) ---
     st.subheader("📅 Chi è in ferie")
-    st.markdown(build_calendario_ferie_html(df_storico), unsafe_allow_html=True)
+    st.markdown(build_calendario_ferie_html(df_storico, df_dipendenti), unsafe_allow_html=True)
 
     st.divider()
 
@@ -83,16 +84,22 @@ def ferie():
         percentuale = min(usati / disponibili, 1.0) if disponibili > 0 else 1.0
         percentuale = max(percentuale, 0.0)
         colore_residuo = "red" if residuo < 5 else "#31333F"
+        # 🔧 st.progress() non permette di personalizzare il colore (resta sempre
+        # blu, fisso al tema). Usiamo una barra HTML su misura per poterla
+        # colorare di rosso quando il residuo va in negativo.
+        colore_barra = "#d32f2f" if residuo < 0 else "#1E88E5"
 
         with cols[i % 3]:
             st.markdown(f"""
                 <div style="border: 1px solid #e6e9ef; padding: 20px; border-radius: 10px; background-color: #f9f9f9; height: 150px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
                     <h3 style="margin-top:0; color:#1E88E5; font-size: 18px;">{dip.NOME}</h3>
                     <p style="margin-bottom:5px; font-size:14px; color: #555;">Godute: <b>{usati:g} gg</b> / {disponibili:g} disponibili</p>
-                    <p style="color:{colore_residuo}; font-size:16px;">Residuo: <b>{residuo:g} gg</b></p>
+                    <p style="color:{colore_residuo}; margin-bottom:8px; font-size:16px;">Residuo: <b>{residuo:g} gg</b></p>
+                    <div style="background:#e6e9ef; border-radius:6px; height:10px; width:100%; overflow:hidden;">
+                        <div style="background:{colore_barra}; height:100%; width:{percentuale*100}%; border-radius:6px;"></div>
+                    </div>
                 </div>
             """, unsafe_allow_html=True)
-            st.progress(percentuale)
 
     # --- SEZIONE 3: DETTAGLIO STORICO ---
     st.divider()
@@ -272,7 +279,7 @@ def aggiungi_ferie():
             st.error(f"{upload}")
 
   else:
-      # --- Permesso orario: ritardo in entrata e/o uscita anticipata ---
+      # --- Permesso orario: ritardo/uscita anticipata/assenza di mezza giornata ---
       riga_dip = dipendenti[dipendenti['NOME'] == nome].iloc[0]
       orario = get_orario_dipendente(riga_dip)
       ore_previste = ore_giornaliere_previste(orario)
@@ -286,13 +293,31 @@ def aggiungi_ferie():
 
       data_giorno = st.date_input("Data", format="DD/MM/YYYY", key="data_permesso_orario")
 
-      col1, col2 = st.columns(2)
-      with col1:
-          entrata_effettiva = st.time_input("Orario di entrata effettivo", value=orario["mattina_inizio"])
-      with col2:
-          uscita_effettiva = st.time_input("Orario di uscita effettivo", value=orario["pomeriggio_fine"])
+      col_mattina, col_pomeriggio = st.columns(2)
+      with col_mattina:
+          st.markdown("**Mattina**")
+          assente_mattina = st.checkbox("Assente tutta la mattina", key="assente_mattina")
+          if not assente_mattina:
+              ingresso_mattina = st.time_input("Ingresso mattina", value=orario["mattina_inizio"], key="ingresso_mattina")
+              uscita_mattina = st.time_input("Uscita mattina", value=orario["mattina_fine"], key="uscita_mattina")
+          else:
+              ingresso_mattina = orario["mattina_inizio"]
+              uscita_mattina = orario["mattina_inizio"]  # ininfluente: assente_mattina=True forza 0 ore comunque
 
-      frazione_anteprima = calcola_giorni_da_permesso_orario(orario, entrata_effettiva, uscita_effettiva)
+      with col_pomeriggio:
+          st.markdown("**Pomeriggio**")
+          assente_pomeriggio = st.checkbox("Assente tutto il pomeriggio", key="assente_pomeriggio")
+          if not assente_pomeriggio:
+              ingresso_pomeriggio = st.time_input("Ingresso pomeriggio", value=orario["pomeriggio_inizio"], key="ingresso_pomeriggio")
+              uscita_pomeriggio = st.time_input("Uscita pomeriggio", value=orario["pomeriggio_fine"], key="uscita_pomeriggio")
+          else:
+              ingresso_pomeriggio = orario["pomeriggio_inizio"]
+              uscita_pomeriggio = orario["pomeriggio_inizio"]
+
+      frazione_anteprima = calcola_giorni_da_permesso_orario(
+          orario, assente_mattina, ingresso_mattina, uscita_mattina,
+          assente_pomeriggio, ingresso_pomeriggio, uscita_pomeriggio
+      )
       if frazione_anteprima > 0:
           st.info(f"Verranno sottratti **{frazione_anteprima:g} giorni** dal monte ferie di {nome}.")
       else:
@@ -302,7 +327,10 @@ def aggiungi_ferie():
           if not nome:
               st.error("Il campo 'Nome' è obbligatorio.")
           else:
-              esito = add_permesso_orario(nome, data_giorno, orario, entrata_effettiva, uscita_effettiva)
+              esito = add_permesso_orario(
+                  nome, data_giorno, orario, assente_mattina, ingresso_mattina, uscita_mattina,
+                  assente_pomeriggio, ingresso_pomeriggio, uscita_pomeriggio
+              )
               if esito is True:
                   st.success("Permesso orario registrato con successo!")
                   st.rerun()
@@ -311,6 +339,16 @@ def aggiungi_ferie():
 
 @st.dialog("Modifica Dipendente")
 def modifica_ferie_totali_modal(nome, ferie_attuale, orario_attuale):
+    # 🔧 FIX: dentro st.dialog, il popover di time_input/date_input viene
+    # renderizzato con uno z-index più basso del modale stesso, quindi appare
+    # visivamente "sotto" ed è impossibile da cliccare. Forziamo lo z-index.
+    st.markdown("""
+        <style>
+        div[data-baseweb="popover"] { z-index: 10000 !important; }
+        div[data-baseweb="calendar"] { z-index: 10000 !important; }
+        </style>
+    """, unsafe_allow_html=True)
+
     st.write(f"Stai modificando i dati per: **{nome}**")
     nuovo_budget = st.number_input("Giorni totali annui", value=int(ferie_attuale), min_value=0)
 
