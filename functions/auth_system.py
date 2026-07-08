@@ -12,7 +12,7 @@ def login(username: str, password: str) -> bool:
     output2 = 2
     try:
         # 1. Recupera il profilo dallo username
-        res_profile = supabase.table("profiles").select("*").eq("username", username).maybeSingle().execute()
+        res_profile = supabase.table("profiles").select("*").eq("username", username).maybe().execute()
         if not res_profile.data:
             st.error("❌ Username non trovato")
             return False
@@ -67,7 +67,7 @@ def login_password(email: str, password: str) -> bool:
         if res.user is not None:
            
             # Recupera il profilo dell'utente usando user_id
-            profile = supabase.table("profiles").select("*").eq("user_id", res.user.id).maybeSingle().execute()
+            profile = supabase.table("profiles").select("*").eq("user_id", res.user.id).maybe().execute()
             
             if profile.data is None:
                 st.error("❌ Profilo utente non trovato")
