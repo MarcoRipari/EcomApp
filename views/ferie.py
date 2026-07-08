@@ -339,27 +339,17 @@ def aggiungi_ferie():
 
 @st.dialog("Modifica Dipendente")
 def modifica_ferie_totali_modal(nome, ferie_attuale, orario_attuale):
-    # 🔧 FIX: dentro st.dialog, il popover di time_input/date_input viene
-    # renderizzato con uno z-index più basso del modale stesso, quindi appare
-    # visivamente "sotto" ed è impossibile da cliccare. Forziamo lo z-index.
-    st.markdown("""
-        <style>
-        div[data-baseweb="popover"] { z-index: 10000 !important; }
-        div[data-baseweb="calendar"] { z-index: 10000 !important; }
-        </style>
-    """, unsafe_allow_html=True)
-
     st.write(f"Stai modificando i dati per: **{nome}**")
     nuovo_budget = st.number_input("Giorni totali annui", value=int(ferie_attuale), min_value=0)
 
-    st.markdown("**Orario di lavoro personale**")
+    st.markdown("**Orario di lavoro personale** (step di 15 minuti)")
     col1, col2 = st.columns(2)
     with col1:
-        mattina_inizio = st.time_input("Mattina - inizio", value=orario_attuale["mattina_inizio"])
-        pomeriggio_inizio = st.time_input("Pomeriggio - inizio", value=orario_attuale["pomeriggio_inizio"])
+        mattina_inizio = time_slider("Mattina - inizio", orario_attuale["mattina_inizio"], key="mod_mattina_inizio")
+        pomeriggio_inizio = time_slider("Pomeriggio - inizio", orario_attuale["pomeriggio_inizio"], key="mod_pomeriggio_inizio")
     with col2:
-        mattina_fine = st.time_input("Mattina - fine", value=orario_attuale["mattina_fine"])
-        pomeriggio_fine = st.time_input("Pomeriggio - fine", value=orario_attuale["pomeriggio_fine"])
+        mattina_fine = time_slider("Mattina - fine", orario_attuale["mattina_fine"], key="mod_mattina_fine")
+        pomeriggio_fine = time_slider("Pomeriggio - fine", orario_attuale["pomeriggio_fine"], key="mod_pomeriggio_fine")
 
     if st.button("Salva Modifiche"):
         ok_budget = update_dipendente_budget(nome, nuovo_budget)
