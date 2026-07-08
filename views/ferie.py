@@ -93,8 +93,8 @@ def ferie():
             st.markdown(f"""
                 <div style="border: 1px solid #e6e9ef; padding: 20px; border-radius: 10px; background-color: #f9f9f9; height: 150px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
                     <h3 style="margin-top:0; color:#1E88E5; font-size: 18px;">{dip.NOME}</h3>
-                    <p style="margin-bottom:5px; font-size:14px; color: #555;">Godute: <b>{usati:g} gg</b> / {disponibili:g} disponibili</p>
-                    <p style="color:{colore_residuo}; margin-bottom:8px; font-size:16px;">Residuo: <b>{residuo:g} gg</b></p>
+                    <p style="margin-bottom:5px; font-size:14px; color: #555;">Godute: <b>{formatta_giorni_ore(usati)}</b> / {formatta_giorni_ore(disponibili)} disponibili</p>
+                    <p style="color:{colore_residuo}; margin-bottom:8px; font-size:16px;">Residuo: <b>{formatta_giorni_ore(residuo)}</b></p>
                     <div style="background:#e6e9ef; border-radius:6px; height:10px; width:100%; overflow:hidden;">
                         <div style="background:{colore_barra}; height:100%; width:{percentuale*100}%; border-radius:6px;"></div>
                     </div>
@@ -208,8 +208,8 @@ def ferie():
                     dati = riepilogo_anni[anno_prec]
                     colore = "red" if dati["residuo"] < 0 else "#555"
                     st.markdown(
-                        f"**{anno_prec}**: Usati {dati['usati']:g} gg &nbsp;|&nbsp; "
-                        f"Residuo fine anno: <span style='color:{colore};'>{dati['residuo']:g} gg</span>",
+                        f"**{anno_prec}**: Usati {formatta_giorni_ore(dati['usati'])} &nbsp;|&nbsp; "
+                        f"Residuo fine anno: <span style='color:{colore};'>{formatta_giorni_ore(dati['residuo'])}</span>",
                         unsafe_allow_html=True
                     )
 
@@ -220,15 +220,15 @@ def ferie():
                 <table style="width: 100%; border-collapse: collapse;">
                     <tr>
                         <td style="padding: 5px 0;"><b>Giorni Annui + Riporto:</b></td>
-                        <td style="text-align: right;">{dati_anno_corrente['disponibili']:g} gg</td>
+                        <td style="text-align: right;">{formatta_giorni_ore(dati_anno_corrente['disponibili'])}</td>
                     </tr>
                     <tr>
                         <td style="padding: 5px 0;"><b>Giorni Goduti (anno corrente):</b></td>
-                        <td style="text-align: right;">{dati_anno_corrente['usati']:g} gg</td>
+                        <td style="text-align: right;">{formatta_giorni_ore(dati_anno_corrente['usati'])}</td>
                     </tr>
                     <tr style="border-top: 1px solid #ccc;">
                         <td style="padding: 10px 0;"><b><span style="color: {colore_residuo_card};">Residuo Attuale:</span></b></td>
-                        <td style="text-align: right; font-size: 1.2em; color: {colore_residuo_card};"><b>{dati_anno_corrente['residuo']:g} gg</b></td>
+                        <td style="text-align: right; font-size: 1.2em; color: {colore_residuo_card};"><b>{formatta_giorni_ore(dati_anno_corrente['residuo'])}</b></td>
                     </tr>
                 </table>
             </div>
@@ -318,10 +318,17 @@ def aggiungi_ferie():
           orario, assente_mattina, ingresso_mattina, uscita_mattina,
           assente_pomeriggio, ingresso_pomeriggio, uscita_pomeriggio
       )
+      ha_assenza_dichiarata = assente_mattina or assente_pomeriggio
+      ha_orari_modificati = (
+          ingresso_mattina != orario["mattina_inizio"] or uscita_mattina != orario["mattina_fine"] or
+          ingresso_pomeriggio != orario["pomeriggio_inizio"] or uscita_pomeriggio != orario["pomeriggio_fine"]
+      )
       if frazione_anteprima > 0:
           st.info(f"Verranno sottratti **{frazione_anteprima:g} giorni** dal monte ferie di {nome}.")
+      elif ha_assenza_dichiarata or ha_orari_modificati:
+          st.info("Le ore extra compensano l'assenza: **0 giorni** verranno scalati, ma l'assenza verrà comunque registrata.")
       else:
-          st.caption("Nessuna ora mancante rispetto all'orario previsto.")
+          st.caption("Nessuna variazione rispetto all'orario previsto: nulla da registrare.")
 
       if st.button("Inserisci permesso orario"):
           if not nome:
