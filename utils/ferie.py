@@ -26,7 +26,9 @@ def _colore_per_nome(nome):
     return _PALETTE_CALENDARIO[h % len(_PALETTE_CALENDARIO)]
 
 def _assenze_nel_periodo(df_storico, giorni):
-    """Calcola, per ogni giorno della lista, quali dipendenti sono assenti."""
+    """Calcola, per ogni giorno della lista, quali dipendenti sono assenti,
+    con il dettaglio di tipo assenza e quantità (giorni interi o frazione da
+    permesso orario), utile per distinguere assenza completa/parziale nei chip."""
     assenze = {g: [] for g in giorni}
     if not df_storico.empty:
         for _, riga in df_storico.iterrows():
@@ -36,28 +38,59 @@ def _assenze_nel_periodo(df_storico, giorni):
                 fine_f = pd.to_datetime(riga['DATA FINE'], dayfirst=True, errors='raise').date()
             except Exception:
                 continue
+            tipo = riga.get('TIPO', '') or ''
+            giorni_val = pd.to_numeric(riga.get('GIORNI LAVORATIVI'), errors='coerce')
             for g in giorni:
                 if inizio_f <= g <= fine_f:
-                    assenze[g].append(riga['NOME'])
+                    assenze[g].append({"nome": riga['NOME'], "tipo": tipo, "giorni": giorni_val})
     return assenze
 
-def _chip_html(nome, opacity="1"):
+def _mappa_ore_previste(df_dipendenti):
+    """Costruisce {nome: ore_giornaliere_previste} per stimare le ore mancanti
+    nei tooltip dei permessi orari, usando l'orario personale di ciascuno."""
+    mappa = {}
+    if df_dipendenti is not None and not df_dipendenti.empty:
+        for _, riga in df_dipendenti.iterrows():
+            mappa[riga['NOME']] = ore_giornaliere_previste(get_orario_dipendente(riga))
+    return mappa
+
+def _chip_html(assenza, opacity="1", ore_previste_dipendente=8.0):
+    nome = assenza["nome"]
+    tipo = assenza.get("tipo") or ""
+    giorni_val = assenza.get("giorni")
     colore = _colore_per_nome(nome)
     primo_nome = str(nome).split()[0] if nome else "?"
+
+    is_parziale = tipo == "Ferie" and pd.notna(giorni_val) and float(giorni_val) < 1
+
+    if tipo and tipo != "Ferie":
+        tooltip = f"{nome} — {tipo}"
+        icona = ""
+    elif is_parziale:
+        ore_stimate = float(giorni_val) * ore_previste_dipendente
+        tooltip = f"{nome} — Permesso orario (~{ore_stimate:g}h, {float(giorni_val):g} gg)"
+        icona = "🕐 "
+    else:
+        tooltip = f"{nome} — Ferie (giornata intera)"
+        icona = ""
+
     return (
-        f'<div title="{nome}" style="background:{colore}22; color:{colore}; '
+        f'<div title="{tooltip}" style="background:{colore}22; color:{colore}; '
         f'border:1px solid {colore}55; border-radius:6px; padding:2px 6px; '
         f'font-size:11px; font-weight:600; margin-top:4px; white-space:nowrap; '
-        f'overflow:hidden; text-overflow:ellipsis; opacity:{opacity};">{primo_nome}</div>'
+        f'overflow:hidden; text-overflow:ellipsis; opacity:{opacity};">{icona}{primo_nome}</div>'
     )
 
-def build_calendario_ferie_html(df_storico):
+def build_calendario_ferie_html(df_storico, df_dipendenti=None):
     """Genera un calendario HTML/CSS minimale di 2 settimane (questa + prossima)
-    con le assenze di ogni dipendente evidenziate giorno per giorno."""
+    con le assenze di ogni dipendente evidenziate giorno per giorno. Se
+    df_dipendenti è fornito, i permessi orari mostrano una stima delle ore
+    mancanti nel tooltip in base all'orario personale del dipendente."""
     oggi = datetime.now().date()
     inizio_settimana = oggi - timedelta(days=oggi.weekday())
     giorni_totali = [inizio_settimana + timedelta(days=i) for i in range(14)]
     assenze_per_giorno = _assenze_nel_periodo(df_storico, giorni_totali)
+    mappa_ore = _mappa_ore_previste(df_dipendenti)
 
     parts = ['<div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif;">']
 
@@ -75,11 +108,13 @@ def build_calendario_ferie_html(df_storico):
         for g in settimana_giorni:
             is_oggi = (g == oggi)
             is_weekend = g.weekday() >= 5
-            nomi = assenze_per_giorno[g]
+            assenze_giorno = assenze_per_giorno[g]
 
             bg = "#EEF2FF" if is_oggi else ("#FAFAFA" if is_weekend else "#FFFFFF")
             border = "2px solid #4C6EF5" if is_oggi else "1px solid #ECECEC"
-            chips = "".join(_chip_html(nome) for nome in nomi)
+            chips = "".join(
+                _chip_html(a, ore_previste_dipendente=mappa_ore.get(a["nome"], 8.0)) for a in assenze_giorno
+            )
 
             giorno_label = _GIORNI_IT[g.weekday()]
             mese_label = f" {_MESI_IT[g.month - 1]}" if (g.day == 1 or g == giorni_totali[0]) else ""
@@ -97,7 +132,7 @@ def build_calendario_ferie_html(df_storico):
     parts.append('</div>')
     return "".join(parts)
 
-def build_calendario_mensile_html(df_storico, anno, mese):
+def build_calendario_mensile_html(df_storico, anno, mese, df_dipendenti=None):
     """Genera un calendario mensile completo (stile 'vero calendario', Lun-Dom),
     con i giorni del mese precedente/successivo mostrati sfumati per riempire la griglia."""
     oggi = datetime.now().date()
@@ -115,6 +150,7 @@ def build_calendario_mensile_html(df_storico, anno, mese):
         g += timedelta(days=1)
 
     assenze_per_giorno = _assenze_nel_periodo(df_storico, giorni_totali)
+    mappa_ore = _mappa_ore_previste(df_dipendenti)
 
     parts = ['<div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif;">']
 
@@ -134,7 +170,7 @@ def build_calendario_mensile_html(df_storico, anno, mese):
         is_oggi = (g == oggi)
         is_weekend = g.weekday() >= 5
         fuori_mese = (g.month != mese)
-        nomi = assenze_per_giorno[g]
+        assenze_giorno = assenze_per_giorno[g]
 
         if fuori_mese:
             bg = "#FAFCFF" if is_oggi else "#FAFAFA"
@@ -147,7 +183,9 @@ def build_calendario_mensile_html(df_storico, anno, mese):
             colore_numero = "#333"
             opacity_chip = "1"
 
-        chips = "".join(_chip_html(nome, opacity_chip) for nome in nomi)
+        chips = "".join(
+            _chip_html(a, opacity_chip, mappa_ore.get(a["nome"], 8.0)) for a in assenze_giorno
+        )
 
         parts.append(
             f'<div style="background:{bg}; border:{border}; border-radius:10px; padding:8px; min-height:76px;">'
@@ -198,41 +236,59 @@ def ore_giornaliere_previste(orario):
     pomeriggio = datetime.combine(_DATA_RIF_ORARIO, orario["pomeriggio_fine"]) - datetime.combine(_DATA_RIF_ORARIO, orario["pomeriggio_inizio"])
     return (mattina.total_seconds() + pomeriggio.total_seconds()) / 3600
 
-def calcola_giorni_da_permesso_orario(orario, entrata_effettiva, uscita_effettiva):
-    """Calcola la frazione di giorno di ferie consumata per un ritardo in
-    entrata e/o un'uscita anticipata in una singola giornata, rispetto
-    all'orario personale (mattina/pomeriggio) del dipendente."""
+def _ore_lavorate_mezza_giornata(assente, ingresso_eff, uscita_eff, inizio_previsto, fine_previsto):
+    """Ore effettivamente lavorate in una singola metà giornata (mattina o
+    pomeriggio). Se 'assente' è True, l'intera metà giornata è considerata
+    non lavorata a prescindere dagli orari passati."""
+    if assente:
+        return 0.0
     def _dt(t):
         return datetime.combine(_DATA_RIF_ORARIO, t)
+    inizio_eff = max(_dt(ingresso_eff), _dt(inizio_previsto))
+    fine_eff = min(_dt(uscita_eff), _dt(fine_previsto))
+    return max(0.0, (fine_eff - inizio_eff).total_seconds() / 3600) if fine_eff > inizio_eff else 0.0
 
+def calcola_giorni_da_permesso_orario(orario, assente_mattina, ingresso_mattina, uscita_mattina,
+                                       assente_pomeriggio, ingresso_pomeriggio, uscita_pomeriggio):
+    """Calcola la frazione di giorno di ferie consumata da un permesso orario,
+    gestendo mattina e pomeriggio in modo indipendente: ciascuna metà giornata
+    può essere marcata come 'assente' per intero (checkbox) oppure avere un
+    ingresso/uscita effettivo diverso da quello previsto (ritardo, uscita
+    anticipata, o entrambi nella stessa metà)."""
     ore_previste = ore_giornaliere_previste(orario)
     if ore_previste <= 0:
         return 0.0
 
-    inizio_mattina_eff = max(_dt(entrata_effettiva), _dt(orario["mattina_inizio"]))
-    fine_mattina = _dt(orario["mattina_fine"])
-    ore_mattina = max(0.0, (fine_mattina - inizio_mattina_eff).total_seconds() / 3600) if inizio_mattina_eff < fine_mattina else 0.0
-
-    inizio_pom = _dt(orario["pomeriggio_inizio"])
-    fine_pom_eff = min(_dt(uscita_effettiva), _dt(orario["pomeriggio_fine"]))
-    ore_pomeriggio = max(0.0, (fine_pom_eff - inizio_pom).total_seconds() / 3600) if fine_pom_eff > inizio_pom else 0.0
+    ore_mattina = _ore_lavorate_mezza_giornata(
+        assente_mattina, ingresso_mattina, uscita_mattina,
+        orario["mattina_inizio"], orario["mattina_fine"]
+    )
+    ore_pomeriggio = _ore_lavorate_mezza_giornata(
+        assente_pomeriggio, ingresso_pomeriggio, uscita_pomeriggio,
+        orario["pomeriggio_inizio"], orario["pomeriggio_fine"]
+    )
 
     ore_mancanti = max(0.0, ore_previste - (ore_mattina + ore_pomeriggio))
     return round(ore_mancanti / ore_previste, 4)
 
-def add_permesso_orario(nome, data_giorno, orario_dipendente, entrata_effettiva, uscita_effettiva):
-    """Registra un ritardo/uscita anticipata come frazione di giorno di ferie
-    (TIPO='Ferie' con GIORNI LAVORATIVI frazionario), così rientra
-    automaticamente nel conteggio annuale del monte ferie."""
-    frazione_giorno = calcola_giorni_da_permesso_orario(orario_dipendente, entrata_effettiva, uscita_effettiva)
+def add_permesso_orario(nome, data_giorno, orario_dipendente, assente_mattina, ingresso_mattina, uscita_mattina,
+                         assente_pomeriggio, ingresso_pomeriggio, uscita_pomeriggio):
+    """Registra un permesso orario (ritardo/uscita anticipata/assenza di mezza
+    giornata) come frazione di giorno di ferie (TIPO='Ferie' con GIORNI
+    LAVORATIVI frazionario), così rientra automaticamente nel conteggio annuale."""
+    frazione_giorno = calcola_giorni_da_permesso_orario(
+        orario_dipendente, assente_mattina, ingresso_mattina, uscita_mattina,
+        assente_pomeriggio, ingresso_pomeriggio, uscita_pomeriggio
+    )
+    frazione_formattata = "{:.2f}".format(round(frazione_giorno, 2))
     if frazione_giorno <= 0:
         return "⚠️ Nessuna ora mancante rispetto all'orario previsto: nulla da registrare."
 
     sheet = get_sheet(ferie_sheet_id, "FERIE")
     riga_da_salvare = [nome, data_giorno.strftime('%d-%m-%Y'), data_giorno.strftime('%d-%m-%Y'),
-                       "Ferie", round(frazione_giorno, 2)]
+                       "Ferie", frazione_formattata]
     try:
-        sheet.append_row(riga_da_salvare)
+        sheet.append_row(riga_da_salvare, value_input_option='RAW')
         get_ferie_storico.clear()
         return True
     except Exception as e:
