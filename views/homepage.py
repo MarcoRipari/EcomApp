@@ -7,7 +7,7 @@ from utils import *
 load_functions_from("functions", globals())
 
 def homepage():
-    st.title("Homepage4")
+    st.title("Homepage1")
 
     if st.button("Svuota Cache"):
         st.cache_data.clear()
