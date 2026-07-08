@@ -27,8 +27,9 @@ def _colore_per_nome(nome):
 
 def _assenze_nel_periodo(df_storico, giorni):
     """Calcola, per ogni giorno della lista, quali dipendenti sono assenti,
-    con il dettaglio di tipo assenza e quantità (giorni interi o frazione da
-    permesso orario), utile per distinguere assenza completa/parziale nei chip."""
+    con il dettaglio di tipo assenza, quantità (giorni interi o frazione da
+    permesso orario) e le date inizio/fine dell'assenza (per mostrarle nel
+    tooltip quando l'assenza copre più giorni)."""
     assenze = {g: [] for g in giorni}
     if not df_storico.empty:
         for _, riga in df_storico.iterrows():
@@ -42,7 +43,10 @@ def _assenze_nel_periodo(df_storico, giorni):
             giorni_val = pd.to_numeric(riga.get('GIORNI LAVORATIVI'), errors='coerce')
             for g in giorni:
                 if inizio_f <= g <= fine_f:
-                    assenze[g].append({"nome": riga['NOME'], "tipo": tipo, "giorni": giorni_val})
+                    assenze[g].append({
+                        "nome": riga['NOME'], "tipo": tipo, "giorni": giorni_val,
+                        "inizio": inizio_f, "fine": fine_f,
+                    })
     return assenze
 
 def _mappa_ore_previste(df_dipendenti):
@@ -73,6 +77,11 @@ def _chip_html(assenza, opacity="1", ore_previste_dipendente=8.0):
     else:
         tooltip = f"{nome} — Ferie (giornata intera)"
         icona = ""
+
+    # Se l'assenza copre più di un giorno, aggiungiamo il periodo completo al tooltip
+    inizio_a, fine_a = assenza.get("inizio"), assenza.get("fine")
+    if inizio_a and fine_a and inizio_a != fine_a:
+        tooltip += f" ({inizio_a.strftime('%d/%m')} - {fine_a.strftime('%d/%m')})"
 
     return (
         f'<div title="{tooltip}" style="background:{colore}22; color:{colore}; '
@@ -213,6 +222,24 @@ ORARIO_DEFAULT = {"mattina_inizio": "08:00", "mattina_fine": "12:00",
                    "pomeriggio_inizio": "14:00", "pomeriggio_fine": "18:00"}
 _DATA_RIF_ORARIO = date(2000, 1, 1)
 
+def time_slider(label, value, key):
+    """Selettore orario a step di 15 minuti, basato su uno slider invece che
+    su st.time_input. st.time_input apre un popover che, dentro un st.dialog,
+    finisce visivamente sotto il modale ed è impossibile da cliccare; uno
+    slider è un widget nativo (nessun popover) e non ha questo problema."""
+    minuti_default = value.hour * 60 + value.minute
+    minuti_default = round(minuti_default / 15) * 15
+    minuti_default = min(max(minuti_default, 0), 23 * 60 + 45)
+    minuti = st.select_slider(
+        label,
+        options=list(range(0, 24 * 60, 15)),
+        value=minuti_default,
+        format_func=lambda m: f"{m // 60:02d}:{m % 60:02d}",
+        key=key,
+    )
+    from datetime import time as _time
+    return _time(minuti // 60, minuti % 60)
+
 def _parse_ora(valore, default_str):
     try:
         return datetime.strptime(str(valore).strip(), "%H:%M").time()
@@ -236,17 +263,21 @@ def ore_giornaliere_previste(orario):
     pomeriggio = datetime.combine(_DATA_RIF_ORARIO, orario["pomeriggio_fine"]) - datetime.combine(_DATA_RIF_ORARIO, orario["pomeriggio_inizio"])
     return (mattina.total_seconds() + pomeriggio.total_seconds()) / 3600
 
-def _ore_lavorate_mezza_giornata(assente, ingresso_eff, uscita_eff, inizio_previsto, fine_previsto):
+def _ore_lavorate_mezza_giornata(assente, ingresso_eff, uscita_eff):
     """Ore effettivamente lavorate in una singola metà giornata (mattina o
-    pomeriggio). Se 'assente' è True, l'intera metà giornata è considerata
-    non lavorata a prescindere dagli orari passati."""
+    pomeriggio), calcolate dagli orari effettivi inseriti, SENZA limitarle
+    all'orario previsto: se qualcuno resta oltre l'orario abituale in una metà
+    giornata, quelle ore extra devono poter compensare un ritardo/uscita
+    anticipata/assenza nell'altra metà (il confronto con il totale previsto
+    avviene sulla somma dell'intera giornata, non metà per metà).
+    Se 'assente' è True, l'intera metà giornata è considerata non lavorata a
+    prescindere dagli orari passati."""
     if assente:
         return 0.0
     def _dt(t):
         return datetime.combine(_DATA_RIF_ORARIO, t)
-    inizio_eff = max(_dt(ingresso_eff), _dt(inizio_previsto))
-    fine_eff = min(_dt(uscita_eff), _dt(fine_previsto))
-    return max(0.0, (fine_eff - inizio_eff).total_seconds() / 3600) if fine_eff > inizio_eff else 0.0
+    ore = (_dt(uscita_eff) - _dt(ingresso_eff)).total_seconds() / 3600
+    return max(0.0, ore)
 
 def calcola_giorni_da_permesso_orario(orario, assente_mattina, ingresso_mattina, uscita_mattina,
                                        assente_pomeriggio, ingresso_pomeriggio, uscita_pomeriggio):
@@ -254,19 +285,15 @@ def calcola_giorni_da_permesso_orario(orario, assente_mattina, ingresso_mattina,
     gestendo mattina e pomeriggio in modo indipendente: ciascuna metà giornata
     può essere marcata come 'assente' per intero (checkbox) oppure avere un
     ingresso/uscita effettivo diverso da quello previsto (ritardo, uscita
-    anticipata, o entrambi nella stessa metà)."""
+    anticipata, o entrambi nella stessa metà). Il confronto avviene sul totale
+    ore lavorate nell'intera giornata: ore extra fatte in una metà compensano
+    un'assenza/ritardo nell'altra."""
     ore_previste = ore_giornaliere_previste(orario)
     if ore_previste <= 0:
         return 0.0
 
-    ore_mattina = _ore_lavorate_mezza_giornata(
-        assente_mattina, ingresso_mattina, uscita_mattina,
-        orario["mattina_inizio"], orario["mattina_fine"]
-    )
-    ore_pomeriggio = _ore_lavorate_mezza_giornata(
-        assente_pomeriggio, ingresso_pomeriggio, uscita_pomeriggio,
-        orario["pomeriggio_inizio"], orario["pomeriggio_fine"]
-    )
+    ore_mattina = _ore_lavorate_mezza_giornata(assente_mattina, ingresso_mattina, uscita_mattina)
+    ore_pomeriggio = _ore_lavorate_mezza_giornata(assente_pomeriggio, ingresso_pomeriggio, uscita_pomeriggio)
 
     ore_mancanti = max(0.0, ore_previste - (ore_mattina + ore_pomeriggio))
     return round(ore_mancanti / ore_previste, 4)
