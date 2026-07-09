@@ -232,7 +232,7 @@ elif page == "Admin - Aggiungi utente":
         new_name = st.text_input("Nome")
         new_surname = st.text_input("Cognome")
         new_username = st.text_input("Username")
-        new_role = st.selectbox("Ruolo", ["guest", "logistica", "customer care", "admin"])
+        new_role = st.selectbox("Ruolo", ["dipendente", "logistica", "customer care", "admin"])
 
         reg_btn = st.form_submit_button("Registra")
         if reg_btn:
