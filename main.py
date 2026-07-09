@@ -2,6 +2,7 @@ import streamlit as st
 from streamlit_option_menu import option_menu
 import os
 import importlib
+import re
 
 from utils import *
 
@@ -11,6 +12,49 @@ load_functions_from("views", globals())
 
 st.set_page_config(page_title="Gestione ECOM", layout="wide")
 
+# 📱 Rilevamento mobile lato server, tramite l'header User-Agent della richiesta
+# iniziale (st.context.headers). Non richiede componenti JS aggiuntivi.
+_user_agent = (st.context.headers.get("User-Agent", "") or "")
+IS_MOBILE = bool(re.search(r"Mobi|Android|iPhone|iPad|iPod|Windows Phone", _user_agent, re.IGNORECASE))
+
+if IS_MOBILE:
+    # --- MODALITA' MOBILE ---
+    # Niente sidebar né menu: se non loggato, form di login direttamente in
+    # pagina; se loggato, unica pagina disponibile è la dashboard personale
+    # (dashboard_dipendente), indipendentemente dal ruolo, con un pulsante di
+    # logout sempre visibile in alto.
+    st.markdown(
+        """
+        <style>
+        section[data-testid="stSidebar"] { display: none !important; }
+        div[data-testid="collapsedControl"] { display: none !important; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
+    if "user" not in st.session_state or st.session_state.user is None:
+        st.markdown("## 🔑 Accedi")
+        with st.form("login_user_mobile"):
+            identificativo = st.text_input("Username o Email")
+            password = st.text_input("Password", type="password")
+            login_button = st.form_submit_button("Accedi", use_container_width=True)
+        if login_button:
+            if login(identificativo, password):
+                st.rerun()
+    else:
+        user = st.session_state.user
+        col_saluto, col_logout = st.columns([3, 1])
+        with col_saluto:
+            st.write(f"👋 {user.get('nome', '')}")
+        with col_logout:
+            if st.button("🚪 Esci", use_container_width=True):
+                logout()
+        dashboard_dipendente()
+
+    st.stop()
+
+# --- MODALITA' DESKTOP (comportamento invariato) ---
 st.markdown(
     """
     <style>
@@ -42,7 +86,7 @@ with st.sidebar:
         page = "Homepage"
         st.markdown("## 🔑 Login")
         with st.form("login_user"):
-            email = st.text_input("Username")
+            email = st.text_input("Username o Email")
             password = st.text_input("Password", type="password")
 
             login_button = st.form_submit_button("Accedi")
@@ -232,7 +276,7 @@ elif page == "Admin - Aggiungi utente":
         new_name = st.text_input("Nome")
         new_surname = st.text_input("Cognome")
         new_username = st.text_input("Username")
-        new_role = st.selectbox("Ruolo", ["dipendente", "logistica", "customer care", "admin"])
+        new_role = st.selectbox("Ruolo", ["guest", "logistica", "customer care", "admin", "dipendente"])
 
         reg_btn = st.form_submit_button("Registra")
         if reg_btn:
