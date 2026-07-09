@@ -486,22 +486,36 @@ def dashboard_dipendente():
                 )
 
     st.divider()
-    st.subheader("📅 Calendario (le mie assenze e quelle dei colleghi)")
-    st.markdown(build_calendario_ferie_html(df_storico, df_dipendenti), unsafe_allow_html=True)
+    st.subheader("🔜 Le mie prossime ferie")
+    oggi = datetime.now().date()
+    mio_storico_completo = df_storico[df_storico['NOME'] == nome_utente].copy()
+    if not mio_storico_completo.empty:
+        mio_storico_completo["_inizio"] = pd.to_datetime(mio_storico_completo['DATA INIZIO'], dayfirst=True, errors='coerce').dt.date
+        mio_storico_completo["_fine"] = pd.to_datetime(mio_storico_completo['DATA FINE'], dayfirst=True, errors='coerce').dt.date
+    prossime = mio_storico_completo[mio_storico_completo["_fine"] >= oggi].sort_values(by="_inizio") if not mio_storico_completo.empty else mio_storico_completo
+
+    if prossime.empty:
+        st.caption("Nessuna ferie programmata al momento.")
+    else:
+        for _, riga in prossime.iterrows():
+            inizio_r, fine_r = riga["_inizio"], riga["_fine"]
+            periodo = inizio_r.strftime('%d/%m/%Y') if inizio_r == fine_r else f"{inizio_r.strftime('%d/%m/%Y')} → {fine_r.strftime('%d/%m/%Y')}"
+            dettaglio_riga = str(riga.get('DETTAGLIO', '') or '').strip()
+            etichetta = dettaglio_riga if dettaglio_riga else ("Giornata intera" if riga.get('TIPO') == "Ferie" else riga.get('TIPO', ''))
+            st.markdown(f"- 🗓️ **{periodo}** — {etichetta}")
 
     st.divider()
     calendario_ferie_mensile()
 
     st.divider()
     st.subheader("📖 Il mio storico ferie")
-    mio_storico = df_storico[df_storico['NOME'] == nome_utente].copy()
+    # 🔧 Solo assenze passate (data fine <= oggi), dalla più recente alla più vecchia
+    mio_storico = mio_storico_completo[mio_storico_completo["_fine"] <= oggi].copy() if not mio_storico_completo.empty else mio_storico_completo
     if mio_storico.empty:
-        st.caption("Nessuna assenza registrata.")
+        st.caption("Nessuna assenza passata registrata.")
     else:
-        mio_storico = mio_storico.copy()
-        mio_storico["_data_ord"] = pd.to_datetime(mio_storico['DATA INIZIO'], dayfirst=True, errors='coerce')
         colonne_storico = ['DATA INIZIO', 'DATA FINE', 'TIPO', 'GIORNI LAVORATIVI']
         if 'DETTAGLIO' in mio_storico.columns:
             colonne_storico.append('DETTAGLIO')
-        mio_storico = mio_storico.sort_values(by="_data_ord", ascending=False)
+        mio_storico = mio_storico.sort_values(by="_inizio", ascending=False)
         st.dataframe(mio_storico[colonne_storico], use_container_width=True, hide_index=True)
