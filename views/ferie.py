@@ -140,19 +140,32 @@ def ferie():
                     7: "Luglio", 8: "Agosto", 9: "Settembre", 10: "Ottobre", 11: "Novembre", 12: "Dicembre"}
 
         # Prepariamo i dati per l'editor (usiamo le date originali per facilità di editing)
-        df_editor = dettaglio_utente[['NOME', 'DATA INIZIO', 'DATA FINE', 'TIPO', 'GIORNI LAVORATIVI']].copy()
+        # 🆕 Includiamo DETTAGLIO (sola lettura) solo se la colonna esiste già nel
+        # foglio: altrimenti, salvando lo storico, il valore andrebbe perso per
+        # tutte le righe di questo dipendente (l'editor non lo includerebbe e
+        # verrebbe sovrascritto a vuoto). Se la colonna non c'è ancora, l'editor
+        # funziona comunque normalmente, semplicemente senza mostrarla.
+        colonne_editor = ['NOME', 'DATA INIZIO', 'DATA FINE', 'TIPO', 'GIORNI LAVORATIVI']
+        ha_colonna_dettaglio = 'DETTAGLIO' in dettaglio_utente.columns
+        if ha_colonna_dettaglio:
+            colonne_editor.append('DETTAGLIO')
+        df_editor = dettaglio_utente[colonne_editor].copy()
         df_editor['DATA INIZIO'] = df_editor['DATA INIZIO'].dt.date
         df_editor['DATA FINE'] = df_editor['DATA FINE'].dt.date
 
+        column_config_editor = {
+            "NOME": st.column_config.TextColumn("DIPENDENTE", disabled=True),
+            "DATA INIZIO": st.column_config.DateColumn("INIZIO", format="DD/MM/YYYY", required=True),
+            "DATA FINE": st.column_config.DateColumn("FINE", format="DD/MM/YYYY", required=True),
+            "TIPO": st.column_config.SelectboxColumn("TIPO", options=["Ferie", "Malattia", "Permesso", "Altro"], required=True),
+            "GIORNI LAVORATIVI": st.column_config.NumberColumn("GG", disabled=True),
+        }
+        if ha_colonna_dettaglio:
+            column_config_editor["DETTAGLIO"] = st.column_config.TextColumn("Dettaglio permesso", disabled=True)
+
         edited_df = st.data_editor(
             df_editor,
-            column_config={
-                "NOME": st.column_config.TextColumn("DIPENDENTE", disabled=True),
-                "DATA INIZIO": st.column_config.DateColumn("INIZIO", format="DD/MM/YYYY", required=True),
-                "DATA FINE": st.column_config.DateColumn("FINE", format="DD/MM/YYYY", required=True),
-                "TIPO": st.column_config.SelectboxColumn("TIPO", options=["Ferie", "Malattia", "Permesso", "Altro"], required=True),
-                "GIORNI LAVORATIVI": st.column_config.NumberColumn("GG", disabled=True),
-            },
+            column_config=column_config_editor,
             use_container_width=True,
             hide_index=True,
             # 🔧 Corretto: "fixed" toglieva anche la possibilità di ELIMINARE una riga
@@ -408,3 +421,87 @@ def gestione_dipendenti():
             # Usiamo una chiave unica (key) basata sul nome per distinguere i bottoni
             if st.button(f"📝 Modifica {dipendente.NOME}", key=f"edit_{dipendente.NOME}", use_container_width=True):
                 modifica_ferie_totali_modal(dipendente.NOME, dipendente.TOTALE, orario_dip)
+
+def dashboard_dipendente():
+    """Dashboard personale per il ruolo 'dipendente': mostra il proprio
+    residuo ferie (anno corrente, con riporto), il calendario con le assenze
+    di tutti (incluse quelle dei colleghi) e il proprio storico. Sola
+    lettura: nessuna possibilità di modifica (l'inserimento resta riservato
+    all'admin tramite 'Ferie')."""
+    user = st.session_state.get("user", {}) or {}
+    nome_utente = f"{(user.get('nome') or '').strip()} {(user.get('cognome') or '').strip()}".strip()
+
+    st.header(f"👋 Le mie ferie")
+    if not nome_utente:
+        st.error("Non riesco a determinare il tuo nome dal profilo utente.")
+        return
+
+    df_dipendenti = get_dipendenti()
+    df_storico = get_ferie_storico()
+
+    riga_dip = df_dipendenti[df_dipendenti['NOME'] == nome_utente]
+    if riga_dip.empty:
+        # 🆕 Il nome/cognome del profilo Supabase deve coincidere esattamente
+        # con il campo NOME nel foglio DIPENDENTI: è così che colleghiamo
+        # l'utente loggato alla sua riga anagrafica ferie.
+        st.warning(
+            f"Non trovo un'anagrafica ferie per **{nome_utente}**. "
+            "Il nome e cognome del tuo account devono corrispondere esattamente "
+            "al campo NOME nel foglio DIPENDENTI (chiedi a un admin di verificare)."
+        )
+        return
+
+    info_dip = riga_dip.iloc[0]
+    anno_corrente = datetime.now().year
+    riepilogo = calcola_riepilogo_ferie_annuale(df_storico, nome_utente, info_dip.TOTALE)
+    dati_anno = riepilogo[anno_corrente]
+
+    colore_residuo = "red" if dati_anno["residuo"] < 5 else "#31333F"
+    colore_barra = "#d32f2f" if dati_anno["residuo"] < 0 else "#1E88E5"
+    percentuale = min(dati_anno["usati"] / dati_anno["disponibili"], 1.0) if dati_anno["disponibili"] > 0 else 1.0
+    percentuale = max(percentuale, 0.0)
+
+    st.subheader("📊 Le mie ferie residue")
+    st.caption(f"Anno {anno_corrente} — include il riporto del residuo dell'anno precedente")
+    st.markdown(f"""
+        <div style="border: 1px solid #e6e9ef; padding: 20px; border-radius: 10px; background-color: #f9f9f9; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
+            <p style="margin-bottom:5px; font-size:14px; color: #555;">Godute: <b>{formatta_giorni_ore(dati_anno['usati'])}</b> / {formatta_giorni_ore(dati_anno['disponibili'])} disponibili</p>
+            <p style="color:{colore_residuo}; margin-bottom:8px; font-size:18px;">Residuo: <b>{formatta_giorni_ore(dati_anno['residuo'])}</b></p>
+            <div style="background:#e6e9ef; border-radius:6px; height:10px; width:100%; overflow:hidden;">
+                <div style="background:{colore_barra}; height:100%; width:{percentuale*100}%; border-radius:6px;"></div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
+    anni_precedenti = sorted([a for a in riepilogo if a < anno_corrente], reverse=True)
+    if anni_precedenti:
+        with st.expander("📜 Storico anni precedenti"):
+            for anno_prec in anni_precedenti:
+                dati = riepilogo[anno_prec]
+                colore = "red" if dati["residuo"] < 0 else "#555"
+                st.markdown(
+                    f"**{anno_prec}**: Usati {formatta_giorni_ore(dati['usati'])} &nbsp;|&nbsp; "
+                    f"Residuo fine anno: <span style='color:{colore};'>{formatta_giorni_ore(dati['residuo'])}</span>",
+                    unsafe_allow_html=True
+                )
+
+    st.divider()
+    st.subheader("📅 Calendario (le mie assenze e quelle dei colleghi)")
+    st.markdown(build_calendario_ferie_html(df_storico, df_dipendenti), unsafe_allow_html=True)
+
+    st.divider()
+    calendario_ferie_mensile()
+
+    st.divider()
+    st.subheader("📖 Il mio storico ferie")
+    mio_storico = df_storico[df_storico['NOME'] == nome_utente].copy()
+    if mio_storico.empty:
+        st.caption("Nessuna assenza registrata.")
+    else:
+        mio_storico = mio_storico.copy()
+        mio_storico["_data_ord"] = pd.to_datetime(mio_storico['DATA INIZIO'], dayfirst=True, errors='coerce')
+        colonne_storico = ['DATA INIZIO', 'DATA FINE', 'TIPO', 'GIORNI LAVORATIVI']
+        if 'DETTAGLIO' in mio_storico.columns:
+            colonne_storico.append('DETTAGLIO')
+        mio_storico = mio_storico.sort_values(by="_data_ord", ascending=False)
+        st.dataframe(mio_storico[colonne_storico], use_container_width=True, hide_index=True)
