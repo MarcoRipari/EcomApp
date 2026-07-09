@@ -466,8 +466,6 @@ def dashboard_dipendente():
     st.markdown(f"""
         <div style="border: 1px solid #e6e9ef; padding: 20px; border-radius: 10px; background-color: #f9f9f9; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
             <p style="margin-bottom:5px; font-size:14px; color: #555;">Godute: <b>{formatta_giorni_ore(dati_anno['usati'])}</b> / {formatta_giorni_ore(dati_anno['disponibili'])} giorni</p>
-            <p style="margin-bottom:5px; font-size:14px; color: #555;">Totale disponibili anno: <b>{formatta_giorni_ore(dati_anno['disponibili'])} giorni</p>
-            <p style="margin-bottom:5px; font-size:14px; color: #555;">Godute: <b>{formatta_giorni_ore(dati_anno['usati'])}</b> giorni</p>
             <p style="color:{colore_residuo}; margin-bottom:8px; font-size:18px;">Residuo: <b>{formatta_giorni_ore(dati_anno['residuo'])}</b></p>
             <div style="background:#e6e9ef; border-radius:6px; height:10px; width:100%; overflow:hidden;">
                 <div style="background:{colore_barra}; height:100%; width:{percentuale*100}%; border-radius:6px;"></div>
