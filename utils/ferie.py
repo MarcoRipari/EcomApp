@@ -28,8 +28,9 @@ def _colore_per_nome(nome):
 def _assenze_nel_periodo(df_storico, giorni):
     """Calcola, per ogni giorno della lista, quali dipendenti sono assenti,
     con il dettaglio di tipo assenza, quantità (giorni interi o frazione da
-    permesso orario) e le date inizio/fine dell'assenza (per mostrarle nel
-    tooltip quando l'assenza copre più giorni)."""
+    permesso orario), il dettaglio testuale del permesso orario (se presente)
+    e le date inizio/fine dell'assenza (per mostrarle nel tooltip quando
+    l'assenza copre più giorni)."""
     assenze = {g: [] for g in giorni}
     if not df_storico.empty:
         for _, riga in df_storico.iterrows():
@@ -41,17 +42,20 @@ def _assenze_nel_periodo(df_storico, giorni):
                 continue
             tipo = riga.get('TIPO', '') or ''
             giorni_val = pd.to_numeric(riga.get('GIORNI LAVORATIVI'), errors='coerce')
+            dettaglio = str(riga.get('DETTAGLIO', '') or '').strip()
             for g in giorni:
                 if inizio_f <= g <= fine_f:
                     assenze[g].append({
                         "nome": riga['NOME'], "tipo": tipo, "giorni": giorni_val,
-                        "inizio": inizio_f, "fine": fine_f,
+                        "dettaglio": dettaglio, "inizio": inizio_f, "fine": fine_f,
                     })
     return assenze
 
 def _mappa_ore_previste(df_dipendenti):
     """Costruisce {nome: ore_giornaliere_previste} per stimare le ore mancanti
-    nei tooltip dei permessi orari, usando l'orario personale di ciascuno."""
+    nei tooltip dei permessi orari storici senza DETTAGLIO salvato, usando
+    l'orario personale di ciascuno (fallback per righe salvate prima
+    dell'introduzione della colonna DETTAGLIO)."""
     mappa = {}
     if df_dipendenti is not None and not df_dipendenti.empty:
         for _, riga in df_dipendenti.iterrows():
@@ -62,21 +66,31 @@ def _chip_html(assenza, opacity="1", ore_previste_dipendente=8.0):
     nome = assenza["nome"]
     tipo = assenza.get("tipo") or ""
     giorni_val = assenza.get("giorni")
+    dettaglio = assenza.get("dettaglio") or ""
     colore = _colore_per_nome(nome)
     primo_nome = str(nome).split()[0] if nome else "?"
 
     is_parziale = tipo == "Ferie" and pd.notna(giorni_val) and float(giorni_val) < 1
 
     if tipo and tipo != "Ferie":
-        tooltip = f"{nome} — {tipo}"
+        descrizione = tipo
         icona = ""
+    elif is_parziale and dettaglio:
+        # 🆕 Dettaglio esatto salvato al momento dell'inserimento del permesso
+        # orario (es. "Assente mattina", "Uscita anticipata 16:00")
+        descrizione = dettaglio
+        icona = "🕐 "
     elif is_parziale:
+        # Fallback per permessi orari storici salvati prima della colonna DETTAGLIO:
+        # stimiamo le ore mancanti dalla sola frazione di giorno
         ore_stimate = float(giorni_val) * ore_previste_dipendente
-        tooltip = f"{nome} — Permesso orario (~{ore_stimate:g}h, {float(giorni_val):g} gg)"
+        descrizione = f"Permesso orario (~{ore_stimate:g}h)"
         icona = "🕐 "
     else:
-        tooltip = f"{nome} — Ferie (giornata intera)"
+        descrizione = "Giornata intera"
         icona = ""
+
+    tooltip = f"{nome} — {descrizione}"
 
     # Se l'assenza copre più di un giorno, aggiungiamo il periodo completo al tooltip
     inizio_a, fine_a = assenza.get("inizio"), assenza.get("fine")
@@ -196,8 +210,11 @@ def build_calendario_mensile_html(df_storico, anno, mese, df_dipendenti=None):
             _chip_html(a, opacity_chip, mappa_ore.get(a["nome"], 8.0)) for a in assenze_giorno
         )
 
+        giorno_label = _GIORNI_IT[g.weekday()]
+
         parts.append(
             f'<div style="background:{bg}; border:{border}; border-radius:10px; padding:8px; min-height:76px;">'
+            f'<div style="font-size:10px; color:#adb5bd; font-weight:700; text-transform:uppercase;">{giorno_label}</div>'
             f'<div style="font-size:15px; font-weight:700; color:{colore_numero};">{g.day}</div>'
             f'{chips}'
             f'</div>'
@@ -298,6 +315,43 @@ def calcola_giorni_da_permesso_orario(orario, assente_mattina, ingresso_mattina,
     ore_mancanti = max(0.0, ore_previste - (ore_mattina + ore_pomeriggio))
     return round(ore_mancanti / ore_previste, 4)
 
+def _descrivi_mezza_giornata(assente, ingresso_eff, uscita_eff, ingresso_previsto, uscita_previsto):
+    """Descrive cosa è cambiato in una singola metà giornata rispetto
+    all'orario previsto, per costruire il dettaglio da salvare/mostrare."""
+    if assente:
+        return "assente"
+    parti = []
+    if ingresso_eff != ingresso_previsto:
+        parti.append(f"entrata posticipata {ingresso_eff.strftime('%H:%M')}")
+    if uscita_eff != uscita_previsto:
+        parti.append(f"uscita anticipata {uscita_eff.strftime('%H:%M')}")
+    return " e ".join(parti) if parti else None
+
+def descrivi_permesso_orario(orario, assente_mattina, ingresso_mattina, uscita_mattina,
+                              assente_pomeriggio, ingresso_pomeriggio, uscita_pomeriggio):
+    """Costruisce una breve descrizione testuale di un permesso orario (es.
+    'Assente mattina', 'Uscita anticipata 16:00'), da salvare nella colonna
+    DETTAGLIO del foglio FERIE e mostrare nei tooltip dei calendari -- senza
+    questa descrizione, dopo il salvataggio resterebbe solo la frazione di
+    giorno risultante (es. 0.25), che da sola non dice COSA è successo."""
+    desc_mattina = _descrivi_mezza_giornata(assente_mattina, ingresso_mattina, uscita_mattina,
+                                             orario["mattina_inizio"], orario["mattina_fine"])
+    desc_pomeriggio = _descrivi_mezza_giornata(assente_pomeriggio, ingresso_pomeriggio, uscita_pomeriggio,
+                                                orario["pomeriggio_inizio"], orario["pomeriggio_fine"])
+
+    parti = []
+    if desc_mattina == "assente":
+        parti.append("Assente mattina")
+    elif desc_mattina:
+        parti.append(desc_mattina.capitalize())
+
+    if desc_pomeriggio == "assente":
+        parti.append("Assente pomeriggio")
+    elif desc_pomeriggio:
+        parti.append(desc_pomeriggio.capitalize())
+
+    return " + ".join(parti) if parti else "Permesso orario"
+
 def add_permesso_orario(nome, data_giorno, orario_dipendente, assente_mattina, ingresso_mattina, uscita_mattina,
                          assente_pomeriggio, ingresso_pomeriggio, uscita_pomeriggio):
     """Registra un permesso orario (ritardo/uscita anticipata/assenza di mezza
@@ -306,8 +360,15 @@ def add_permesso_orario(nome, data_giorno, orario_dipendente, assente_mattina, i
     Se un'assenza di mezza giornata viene compensata da ore extra lavorate
     nell'altra metà (frazione risultante = 0), la riga viene comunque salvata
     con 0 giorni scalati -- serve a documentare che quella mezza giornata è
-    stata segnata come assente, senza però consumare ferie."""
+    stata segnata come assente, senza però consumare ferie.
+    🆕 Salva anche una colonna DETTAGLIO (testo) col riepilogo di cosa è stato
+    dichiarato, usata dai tooltip dei calendari. Se il foglio FERIE non ha
+    ancora questa colonna, viene semplicemente ignorata (nessun errore)."""
     frazione_giorno = calcola_giorni_da_permesso_orario(
+        orario_dipendente, assente_mattina, ingresso_mattina, uscita_mattina,
+        assente_pomeriggio, ingresso_pomeriggio, uscita_pomeriggio
+    )
+    dettaglio = descrivi_permesso_orario(
         orario_dipendente, assente_mattina, ingresso_mattina, uscita_mattina,
         assente_pomeriggio, ingresso_pomeriggio, uscita_pomeriggio
     )
@@ -333,8 +394,13 @@ def add_permesso_orario(nome, data_giorno, orario_dipendente, assente_mattina, i
     frazione_formattata = "{:.2f}".format(round(frazione_giorno, 2))
 
     sheet = get_sheet(ferie_sheet_id, "FERIE")
+    # 🆕 6° valore: DETTAGLIO, usato dai tooltip dei calendari per mostrare
+    # esattamente cosa è stato dichiarato (es. "Assente mattina"). Richiede che
+    # il foglio FERIE abbia una colonna "DETTAGLIO" in F (se manca l'intestazione,
+    # il valore viene comunque scritto in colonna F ma non verrà letto finché
+    # non aggiungi l'intestazione "DETTAGLIO" nella riga 1).
     riga_da_salvare = [nome, data_giorno.strftime('%d-%m-%Y'), data_giorno.strftime('%d-%m-%Y'),
-                       "Ferie", frazione_formattata]
+                       "Ferie", frazione_formattata, dettaglio]
     try:
         sheet.append_row(riga_da_salvare, value_input_option='RAW')
         get_ferie_storico.clear()
@@ -580,13 +646,26 @@ def sync_ferie_changes(nome_dipendente, edited_df):
             # Guardia difensiva: forziamo comunque NOME sul dipendente selezionato,
             # nel caso l'editor permetta righe con NOME vuoto.
             new_rows['NOME'] = nome_dipendente
-            new_rows['GIORNI LAVORATIVI'] = new_rows.apply(
-                lambda r: calcola_giorni_lavorativi_esatti(
-                    pd.to_datetime(r['DATA INIZIO']).date() if not isinstance(r['DATA INIZIO'], datetime) else r['DATA INIZIO'],
-                    pd.to_datetime(r['DATA FINE']).date() if not isinstance(r['DATA FINE'], datetime) else r['DATA FINE']
-                ),
-                axis=1
-            )
+
+            def _ricalcola_giorni(r):
+                # 🔧 FIX: prima si ricalcolava SEMPRE GIORNI LAVORATIVI come
+                # "giorno intero" (DATA INIZIO -> DATA FINE), sovrascrivendo
+                # anche i valori frazionari dei permessi orari (es. 0.25) con
+                # un numero intero sbagliato. Ora, se la riga ha un DETTAGLIO
+                # (permesso orario salvato col nuovo sistema) o un valore già
+                # frazionario (permesso orario storico, salvato prima che
+                # esistesse la colonna DETTAGLIO), manteniamo il valore
+                # esistente e ricalcoliamo solo le vere righe "giorno intero".
+                giorni_attuali = pd.to_numeric(r.get('GIORNI LAVORATIVI'), errors='coerce')
+                ha_dettaglio = str(r.get('DETTAGLIO', '') or '').strip() != ''
+                e_frazionario = pd.notna(giorni_attuali) and giorni_attuali != int(giorni_attuali)
+                if ha_dettaglio or e_frazionario:
+                    return giorni_attuali if pd.notna(giorni_attuali) else r.get('GIORNI LAVORATIVI')
+                inizio = pd.to_datetime(r['DATA INIZIO']).date() if not isinstance(r['DATA INIZIO'], datetime) else r['DATA INIZIO']
+                fine = pd.to_datetime(r['DATA FINE']).date() if not isinstance(r['DATA FINE'], datetime) else r['DATA FINE']
+                return calcola_giorni_lavorativi_esatti(inizio, fine)
+
+            new_rows['GIORNI LAVORATIVI'] = new_rows.apply(_ricalcola_giorni, axis=1)
 
             # Formattazione date per GSheet
             new_rows['DATA INIZIO'] = pd.to_datetime(new_rows['DATA INIZIO']).dt.strftime('%d-%m-%Y')
