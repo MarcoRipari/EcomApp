@@ -5,48 +5,104 @@ supabase_url = st.secrets["SUPABASE_URL"]
 supabase_key = st.secrets["SUPABASE_KEY"]
 service_role_key = st.secrets["SUPABASE_SERVICE_ROLE_KEY"]
 supabase: Client = create_client(supabase_url, supabase_key)
-supabase_admin = create_client(supabase_url, service_role_key)
+supabase_admin: Client = create_client(supabase_url, service_role_key)
 
-def login(username: str, password: str) -> bool:
+def _messaggio_errore_italiano(e: Exception) -> str:
+    """Traduce le eccezioni più comuni di Supabase in messaggi leggibili in
+    italiano, invece di mostrare il testo grezzo (spesso in inglese e poco
+    chiaro per l'utente finale)."""
+    testo = str(e).lower()
+    if "invalid login credentials" in testo or "invalid_credentials" in testo:
+        return "❌ Username/email o password errati."
+    if "email not confirmed" in testo:
+        return "❌ Email non confermata. Contatta un amministratore."
+    if "user already registered" in testo or "already been registered" in testo:
+        return "❌ Esiste già un utente registrato con questa email."
+    if "password" in testo and ("short" in testo or "weak" in testo or "6 characters" in testo):
+        return "❌ La password è troppo corta (minimo 6 caratteri)."
+    if "rate limit" in testo or "429" in testo:
+        return "❌ Troppi tentativi in poco tempo. Riprova tra qualche minuto."
+    if "network" in testo or "timeout" in testo or "connection" in testo:
+        return "❌ Errore di connessione al server. Riprova."
+    if "jwt" in testo or "expired" in testo:
+        return "❌ Sessione scaduta. Effettua di nuovo l'accesso."
+    return f"❌ Si è verificato un errore imprevisto: {e}"
+
+def login(identificativo: str, password: str) -> bool:
+    """Effettua il login con username OPPURE email (rilevato automaticamente
+    dalla presenza di '@'). Supabase Auth richiede sempre l'email per
+    autenticarsi: se l'utente inserisce lo username, prima risaliamo
+    all'email associata leggendo la tabella 'profiles'."""
     try:
-        # 1. Recupera il profilo dallo username
-        res_profile = supabase.table("profiles").select("*").eq("username", username).single().execute()
-        if not res_profile.data:
-            st.error("❌ Username non trovato")
+        identificativo = (identificativo or "").strip()
+        password = password or ""
+        if not identificativo or not password:
+            st.error("❌ Inserisci username/email e password.")
             return False
 
-        user_id = res_profile.data["user_id"]
-
-        # 2. Recupera l'utente auth per ottenere l'email (richiede service_role_key)
-        res_user = supabase_admin.auth.admin.get_user_by_id(user_id)
-        email = res_user.user.email
-
-        if not email:
-            st.error("❌ Nessuna email trovata per questo utente")
-            return False
-
-        # 3. Login usando email + password
-        res = supabase.auth.sign_in_with_password({
-            "email": email,
-            "password": password
-        })
-
-        if res.user:
-            # 4. Salva in session_state
-            st.session_state.user = {
-                "email": email,
-                "username": res_profile.data.get("username", ""),
-                "nome": res_profile.data.get("nome", ""),
-                "cognome": res_profile.data.get("cognome", ""),
-                "role": res_profile.data.get("role", "guest"),
-            }
-            return True
+        if "@" in identificativo:
+            email = identificativo
         else:
-            st.error("❌ Credenziali errate")
+            # 🔧 FIX: prima si cercava SEMPRE per username, quindi inserire
+            # un'email qui falliva sempre con "Username non trovato". Ora
+            # rileviamo il formato e usiamo l'email direttamente se presente.
+            try:
+                res_profile = supabase.table("profiles").select("*").eq("username", identificativo).execute()
+            except Exception as e:
+                st.error(_messaggio_errore_italiano(e))
+                return False
+
+            if not res_profile.data:
+                st.error("❌ Username non trovato.")
+                return False
+
+            user_id = res_profile.data[0]["user_id"]
+            try:
+                res_user = supabase_admin.auth.admin.get_user_by_id(user_id)
+                email = res_user.user.email if res_user and res_user.user else None
+            except Exception as e:
+                st.error(_messaggio_errore_italiano(e))
+                return False
+
+            if not email:
+                st.error("❌ Nessuna email associata a questo username.")
+                return False
+
+        # Login vero e proprio (richiede sempre email, anche se l'utente ha digitato lo username)
+        try:
+            res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+        except Exception as e:
+            st.error(_messaggio_errore_italiano(e))
             return False
+
+        if not res or not res.user:
+            st.error("❌ Username/email o password errati.")
+            return False
+
+        # Recupero profilo (nome, cognome, ruolo) tramite user_id: funziona sia
+        # per chi ha fatto login con username sia con email
+        try:
+            res_profile2 = supabase.table("profiles").select("*").eq("user_id", res.user.id).execute()
+        except Exception as e:
+            st.error(_messaggio_errore_italiano(e))
+            return False
+
+        if not res_profile2.data:
+            st.error("❌ Accesso riuscito ma profilo utente non trovato. Contatta un amministratore.")
+            return False
+
+        profilo = res_profile2.data[0]
+        st.session_state.user = {
+            "email": email,
+            "username": profilo.get("username", ""),
+            "nome": profilo.get("nome", ""),
+            "cognome": profilo.get("cognome", ""),
+            "role": profilo.get("role", "guest"),
+        }
+        return True
 
     except Exception as e:
-        st.error(f"Errore login: {e}")
+        st.error(_messaggio_errore_italiano(e))
         return False
 
 
@@ -88,22 +144,42 @@ def login_password(email: str, password: str) -> bool:
 
 def logout():
     if "user" in st.session_state:
-        supabase.auth.sign_out()
+        try:
+            supabase.auth.sign_out()
+        except Exception as e:
+            # Anche se il logout lato Supabase fallisce (es. sessione già scaduta),
+            # puliamo comunque la sessione locale per non lasciare l'utente bloccato
+            st.warning(f"⚠️ Disconnessione dal server non riuscita ({e}), ma la sessione locale è stata comunque chiusa.")
         st.session_state.user = None
-        #st.session_state.username = None
         st.rerun()
 
 def register_user(email: str, password: str, **param) -> bool:
     try:
-        # 1. Crea l'utente in Supabase Auth
-        res = supabase_admin.auth.admin.create_user({
-            "email": email,
-            "password": password,
-            "email_confirm": True
-        })
+        email = (email or "").strip()
+        password = password or ""
+        if not email or "@" not in email:
+            st.error("❌ Inserisci un'email valida.")
+            return False
+        if len(password) < 6:
+            st.error("❌ La password deve essere di almeno 6 caratteri.")
+            return False
+        if not param.get("username"):
+            st.error("❌ Lo username è obbligatorio.")
+            return False
 
-        if not res.user:
-            st.error("❌ Errore nella creazione utente in Auth")
+        # 1. Crea l'utente in Supabase Auth
+        try:
+            res = supabase_admin.auth.admin.create_user({
+                "email": email,
+                "password": password,
+                "email_confirm": True
+            })
+        except Exception as e:
+            st.error(_messaggio_errore_italiano(e))
+            return False
+
+        if not res or not res.user:
+            st.error("❌ Errore nella creazione dell'utente.")
             return False
 
         user_id = res.user.id
@@ -117,11 +193,20 @@ def register_user(email: str, password: str, **param) -> bool:
             "role": param.get("role", None)
         }
 
-        supabase_admin.table("profiles").insert(profile).execute()
+        try:
+            supabase_admin.table("profiles").insert(profile).execute()
+        except Exception as e:
+            # L'utente Auth è stato creato ma il profilo no: lo segnaliamo chiaramente
+            # invece di lasciare un utente "fantasma" senza spiegazioni
+            st.error(
+                f"⚠️ Utente creato in autenticazione, ma il salvataggio del profilo è fallito: "
+                f"{_messaggio_errore_italiano(e)} Contatta un amministratore per completare la registrazione."
+            )
+            return False
 
         st.success(f"✅ Utente {param.get('username', email)} creato correttamente")
         return True
 
     except Exception as e:
-        st.error(f"Errore registrazione: {e}")
+        st.error(_messaggio_errore_italiano(e))
         return False
