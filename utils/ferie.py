@@ -178,13 +178,7 @@ def build_calendario_mensile_html(df_storico, anno, mese, df_dipendenti=None):
     parts = ['<div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif;">']
 
     # Intestazione giorni della settimana
-    parts.append('<div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px; margin-bottom:6px; min-width:600px;">')
-    for gi in _GIORNI_IT:
-        parts.append(
-            f'<div style="font-size:11px; font-weight:700; color:#adb5bd; '
-            f'text-transform:uppercase; text-align:center;">{gi}</div>'
-        )
-    parts.append('</div>')
+
 
     parts.append('<div style="overflow-x:auto;">')
     parts.append('<div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px; min-width:600px;">')
