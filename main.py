@@ -55,15 +55,16 @@ with st.sidebar:
         user = st.session_state.user
         st.write(f"Accesso eseguito come: {user["nome"]}")
 
-        menu_item_list = [{"name":"Homepage", "icon":"house", "role":["guest","logistica","customer care","admin"]},
+        menu_item_list = [{"name":"Homepage", "icon":"house", "role":["guest","logistica","customer care","admin","dipendente"]},
                           {"name":"Catalogo", "icon":"list", "role":["logistica","customer care","admin"]},
                           {"name":"Ordini", "icon":"truck", "role":["logistica","customer care","admin"]},
                           {"name":"Giacenze", "icon":"box", "role":["logistica","customer care","admin"]},
                           {"name":"Foto", "icon":"camera", "role":["logistica","customer care","admin"]},
                           {"name":"Ferie", "icon":"sun", "role":["admin"]},
+                          {"name":"Le mie ferie", "icon":"person-workspace", "role":["dipendente"]},
                           {"name":"Admin", "icon":"gear", "role":["admin"]},
                           {"name":"Test", "icon":"gear", "role":["admin"]},
-                          {"name":"Logout", "icon":"key", "role":["guest","logistica","customer care","admin"]}
+                          {"name":"Logout", "icon":"key", "role":["guest","logistica","customer care","admin","dipendente"]}
                          ]
         
         submenu_item_list = [{"main":"Catalogo", "name":"Aggiungi ordini stagione", "icon":"plus", "role":["logistica","customer care","admin"]},
@@ -162,6 +163,9 @@ with st.sidebar:
 
 if page == "Homepage":
     homepage()
+
+elif page == "Le mie ferie":
+    dashboard_dipendente()
 
 elif page == "Catalogo - Aggiungi ordini stagione":
     catalogo_import_ordini()
