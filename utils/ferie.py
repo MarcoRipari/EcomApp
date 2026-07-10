@@ -122,7 +122,11 @@ def _chip_html(assenza, opacity="1", ore_previste_dipendente=8.0):
     elif is_parziale:
         # Fallback per permessi orari storici salvati prima della colonna DETTAGLIO:
         # stimiamo le ore mancanti dalla sola frazione di giorno
-        ore_stimate = float(giorni_val) * ore_previste_dipendente
+        # 🔧 FIX: giorni_val è arrotondato a 2 decimali (es. 0.12), quindi
+        # moltiplicandolo per le ore giornaliere si ottengono valori "sporchi"
+        # come 0.96h o 3.04h invece di 1h/3h. Arrotondiamo la stima al mezzo'ora
+        # più vicino, che è la granularità sensata per un permesso orario.
+        ore_stimate = round(float(giorni_val) * ore_previste_dipendente * 2) / 2
         descrizione = f"Permesso orario (~{ore_stimate:g}h)"
         icona = "🕐 "
     else:
@@ -516,6 +520,11 @@ def calcola_riepilogo_ferie_annuale(df_storico, nome, totale_annuo):
         residuo_precedente = residuo_anno
 
     return riepilogo
+
+def formatta_data_lunga(d):
+    """Formatta una data come '10 Agosto 2026' (nome mese esteso in italiano,
+    indipendente dal locale del server, che non è affidabile per i nomi mese)."""
+    return f"{d.day} {MESI_IT_LUNGO[d.month - 1]} {d.year}"
 
 def formatta_giorni_ore(valore_giorni, ore_per_giorno=8.0):
     """Formatta un valore di giorni (anche frazionario, es. 4.625, che deriva
