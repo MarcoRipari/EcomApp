@@ -83,7 +83,8 @@ def ferie():
         # mostriamo il colore rosso + il numero negativo reale nel testo.
         percentuale = min(usati / disponibili, 1.0) if disponibili > 0 else 1.0
         percentuale = max(percentuale, 0.0)
-        colore_residuo = "red" if residuo < 5 else "#31333F"
+        t = tema_colori()
+        colore_residuo = "#d32f2f" if residuo < 5 else t["text_primary"]
         # 🔧 st.progress() non permette di personalizzare il colore (resta sempre
         # blu, fisso al tema). Usiamo una barra HTML su misura per poterla
         # colorare di rosso quando il residuo va in negativo.
@@ -91,11 +92,11 @@ def ferie():
 
         with cols[i % 3]:
             st.markdown(f"""
-                <div style="border: 1px solid #e6e9ef; padding: 20px; border-radius: 10px; background-color: #f9f9f9; height: 150px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
+                <div style="border: 1px solid {t['card_border']}; padding: 20px; border-radius: 10px; background-color: {t['card_bg']}; height: 150px; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
                     <h3 style="margin-top:0; color:#1E88E5; font-size: 18px;">{dip.NOME}</h3>
-                    <p style="margin-bottom:5px; font-size:14px; color: #555;">Godute: <b>{formatta_giorni_ore(usati)}</b> / {formatta_giorni_ore(disponibili)} disponibili</p>
+                    <p style="margin-bottom:5px; font-size:14px; color: {t['text_secondary']};">Godute: <b>{formatta_giorni_ore(usati)}</b> / {formatta_giorni_ore(disponibili)} disponibili</p>
                     <p style="color:{colore_residuo}; margin-bottom:8px; font-size:16px;">Residuo: <b>{formatta_giorni_ore(residuo)}</b></p>
-                    <div style="background:#e6e9ef; border-radius:6px; height:10px; width:100%; overflow:hidden;">
+                    <div style="background:{t['bar_track']}; border-radius:6px; height:10px; width:100%; overflow:hidden;">
                         <div style="background:{colore_barra}; height:100%; width:{percentuale*100}%; border-radius:6px;"></div>
                     </div>
                 </div>
@@ -215,11 +216,12 @@ def ferie():
 
         # --- Recap veloce anni precedenti (solo un riassunto, niente dettaglio riga per riga) ---
         anni_precedenti = sorted([a for a in riepilogo_anni if a < anno_corrente], reverse=True)
+        t = tema_colori()
         if anni_precedenti:
-            with st.expander("📜 Storico anni precedenti"):
+            with st.expander("Storico anni precedenti"):
                 for anno_prec in anni_precedenti:
                     dati = riepilogo_anni[anno_prec]
-                    colore = "red" if dati["residuo"] < 0 else "#555"
+                    colore = "#d32f2f" if dati["residuo"] < 0 else t["text_secondary"]
                     st.markdown(
                         f"**{anno_prec}**: Usati {formatta_giorni_ore(dati['usati'])} &nbsp;|&nbsp; "
                         f"Residuo fine anno: <span style='color:{colore};'>{formatta_giorni_ore(dati['residuo'])}</span>",
@@ -228,9 +230,9 @@ def ferie():
 
         colore_residuo_card = "#d32f2f" if dati_anno_corrente["residuo"] < 0 else "#1E88E5"
         st.markdown(f"""
-            <div style="background-color: #f0f7ff; border-left: 5px solid #1E88E5; padding: 15px; border-radius: 5px; margin-top: 20px;">
-                <h4 style="margin-top: 0; color: #1E88E5;">📋 Riepilogo {dipendente_scelto} — {anno_corrente}</h4>
-                <table style="width: 100%; border-collapse: collapse;">
+            <div style="background-color: {t['accent_bg']}; border-left: 5px solid #1E88E5; padding: 15px; border-radius: 5px; margin-top: 20px;">
+                <h4 style="margin-top: 0; color: #1E88E5;">Riepilogo {dipendente_scelto} — {anno_corrente}</h4>
+                <table style="width: 100%; border-collapse: collapse; color: {t['text_primary']};">
                     <tr>
                         <td style="padding: 5px 0;"><b>Giorni Annui + Riporto:</b></td>
                         <td style="text-align: right;">{formatta_giorni_ore(dati_anno_corrente['disponibili'])}</td>
@@ -239,7 +241,7 @@ def ferie():
                         <td style="padding: 5px 0;"><b>Giorni Goduti (anno corrente):</b></td>
                         <td style="text-align: right;">{formatta_giorni_ore(dati_anno_corrente['usati'])}</td>
                     </tr>
-                    <tr style="border-top: 1px solid #ccc;">
+                    <tr style="border-top: 1px solid {t['divider']};">
                         <td style="padding: 10px 0;"><b><span style="color: {colore_residuo_card};">Residuo Attuale:</span></b></td>
                         <td style="text-align: right; font-size: 1.2em; color: {colore_residuo_card};"><b>{formatta_giorni_ore(dati_anno_corrente['residuo'])}</b></td>
                     </tr>
@@ -401,25 +403,25 @@ def gestione_dipendenti():
                 f"{orario_dip['mattina_inizio'].strftime('%H:%M')}–{orario_dip['mattina_fine'].strftime('%H:%M')} / "
                 f"{orario_dip['pomeriggio_inizio'].strftime('%H:%M')}–{orario_dip['pomeriggio_fine'].strftime('%H:%M')}"
             )
+            t = tema_colori()
             # Visualizzazione Card
             st.markdown(f"""
                 <div style="
-                    border: 1px solid #e6e9ef; 
+                    border: 1px solid {t['card_border']}; 
                     padding: 20px; 
                     border-radius: 10px; 
-                    background-color: #f9f9f9;
+                    background-color: {t['card_bg']};
                     margin-bottom: 5px;
                     height: 140px;
                     box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
                     <h3 style="margin-top:0; color:#1E88E5; font-size: 18px;">{dipendente.NOME}</h3>
-                    <p style="margin-bottom:3px; font-size:14px; color: #555;">Totale annuo: <b>{dipendente.TOTALE} gg</b></p>
-                    <p style="margin-bottom:0; font-size:12px; color: #888;">🕐 {orario_label}</p>
+                    <p style="margin-bottom:3px; font-size:14px; color: {t['text_secondary']};">Totale annuo: <b>{dipendente.TOTALE} gg</b></p>
+                    <p style="margin-bottom:0; font-size:12px; color: {t['text_secondary']};">{orario_label}</p>
                 </div>
             """, unsafe_allow_html=True)
             
-            # Pulsante Modifica con icona
             # Usiamo una chiave unica (key) basata sul nome per distinguere i bottoni
-            if st.button(f"📝 Modifica {dipendente.NOME}", key=f"edit_{dipendente.NOME}", use_container_width=True):
+            if st.button(f"Modifica {dipendente.NOME}", key=f"edit_{dipendente.NOME}", use_container_width=True):
                 modifica_ferie_totali_modal(dipendente.NOME, dipendente.TOTALE, orario_dip)
 
 def dashboard_dipendente():
@@ -431,7 +433,7 @@ def dashboard_dipendente():
     user = st.session_state.get("user", {}) or {}
     nome_utente = f"{(user.get('nome') or '').strip()} {(user.get('cognome') or '').strip()}".strip()
 
-    st.header(f"👋 Le mie ferie")
+    st.header("Le mie ferie")
     if not nome_utente:
         st.error("Non riesco a determinare il tuo nome dal profilo utente.")
         return
@@ -455,8 +457,9 @@ def dashboard_dipendente():
     anno_corrente = datetime.now().year
     riepilogo = calcola_riepilogo_ferie_annuale(df_storico, nome_utente, info_dip.TOTALE)
     dati_anno = riepilogo[anno_corrente]
+    t_dip = tema_colori()
 
-    colore_residuo = "red" if dati_anno["residuo"] < 5 else "#31333F"
+    colore_residuo = "#d32f2f" if dati_anno["residuo"] < 5 else t_dip["text_primary"]
     colore_barra = "#d32f2f" if dati_anno["residuo"] < 0 else "#1E88E5"
     percentuale = min(dati_anno["usati"] / dati_anno["disponibili"], 1.0) if dati_anno["disponibili"] > 0 else 1.0
     percentuale = max(percentuale, 0.0)
@@ -464,10 +467,10 @@ def dashboard_dipendente():
     st.subheader("📊 Le mie ferie residue")
     st.caption(f"Anno {anno_corrente} — include il riporto del residuo dell'anno precedente")
     st.markdown(f"""
-        <div style="border: 1px solid #e6e9ef; padding: 20px; border-radius: 10px; background-color: #f9f9f9; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
-            <p style="margin-bottom:5px; font-size:14px; color: #555;">Godute: <b>{formatta_giorni_ore(dati_anno['usati'])}</b> / {formatta_giorni_ore(dati_anno['disponibili'])} disponibili</p>
+        <div style="border: 1px solid {t_dip['card_border']}; padding: 20px; border-radius: 10px; background-color: {t_dip['card_bg']}; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
+            <p style="margin-bottom:5px; font-size:14px; color: {t_dip['text_secondary']};">Godute: <b>{formatta_giorni_ore(dati_anno['usati'])}</b> / {formatta_giorni_ore(dati_anno['disponibili'])} disponibili</p>
             <p style="color:{colore_residuo}; margin-bottom:8px; font-size:18px;">Residuo: <b>{formatta_giorni_ore(dati_anno['residuo'])}</b></p>
-            <div style="background:#e6e9ef; border-radius:6px; height:10px; width:100%; overflow:hidden;">
+            <div style="background:{t_dip['bar_track']}; border-radius:6px; height:10px; width:100%; overflow:hidden;">
                 <div style="background:{colore_barra}; height:100%; width:{percentuale*100}%; border-radius:6px;"></div>
             </div>
         </div>
@@ -475,10 +478,10 @@ def dashboard_dipendente():
 
     anni_precedenti = sorted([a for a in riepilogo if a < anno_corrente], reverse=True)
     if anni_precedenti:
-        with st.expander("📜 Storico anni precedenti"):
+        with st.expander("Storico anni precedenti"):
             for anno_prec in anni_precedenti:
                 dati = riepilogo[anno_prec]
-                colore = "red" if dati["residuo"] < 0 else "#555"
+                colore = "#d32f2f" if dati["residuo"] < 0 else t_dip["text_secondary"]
                 st.markdown(
                     f"**{anno_prec}**: Usati {formatta_giorni_ore(dati['usati'])} &nbsp;|&nbsp; "
                     f"Residuo fine anno: <span style='color:{colore};'>{formatta_giorni_ore(dati['residuo'])}</span>",
@@ -486,7 +489,7 @@ def dashboard_dipendente():
                 )
 
     st.divider()
-    st.subheader("🔜 Le mie prossime ferie")
+    st.subheader("Le mie prossime ferie")
     oggi = datetime.now().date()
     mio_storico_completo = df_storico[df_storico['NOME'] == nome_utente].copy()
     if not mio_storico_completo.empty:
@@ -508,7 +511,7 @@ def dashboard_dipendente():
     calendario_ferie_mensile()
 
     st.divider()
-    st.subheader("📖 Il mio storico ferie")
+    st.subheader("Il mio storico ferie")
     # 🔧 Solo assenze passate (data fine <= oggi), dalla più recente alla più vecchia
     mio_storico = mio_storico_completo[mio_storico_completo["_fine"] <= oggi].copy() if not mio_storico_completo.empty else mio_storico_completo
     if mio_storico.empty:
