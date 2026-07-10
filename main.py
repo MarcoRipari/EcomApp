@@ -14,7 +14,13 @@ st.set_page_config(page_title="Gestione ECOM", layout="wide")
 
 # 📱 Rilevamento mobile lato server, tramite l'header User-Agent della richiesta
 # iniziale (st.context.headers). Non richiede componenti JS aggiuntivi.
-_user_agent = (st.context.headers.get("User-Agent", "") or "")
+# Avvolto in try/except per sicurezza: questa riga gira ad OGNI caricamento
+# pagina, prima di qualsiasi altra cosa -- un suo eventuale fallimento non deve
+# mai rompere l'intera app per tutti gli utenti.
+try:
+    _user_agent = (st.context.headers.get("User-Agent", "") or "")
+except Exception:
+    _user_agent = ""
 IS_MOBILE = bool(re.search(r"Mobi|Android|iPhone|iPad|iPod|Windows Phone", _user_agent, re.IGNORECASE))
 
 if IS_MOBILE:
