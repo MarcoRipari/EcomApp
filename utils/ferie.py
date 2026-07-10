@@ -19,6 +19,45 @@ _MESI_IT = ["Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott"
 MESI_IT_LUNGO = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
                   "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"]
 
+def tema_colori():
+    """Ritorna una palette coerente con il tema attivo (chiaro/scuro) di
+    Streamlit, rilevato lato server tramite st.context.theme.type. Evita che
+    i box con sfondo chiaro fisso (pensati per il tema chiaro) restino bianchi
+    e stonati sul tema scuro. Se st.context.theme non è disponibile (versioni
+    Streamlit precedenti), si assume il tema chiaro come default sicuro."""
+    try:
+        is_dark = st.context.theme.type == "dark"
+    except Exception:
+        is_dark = False
+
+    if is_dark:
+        return {
+            "card_bg": "#262730",
+            "card_border": "#3b3c46",
+            "text_primary": "#e6e6e6",
+            "text_secondary": "#a3a8b8",
+            "oggi_bg": "#1f2b4d",
+            "weekend_bg": "#20212a",
+            "fuori_mese_bg": "#1c1d24",
+            "fuori_mese_text": "#5a5b66",
+            "bar_track": "#3b3c46",
+            "divider": "#3b3c46",
+            "accent_bg": "#16233d",
+        }
+    return {
+        "card_bg": "#f9f9f9",
+        "card_border": "#e6e9ef",
+        "text_primary": "#31333F",
+        "text_secondary": "#555555",
+        "oggi_bg": "#EEF2FF",
+        "weekend_bg": "#FAFAFA",
+        "fuori_mese_bg": "#FAFAFA",
+        "fuori_mese_text": "#c9c9c9",
+        "bar_track": "#e6e9ef",
+        "divider": "#e6e9ef",
+        "accent_bg": "#f0f7ff",
+    }
+
 def _colore_per_nome(nome):
     # Colore stabile per dipendente (basato sul nome, non su hash() di Python
     # che cambia ad ogni riavvio del processo) -- così i colori restano coerenti nel tempo
@@ -114,6 +153,7 @@ def build_calendario_ferie_html(df_storico, df_dipendenti=None):
     giorni_totali = [inizio_settimana + timedelta(days=i) for i in range(14)]
     assenze_per_giorno = _assenze_nel_periodo(df_storico, giorni_totali)
     mappa_ore = _mappa_ore_previste(df_dipendenti)
+    t = tema_colori()
 
     parts = ['<div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif;">']
 
@@ -122,7 +162,7 @@ def build_calendario_ferie_html(df_storico, df_dipendenti=None):
         label = "Questa settimana" if settimana_idx == 0 else "Prossima settimana"
         margine_top = "0" if settimana_idx == 0 else "20px"
         parts.append(
-            f'<div style="font-size:12px; font-weight:700; color:#868e96; '
+            f'<div style="font-size:12px; font-weight:700; color:{t["text_secondary"]}; '
             f'text-transform:uppercase; letter-spacing:0.6px; margin:{margine_top} 0 8px 2px;">{label}</div>'
         )
         parts.append('<div style="overflow-x:auto;">')
@@ -133,8 +173,8 @@ def build_calendario_ferie_html(df_storico, df_dipendenti=None):
             is_weekend = g.weekday() >= 5
             assenze_giorno = assenze_per_giorno[g]
 
-            bg = "#EEF2FF" if is_oggi else ("#FAFAFA" if is_weekend else "#FFFFFF")
-            border = "2px solid #4C6EF5" if is_oggi else "1px solid #ECECEC"
+            bg = t["oggi_bg"] if is_oggi else (t["weekend_bg"] if is_weekend else t["card_bg"])
+            border = f'2px solid #4C6EF5' if is_oggi else f'1px solid {t["card_border"]}'
             chips = "".join(
                 _chip_html(a, ore_previste_dipendente=mappa_ore.get(a["nome"], 8.0)) for a in assenze_giorno
             )
@@ -144,8 +184,8 @@ def build_calendario_ferie_html(df_storico, df_dipendenti=None):
 
             parts.append(
                 f'<div style="background:{bg}; border:{border}; border-radius:10px; padding:8px; min-height:76px;">'
-                f'<div style="font-size:10px; color:#adb5bd; font-weight:700; text-transform:uppercase;">{giorno_label}</div>'
-                f'<div style="font-size:15px; font-weight:700; color:#333;">{g.day}{mese_label}</div>'
+                f'<div style="font-size:10px; color:{t["text_secondary"]}; font-weight:700; text-transform:uppercase;">{giorno_label}</div>'
+                f'<div style="font-size:15px; font-weight:700; color:{t["text_primary"]};">{g.day}{mese_label}</div>'
                 f'{chips}'
                 f'</div>'
             )
@@ -174,6 +214,7 @@ def build_calendario_mensile_html(df_storico, anno, mese, df_dipendenti=None):
 
     assenze_per_giorno = _assenze_nel_periodo(df_storico, giorni_totali)
     mappa_ore = _mappa_ore_previste(df_dipendenti)
+    t = tema_colori()
 
     parts = ['<div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif;">']
 
@@ -190,14 +231,14 @@ def build_calendario_mensile_html(df_storico, anno, mese, df_dipendenti=None):
         assenze_giorno = assenze_per_giorno[g]
 
         if fuori_mese:
-            bg = "#FAFCFF" if is_oggi else "#FAFAFA"
-            border = "1px solid #F1F1F1"
-            colore_numero = "#c9c9c9"
+            bg = t["oggi_bg"] if is_oggi else t["fuori_mese_bg"]
+            border = f'1px solid {t["card_border"]}'
+            colore_numero = t["fuori_mese_text"]
             opacity_chip = "0.5"
         else:
-            bg = "#EEF2FF" if is_oggi else ("#FAFAFA" if is_weekend else "#FFFFFF")
-            border = "2px solid #4C6EF5" if is_oggi else "1px solid #ECECEC"
-            colore_numero = "#333"
+            bg = t["oggi_bg"] if is_oggi else (t["weekend_bg"] if is_weekend else t["card_bg"])
+            border = f'2px solid #4C6EF5' if is_oggi else f'1px solid {t["card_border"]}'
+            colore_numero = t["text_primary"]
             opacity_chip = "1"
 
         chips = "".join(
@@ -208,7 +249,7 @@ def build_calendario_mensile_html(df_storico, anno, mese, df_dipendenti=None):
 
         parts.append(
             f'<div style="background:{bg}; border:{border}; border-radius:10px; padding:8px; min-height:76px;">'
-            f'<div style="font-size:10px; color:#adb5bd; font-weight:700; text-transform:uppercase;">{giorno_label}</div>'
+            f'<div style="font-size:10px; color:{t["text_secondary"]}; font-weight:700; text-transform:uppercase;">{giorno_label}</div>'
             f'<div style="font-size:15px; font-weight:700; color:{colore_numero};">{g.day}</div>'
             f'{chips}'
             f'</div>'
@@ -400,7 +441,7 @@ def add_permesso_orario(nome, data_giorno, orario_dipendente, assente_mattina, i
         get_ferie_storico.clear()
         return True
     except Exception as e:
-        return f"🚨 Errore salvataggio: {e}"
+        return f"Errore durante il salvataggio: {e}"
 
 def update_orario_dipendente(nome, orario_dict):
     """Aggiorna l'orario personale (mattina/pomeriggio) di un dipendente.
@@ -591,10 +632,9 @@ def add_ferie(riga):
                     if inizio_es and fine_es:
                         # CONTROLLO MATEMATICO OVERLAP
                         if inizio_nuovo <= fine_es and inizio_es <= fine_nuovo:
-                            st.write("Gia ok")
-                            return f"❌ {riga[0]} ha già ferie dal {raw_inizio} al {raw_fine}"
-                except Exception as e:
-                    st.write(f"DEBUG: Errore conversione date riga {nome_es}: {e}")
+                            return f"{riga[0]} ha già ferie dal {raw_inizio} al {raw_fine}"
+                except Exception:
+                    # Riga con date non interpretabili: la saltiamo senza bloccare il controllo sulle altre
                     continue
                     
     except Exception as e:
@@ -609,7 +649,7 @@ def add_ferie(riga):
         get_ferie_storico.clear()  # 🔧 invalida la cache: la nuova riga deve essere visibile subito
         return True
     except Exception as e:
-        return f"🚨 Errore salvataggio: {e}"
+        return f"Errore durante il salvataggio: {e}"
 
 def sync_ferie_changes(nome_dipendente, edited_df):
     """
@@ -707,15 +747,3 @@ def check_overlaps(inizio_nuovo, fine_nuovo, escludi_nome=None):
     except Exception as e:
         st.error(f"Errore controllo sovrapposizioni: {e}")
         return []
-
-
-# --- NUOVA FUNZIONE DIALOG PER MODIFICA BUDGET ---
-@st.dialog("Modifica Budget Ferie")
-def edit_budget_dialog(nome, budget_attuale):
-    st.write(f"Stai modificando il budget annuo per **{nome}**")
-    nuovo_budget = st.number_input("Nuovo Totale Giorni", value=int(budget_attuale), min_value=0)
-    
-    if st.button("Salva"):
-        if update_dipendente_budget(nome, nuovo_budget):
-            st.success(f"Budget per {nome} aggiornato a {nuovo_budget}!")
-            st.rerun()
