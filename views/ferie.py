@@ -468,7 +468,7 @@ def dashboard_dipendente():
     st.caption(f"Anno {anno_corrente} — include il riporto del residuo dell'anno precedente")
     st.markdown(f"""
         <div style="border: 1px solid {t_dip['card_border']}; padding: 20px; border-radius: 10px; background-color: {t_dip['card_bg']}; box-shadow: 2px 2px 5px rgba(0,0,0,0.05);">
-            <p style="margin-bottom:5px; font-size:14px; color: {t_dip['text_secondary']};">Godute: <b>{formatta_giorni_ore(dati_anno['usati'])}</b> / {formatta_giorni_ore(dati_anno['disponibili'])} disponibili</p>
+            <p style="margin-bottom:5px; font-size:14px; color: {t_dip['text_secondary']};">Godute: <b>{formatta_giorni_ore(dati_anno['usati'])}</b></p>
             <p style="color:{colore_residuo}; margin-bottom:8px; font-size:18px;">Residuo: <b>{formatta_giorni_ore(dati_anno['residuo'])}</b></p>
             <div style="background:{t_dip['bar_track']}; border-radius:6px; height:10px; width:100%; overflow:hidden;">
                 <div style="background:{colore_barra}; height:100%; width:{percentuale*100}%; border-radius:6px;"></div>
@@ -500,12 +500,21 @@ def dashboard_dipendente():
     if prossime.empty:
         st.caption("Nessuna ferie programmata al momento.")
     else:
+        ore_previste_utente = ore_giornaliere_previste(get_orario_dipendente(info_dip))
         for _, riga in prossime.iterrows():
             inizio_r, fine_r = riga["_inizio"], riga["_fine"]
-            periodo = inizio_r.strftime('%d/%m/%Y') if inizio_r == fine_r else f"{inizio_r.strftime('%d/%m/%Y')} → {fine_r.strftime('%d/%m/%Y')}"
-            dettaglio_riga = str(riga.get('DETTAGLIO', '') or '').strip()
-            etichetta = dettaglio_riga if dettaglio_riga else ("Giornata intera" if riga.get('TIPO') == "Ferie" else riga.get('TIPO', ''))
-            st.markdown(f"- 🗓️ **{periodo}** — {etichetta}")
+            giorni_val = pd.to_numeric(riga.get('GIORNI LAVORATIVI'), errors='coerce')
+            e_permesso_orario = (
+                riga.get('TIPO') == "Ferie" and pd.notna(giorni_val) and float(giorni_val) < 1
+            )
+            if inizio_r != fine_r:
+                periodo = f"Dal {formatta_data_lunga(inizio_r)} al {formatta_data_lunga(fine_r)}"
+            elif e_permesso_orario:
+                ore = round(float(giorni_val) * ore_previste_utente * 2) / 2
+                periodo = f"{ore:g}h il {formatta_data_lunga(inizio_r)}"
+            else:
+                periodo = formatta_data_lunga(inizio_r)
+            st.markdown(f"- {periodo}")
 
     st.divider()
     calendario_ferie_mensile()
