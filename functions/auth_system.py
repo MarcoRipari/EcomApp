@@ -47,7 +47,12 @@ def login(identificativo: str, password: str) -> bool:
             # un'email qui falliva sempre con "Username non trovato". Ora
             # rileviamo il formato e usiamo l'email direttamente se presente.
             try:
-                res_profile = supabase.table("profiles").select("*").eq("username", identificativo).execute()
+                # 🔧 FIX: .eq() confronta lo username in modo case-sensitive
+                # (Postgres di default), quindi "MarcoRipari" e "marcoripari"
+                # risultavano utenti diversi. .ilike() confronta senza distinguere
+                # maiuscole/minuscole; non essendoci wildcard (%, _) in uno
+                # username normale, si comporta come un confronto esatto case-insensitive.
+                res_profile = supabase.table("profiles").select("*").ilike("username", identificativo).execute()
             except Exception as e:
                 st.error(_messaggio_errore_italiano(e))
                 return False
@@ -165,6 +170,19 @@ def register_user(email: str, password: str, **param) -> bool:
             return False
         if not param.get("username"):
             st.error("❌ Lo username è obbligatorio.")
+            return False
+
+        # 🆕 Controllo duplicati case-insensitive: dato che il login ora cerca
+        # lo username ignorando maiuscole/minuscole, due username che
+        # differiscono solo per case (es. "MarcoRipari" e "marcoripari")
+        # sarebbero ambigui in fase di accesso. Li blocchiamo qui.
+        try:
+            esistente = supabase.table("profiles").select("username").ilike("username", param["username"]).execute()
+            if esistente.data:
+                st.error(f"❌ Esiste già un utente con lo username '{param['username']}' (a meno di maiuscole/minuscole).")
+                return False
+        except Exception as e:
+            st.error(_messaggio_errore_italiano(e))
             return False
 
         # 1. Crea l'utente in Supabase Auth
