@@ -130,7 +130,7 @@ def _chip_html(assenza, opacity="1", ore_previste_dipendente=8.0):
         descrizione = f"Permesso orario (~{ore_stimate:g}h)"
         icona = "🕐 "
     else:
-        descrizione = "Giornata intera"
+        descrizione = ""
         icona = ""
 
     tooltip = f"{nome} — {descrizione}"
@@ -138,7 +138,7 @@ def _chip_html(assenza, opacity="1", ore_previste_dipendente=8.0):
     # Se l'assenza copre più di un giorno, aggiungiamo il periodo completo al tooltip
     inizio_a, fine_a = assenza.get("inizio"), assenza.get("fine")
     if inizio_a and fine_a and inizio_a != fine_a:
-        tooltip += f" ({inizio_a.strftime('%d/%m')} - {fine_a.strftime('%d/%m')})"
+        tooltip += f"Dal {inizio_a.strftime('%d/%m')} al {fine_a.strftime('%d/%m')})"
 
     return (
         f'<div title="{tooltip}" style="background:{colore}22; color:{colore}; '
