@@ -30,4 +30,4 @@ jobs:
         env:
           FOTO_GSHEET_ID: ${{ secrets.FOTO_GSHEET_ID }}
           SERVICE_ACCOUNT_JSON: ${{ secrets.SERVICE_ACCOUNT_JSON }}
-        run: python fast_check_foto.py
+        run: python scripts/fast_check_foto.py
