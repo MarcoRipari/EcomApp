@@ -13,7 +13,7 @@ import random
 SHEET_ID = "1JW30e-RF2WREWe96Qj-M_zVtjqbvg3ZhRgXuY2E5CqU"
 SERVICE_ACCOUNT_JSON = os.environ.get("SERVICE_ACCOUNT_JSON") # Assicurati che l'env var sia settata
 
-FOGLIO = "Foglio6" # Nome del tab/foglio
+FOGLIO = "FW26" # Nome del tab/foglio
 
 # Impostazione Colonne (usa le lettere)
 COLONNA_SKU = "E"       # Colonna da cui leggere la SKU
