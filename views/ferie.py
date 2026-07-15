@@ -522,7 +522,7 @@ def dashboard_dipendente():
     st.divider()
     st.subheader("Il mio storico ferie")
     # 🔧 Solo assenze passate (data fine <= oggi), dalla più recente alla più vecchia
-    mio_storico = mio_storico_completo[mio_storico_completo["_fine"] <= oggi & mio_storico_completo.DETTAGLIO.lower() != "rettifica"].copy() if not mio_storico_completo.empty else mio_storico_completo
+    mio_storico = mio_storico_completo[mio_storico_completo["_fine"] <= oggi & mio_storico_completo["DETTAGLIO"].lower() != "rettifica"].copy() if not mio_storico_completo.empty else mio_storico_completo
     if mio_storico.empty:
         st.caption("Nessuna assenza passata registrata.")
     else:
