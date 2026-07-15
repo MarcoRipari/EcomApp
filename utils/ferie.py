@@ -4,7 +4,8 @@ import holidays
 import hashlib
 import calendar as _calendar_mod
 from datetime import datetime, timedelta, date
-
+import locale
+locale.setlocale(locale.LC_TIME, 'it_IT.UTF-8')
 from utils import *
 
 load_functions_from("functions", globals())
@@ -139,7 +140,10 @@ def _chip_html(assenza, opacity="1", ore_previste_dipendente=8.0):
     # Se l'assenza copre più di un giorno, aggiungiamo il periodo completo al tooltip
     inizio_a, fine_a = assenza.get("inizio"), assenza.get("fine")
     if inizio_a and fine_a and inizio_a != fine_a:
-        tooltip += f" — Dal {inizio_a.strftime('%d %B')} al {fine_a.strftime('%d %B')})"
+        if dettaglio.lower() == "rettifica":
+            tooltip += f" — Rettifica"
+        else:
+            tooltip += f" — Dal {inizio_a.strftime('%d %B')} al {fine_a.strftime('%d %B')})"
 
     return (
         f'<div title="{tooltip}" style="background:{colore}22; color:{colore}; '
