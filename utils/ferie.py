@@ -143,7 +143,7 @@ def _chip_html(assenza, opacity="1", ore_previste_dipendente=8.0):
         if dettaglio.lower() == "rettifica":
             tooltip += f" — Rettifica"
         else:
-            tooltip += f" — Dal {inizio_a.strftime('%d %B')} al {fine_a.strftime('%d %B')})"
+            tooltip += f" — Dal {inizio_a.strftime('%d %B')} al {fine_a.strftime('%d %B')}"
 
     return (
         f'<div title="{tooltip}" style="background:{colore}22; color:{colore}; '
