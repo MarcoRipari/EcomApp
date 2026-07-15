@@ -45,8 +45,6 @@ geopy
 holidays
 xlrd>=2.0.1
 openpyxl
-locales
-locales-all
 
 # UI / UX
 streamlit-option-menu
