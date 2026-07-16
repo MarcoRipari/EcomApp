@@ -726,9 +726,6 @@ def sync_ferie_changes(nome_dipendente, edited_df):
         sheet.clear()
         # 1. Converti esplicitamente in stringa formattata e aggiungi un apice iniziale
         # L'apice (') è il trucco standard per forzare Google Sheets a trattare il contenuto come testo puro
-        final_df['GIORNI LAVORATIVI'] = final_df['GIORNI LAVORATIVI'].apply(
-            lambda x: f"'{float(x):.2f}" if pd.notna(x) and str(x).strip() != "" else ""
-        )
         
         # 2. Converti l'intero DataFrame in una lista di stringhe (per sicurezza)
         data_to_save = [final_df.columns.tolist()] + final_df.astype(str).values.tolist()
