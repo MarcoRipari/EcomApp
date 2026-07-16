@@ -313,8 +313,8 @@ def aggiungi_ferie():
           st.markdown("**Mattina**")
           assente_mattina = st.checkbox("Assente tutta la mattina", key="assente_mattina")
           if not assente_mattina:
-              ingresso_mattina = st.time_input("Ingresso mattina", value=orario["mattina_inizio"], key="ingresso_mattina")
-              uscita_mattina = st.time_input("Uscita mattina", value=orario["mattina_fine"], key="uscita_mattina")
+              ingresso_mattina = st.time_input("Ingresso mattina", value=orario["mattina_inizio"], key=f"{riga_dip}_ingresso_mattina")
+              uscita_mattina = st.time_input("Uscita mattina", value=orario["mattina_fine"], key=f"{riga_dip}_uscita_mattina")
           else:
               ingresso_mattina = orario["mattina_inizio"]
               uscita_mattina = orario["mattina_inizio"]  # ininfluente: assente_mattina=True forza 0 ore comunque
