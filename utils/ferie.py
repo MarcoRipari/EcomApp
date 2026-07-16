@@ -724,17 +724,7 @@ def sync_ferie_changes(nome_dipendente, edited_df):
 
         # Pulizia intestazioni e caricamento
         sheet.clear()
-        sheet.update("A1", [final_df.columns.tolist()] + final_df.fillna("").values.tolist())
-        col_idx = final_df.columns.get_loc('GIORNI LAVORATIVI') + 1 
-
-        # Imposta il formato numerico a "Numero" con punto come separatore
-        # Questo forza GSheet a interpretare la colonna in formato standard americano
-        sheet.format(f"{chr(64 + col_idx)}2:{chr(64 + col_idx)}1000", {
-            "numberFormat": {
-                "type": "NUMBER",
-                "pattern": "0.00" # Questo forza l'uso del punto nel pattern
-            }
-        })
+        sheet.update("A1", [final_df.columns.tolist()] + final_df.fillna("").values.tolist(), value_input_option='RAW')
         get_ferie_storico.clear()  # 🔧 invalida la cache: il foglio è stato riscritto, la vecchia versione non è più valida
         return True
     except Exception as e:
