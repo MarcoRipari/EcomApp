@@ -323,8 +323,8 @@ def aggiungi_ferie():
           st.markdown("**Pomeriggio**")
           assente_pomeriggio = st.checkbox("Assente tutto il pomeriggio", key="assente_pomeriggio")
           if not assente_pomeriggio:
-              ingresso_pomeriggio = st.time_input("Ingresso pomeriggio", value=orario["pomeriggio_inizio"], key="ingresso_pomeriggio")
-              uscita_pomeriggio = st.time_input("Uscita pomeriggio", value=orario["pomeriggio_fine"], key="uscita_pomeriggio")
+              ingresso_pomeriggio = st.time_input("Ingresso pomeriggio", value=orario["pomeriggio_inizio"], key=f"{riga_dip}_ingresso_pomeriggio")
+              uscita_pomeriggio = st.time_input("Uscita pomeriggio", value=orario["pomeriggio_fine"], key=f"{riga_dip}_uscita_pomeriggio")
           else:
               ingresso_pomeriggio = orario["pomeriggio_inizio"]
               uscita_pomeriggio = orario["pomeriggio_inizio"]
