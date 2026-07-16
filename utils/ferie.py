@@ -724,21 +724,7 @@ def sync_ferie_changes(nome_dipendente, edited_df):
 
         # Pulizia intestazioni e caricamento
         sheet.clear()
-
-        # 1. Forza la conversione della colonna in stringa formattata (come in add_permesso_orario)
-        # Assicurati che i valori siano stringhe con punto, non float
-        new_rows['GIORNI LAVORATIVI'] = new_rows['GIORNI LAVORATIVI'].apply(
-            lambda x: "{:.2f}".format(float(x)) if pd.notna(x) and x != "" else ""
-        )
-        
-        # 2. Prepara la lista per il salvataggio
-        data_to_save = [final_df.columns.tolist()] + final_df.fillna("").values.tolist()
-        
-        # 3. Usa update specificando RAW
-        sheet.clear()
-        sheet.update("A1", data_to_save, value_input_option='RAW')
-
-        # sheet.update("A1", [final_df.columns.tolist()] + final_df.fillna("").values.tolist())
+        sheet.update("A1", [final_df.columns.tolist()] + final_df.fillna("").values.tolist(), value_input_option='RAW')
         get_ferie_storico.clear()  # 🔧 invalida la cache: il foglio è stato riscritto, la vecchia versione non è più valida
         return True
     except Exception as e:
