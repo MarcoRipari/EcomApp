@@ -724,7 +724,20 @@ def sync_ferie_changes(nome_dipendente, edited_df):
 
         # Pulizia intestazioni e caricamento
         sheet.clear()
-        sheet.update("A1", [final_df.columns.tolist()] + final_df.fillna("").values.tolist(), value_input_option='RAW')
+        # 1. Converti esplicitamente in stringa formattata e aggiungi un apice iniziale
+        # L'apice (') è il trucco standard per forzare Google Sheets a trattare il contenuto come testo puro
+        final_df['GIORNI LAVORATIVI'] = final_df['GIORNI LAVORATIVI'].apply(
+            lambda x: f"'{float(x):.2f}" if pd.notna(x) and str(x).strip() != "" else ""
+        )
+        
+        # 2. Converti l'intero DataFrame in una lista di stringhe (per sicurezza)
+        data_to_save = [final_df.columns.tolist()] + final_df.astype(str).values.tolist()
+        
+        # 3. Invio con RAW
+        sheet.clear()
+        sheet.update("A1", data_to_save, value_input_option='RAW')
+      
+        # sheet.update("A1", [final_df.columns.tolist()] + final_df.fillna("").values.tolist(), value_input_option='RAW')
         get_ferie_storico.clear()  # 🔧 invalida la cache: il foglio è stato riscritto, la vecchia versione non è più valida
         return True
     except Exception as e:
