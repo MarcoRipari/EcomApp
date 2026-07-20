@@ -110,7 +110,7 @@ def _chip_html(assenza, opacity="1", ore_previste_dipendente=8.0):
     colore = _colore_per_nome(nome)
     primo_nome = str(nome).split()[0] if nome else "?"
 
-    is_parziale = tipo == "Ferie" and pd.notna(giorni_val) and float(giorni_val) < 1
+    is_parziale = tipo == "Permesso Orario" and pd.notna(giorni_val) and float(giorni_val) < 1
 
     if tipo and tipo != "Ferie":
         descrizione = tipo
