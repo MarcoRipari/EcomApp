@@ -158,7 +158,7 @@ def ferie():
             "NOME": st.column_config.TextColumn("DIPENDENTE", disabled=True),
             "DATA INIZIO": st.column_config.DateColumn("INIZIO", format="DD/MM/YYYY", required=True),
             "DATA FINE": st.column_config.DateColumn("FINE", format="DD/MM/YYYY", required=True),
-            "TIPO": st.column_config.SelectboxColumn("TIPO", options=["Ferie", "Rettifica", "Altro"], required=True),
+            "TIPO": st.column_config.SelectboxColumn("TIPO", options=["Ferie", "Permesso Orario", "Rettifica", "Altro"], required=True),
             "GIORNI LAVORATIVI": st.column_config.NumberColumn("GG", disabled=True),
         }
         if ha_colonna_dettaglio:
@@ -505,7 +505,7 @@ def dashboard_dipendente():
             inizio_r, fine_r = riga["_inizio"], riga["_fine"]
             giorni_val = pd.to_numeric(riga.get('GIORNI LAVORATIVI'), errors='coerce')
             e_permesso_orario = (
-                riga.get('TIPO') == "Ferie" and pd.notna(giorni_val) and float(giorni_val) < 1
+                riga.get('TIPO') == "Permesso Orario" and pd.notna(giorni_val) and float(giorni_val) < 1
             )
             if inizio_r != fine_r:
                 periodo = f"Dal {formatta_data_lunga(inizio_r)} al {formatta_data_lunga(fine_r)}"
