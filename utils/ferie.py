@@ -444,7 +444,7 @@ def add_permesso_orario(nome, data_giorno, orario_dipendente, assente_mattina, i
     # il valore viene comunque scritto in colonna F ma non verrà letto finché
     # non aggiungi l'intestazione "DETTAGLIO" nella riga 1).
     riga_da_salvare = [nome, data_giorno.strftime('%d-%m-%Y'), data_giorno.strftime('%d-%m-%Y'),
-                       "Ferie", frazione_formattata, dettaglio]
+                       "Permesso Orario", frazione_formattata, dettaglio]
     try:
         sheet.append_row(riga_da_salvare, value_input_option='RAW')
         get_ferie_storico.clear()
