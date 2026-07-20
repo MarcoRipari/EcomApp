@@ -656,7 +656,10 @@ def add_ferie(riga):
 
     # --- SALVATAGGIO ---
     totale_giorni = calcola_giorni_lavorativi_esatti(inizio_nuovo, fine_nuovo)
-    riga_da_salvare = [riga[0], inizio_nuovo.strftime('%d-%m-%Y'), fine_nuovo.strftime('%d-%m-%Y'), riga[3], totale_giorni]
+    if riga[3] == "Rettifica":
+      riga_da_salvare = [riga[0], inizio_nuovo.strftime('%d-%m-%Y'), fine_nuovo.strftime('%d-%m-%Y'), riga[3], totale_giorni, riga[3]]
+    else:
+      riga_da_salvare = [riga[0], inizio_nuovo.strftime('%d-%m-%Y'), fine_nuovo.strftime('%d-%m-%Y'), riga[3], totale_giorni]
     
     try:
         sheet.append_row(riga_da_salvare)
