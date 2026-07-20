@@ -158,7 +158,7 @@ def ferie():
             "NOME": st.column_config.TextColumn("DIPENDENTE", disabled=True),
             "DATA INIZIO": st.column_config.DateColumn("INIZIO", format="DD/MM/YYYY", required=True),
             "DATA FINE": st.column_config.DateColumn("FINE", format="DD/MM/YYYY", required=True),
-            "TIPO": st.column_config.SelectboxColumn("TIPO", options=["Ferie", "Permesso Orario", "Altro"], required=True),
+            "TIPO": st.column_config.SelectboxColumn("TIPO", options=["Ferie", "Rettifica", "Altro"], required=True),
             "GIORNI LAVORATIVI": st.column_config.NumberColumn("GG", disabled=True),
         }
         if ha_colonna_dettaglio:
@@ -275,7 +275,7 @@ def aggiungi_ferie():
           if sovrapposizioni:
               st.warning(f"⚠️ **Attenzione:** Nelle date selezionate sono già in ferie: {', '.join(sovrapposizioni)}")
 
-      tipo = st.selectbox("Tipo di assenza", ["Ferie", "Altro"])
+      tipo = st.selectbox("Tipo di assenza", ["Ferie", "Rettifica", "Altro"])
 
       if st.button("Inserisci ferie"):
         if not nome:
