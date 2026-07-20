@@ -112,7 +112,7 @@ def _chip_html(assenza, opacity="1", ore_previste_dipendente=8.0):
 
     is_parziale = tipo == "Permesso Orario" and pd.notna(giorni_val) and float(giorni_val) < 1
 
-    if tipo and tipo != "Ferie":
+    if tipo and tipo != "Ferie" or tipo and tipo != "Permesso Orario":
         descrizione = tipo
         icona = ""
     elif is_parziale and dettaglio:
