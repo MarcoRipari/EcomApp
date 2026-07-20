@@ -110,9 +110,9 @@ def _chip_html(assenza, opacity="1", ore_previste_dipendente=8.0):
     colore = _colore_per_nome(nome)
     primo_nome = str(nome).split()[0] if nome else "?"
 
-    is_parziale = tipo == "Permesso Orario" and pd.notna(giorni_val) and float(giorni_val) < 1
+    is_parziale = tipo == "Ferie" and pd.notna(giorni_val) and float(giorni_val) < 1
 
-    if tipo and tipo != "Ferie" or tipo and tipo != "Permesso Orario":
+    if tipo and tipo != "Ferie":
         descrizione = tipo
         icona = ""
     elif is_parziale and dettaglio:
@@ -444,7 +444,7 @@ def add_permesso_orario(nome, data_giorno, orario_dipendente, assente_mattina, i
     # il valore viene comunque scritto in colonna F ma non verrà letto finché
     # non aggiungi l'intestazione "DETTAGLIO" nella riga 1).
     riga_da_salvare = [nome, data_giorno.strftime('%d-%m-%Y'), data_giorno.strftime('%d-%m-%Y'),
-                       "Permesso Orario", frazione_formattata, dettaglio]
+                       "Ferie", frazione_formattata, dettaglio]
     try:
         sheet.append_row(riga_da_salvare, value_input_option='RAW')
         get_ferie_storico.clear()
