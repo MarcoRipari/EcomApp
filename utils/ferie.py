@@ -502,7 +502,7 @@ def calcola_riepilogo_ferie_annuale(df_storico, nome, totale_annuo):
 
     date_valide = []
     if not df_storico.empty and 'NOME' in df_storico.columns:
-        dip_ferie = df_storico[(df_storico['NOME'] == nome) & (df_storico.get('TIPO').isin(['Ferie', 'Rettifica']))]
+        dip_ferie = df_storico[(df_storico['NOME'] == nome) & (df_storico.get('TIPO').isin(['Ferie', 'Permesso Orario', 'Rettifica']))]
         for _, riga in dip_ferie.iterrows():
             try:
                 inizio_f = pd.to_datetime(riga['DATA INIZIO'], dayfirst=True, errors='raise').date()
