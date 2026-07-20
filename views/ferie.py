@@ -158,7 +158,7 @@ def ferie():
             "NOME": st.column_config.TextColumn("DIPENDENTE", disabled=True),
             "DATA INIZIO": st.column_config.DateColumn("INIZIO", format="DD/MM/YYYY", required=True),
             "DATA FINE": st.column_config.DateColumn("FINE", format="DD/MM/YYYY", required=True),
-            "TIPO": st.column_config.SelectboxColumn("TIPO", options=["Ferie", "Altro"], required=True),
+            "TIPO": st.column_config.SelectboxColumn("TIPO", options=["Ferie", "Permesso Orario", "Altro"], required=True),
             "GIORNI LAVORATIVI": st.column_config.NumberColumn("GG", disabled=True),
         }
         if ha_colonna_dettaglio:
