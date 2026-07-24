@@ -27,6 +27,7 @@ def giacenze_importa():
         "OUTLET_FW26": "1LxLWykK_cwf4eVVF61oDNM4hxUzCyIQoGLC-EP1Z8t0",
         "SELE-OUTLET-PE26": "1eR3ZOE6IzGgYP4mPnyGBfWiDof4Gpv9olOVu_G_k1dg",
         "30.06.26_Base_Dati_Retag_26/1+26/2": "12bjlbGOuiYfKrRRe0TPOhaJ64vwts3csdTMdwTMG3Rg",
+        "SKU FOTO 26/2": "1JW30e-RF2WREWe96Qj-M_zVtjqbvg3ZhRgXuY2E5CqU",
     }
 
     SHEETS_CONFIG_TEST = {
