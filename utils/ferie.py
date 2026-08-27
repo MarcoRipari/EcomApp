@@ -38,7 +38,8 @@ def tema_colori():
             "text_primary": "#e6e6e6",
             "text_secondary": "#a3a8b8",
             "oggi_bg": "#1f2b4d",
-            "weekend_bg": "#20212a",
+            "weekend_bg": "#1c1d24",
+            "festivo_bg": "#3d2f14",
             "fuori_mese_bg": "#1c1d24",
             "fuori_mese_text": "#5a5b66",
             "bar_track": "#3b3c46",
@@ -51,7 +52,8 @@ def tema_colori():
         "text_primary": "#31333F",
         "text_secondary": "#555555",
         "oggi_bg": "#EEF2FF",
-        "weekend_bg": "#FAFAFA",
+        "weekend_bg": "#ECECEC",
+        "festivo_bg": "#FFF3E0",
         "fuori_mese_bg": "#FAFAFA",
         "fuori_mese_text": "#c9c9c9",
         "bar_track": "#e6e9ef",
@@ -225,6 +227,11 @@ def build_calendario_mensile_html(df_storico, anno, mese, df_dipendenti=None):
     mappa_ore = _mappa_ore_previste(df_dipendenti)
     t = tema_colori()
 
+    # Festivi italiani: calcoliamo su tutti gli anni effettivamente presenti in
+    # griglia (un mese a cavallo di dicembre/gennaio copre 2 anni diversi)
+    anni_griglia = {g.year for g in giorni_totali}
+    festivi_it = holidays.Italy(years=list(anni_griglia))
+
     parts = ['<div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif;">']
 
     # Intestazione giorni della settimana
@@ -235,9 +242,14 @@ def build_calendario_mensile_html(df_storico, anno, mese, df_dipendenti=None):
 
     for g in giorni_totali:
         is_oggi = (g == oggi)
-        is_weekend = g.weekday() >= 5
+        e_weekend = g.weekday() >= 5
+        e_festivo = g in festivi_it
+        # 🆕 Sabato, domenica e festivi italiani: cella evidenziata (più scura
+        # per il weekend, leggermente colorata per i festivi) e nomi nascosti,
+        # anche se qualcuno risulta in ferie quel giorno.
+        nascondi_nomi = e_weekend or e_festivo
         fuori_mese = (g.month != mese)
-        assenze_giorno = assenze_per_giorno[g]
+        assenze_giorno = [] if nascondi_nomi else assenze_per_giorno[g]
 
         if fuori_mese:
             bg = t["oggi_bg"] if is_oggi else t["fuori_mese_bg"]
@@ -245,7 +257,14 @@ def build_calendario_mensile_html(df_storico, anno, mese, df_dipendenti=None):
             colore_numero = t["fuori_mese_text"]
             opacity_chip = "0.5"
         else:
-            bg = t["oggi_bg"] if is_oggi else (t["weekend_bg"] if is_weekend else t["card_bg"])
+            if is_oggi:
+                bg = t["oggi_bg"]
+            elif e_festivo:
+                bg = t["festivo_bg"]
+            elif e_weekend:
+                bg = t["weekend_bg"]
+            else:
+                bg = t["card_bg"]
             border = f'2px solid #4C6EF5' if is_oggi else f'1px solid {t["card_border"]}'
             colore_numero = t["text_primary"]
             opacity_chip = "1"
