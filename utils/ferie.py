@@ -166,10 +166,19 @@ def build_calendario_ferie_html(df_storico, df_dipendenti=None):
     mappa_ore = _mappa_ore_previste(df_dipendenti)
     t = tema_colori()
 
+    # Festivi italiani: stesso trattamento del calendario mensile (cella
+    # colorata, nomi nascosti), calcolati sugli anni effettivamente in griglia
+    anni_griglia = {g.year for g in giorni_totali}
+    festivi_it = holidays.Italy(years=list(anni_griglia))
+
     parts = ['<div style="font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, sans-serif;">']
 
     for settimana_idx in range(2):
-        settimana_giorni = giorni_totali[settimana_idx * 7:(settimana_idx + 1) * 7]
+        settimana_giorni_full = giorni_totali[settimana_idx * 7:(settimana_idx + 1) * 7]
+        # 🆕 In questo calendario "rapido" sabato e domenica non vanno proprio
+        # mostrati (non solo con nomi nascosti): filtriamo la settimana a
+        # Lun-Ven e passiamo a una griglia di 5 colonne invece di 7.
+        settimana_giorni = [g for g in settimana_giorni_full if g.weekday() < 5]
         label = "Questa settimana" if settimana_idx == 0 else "Prossima settimana"
         margine_top = "0" if settimana_idx == 0 else "20px"
         parts.append(
@@ -177,14 +186,22 @@ def build_calendario_ferie_html(df_storico, df_dipendenti=None):
             f'text-transform:uppercase; letter-spacing:0.6px; margin:{margine_top} 0 8px 2px;">{label}</div>'
         )
         parts.append('<div style="overflow-x:auto;">')
-        parts.append('<div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:8px; min-width:600px;">')
+        parts.append('<div style="display:grid; grid-template-columns:repeat(5, 1fr); gap:8px; min-width:430px;">')
 
         for g in settimana_giorni:
             is_oggi = (g == oggi)
-            is_weekend = g.weekday() >= 5
-            assenze_giorno = assenze_per_giorno[g]
+            e_festivo = g in festivi_it
+            # 🆕 I festivi italiani restano visibili (evidenziati e con nomi
+            # nascosti) anche se cadono di lunedì-venerdì; solo il weekend è
+            # stato del tutto rimosso dalla griglia sopra.
+            assenze_giorno = [] if e_festivo else assenze_per_giorno[g]
 
-            bg = t["oggi_bg"] if is_oggi else (t["weekend_bg"] if is_weekend else t["card_bg"])
+            if is_oggi:
+                bg = t["oggi_bg"]
+            elif e_festivo:
+                bg = t["festivo_bg"]
+            else:
+                bg = t["card_bg"]
             border = f'2px solid #4C6EF5' if is_oggi else f'1px solid {t["card_border"]}'
             chips = "".join(
                 _chip_html(a, ore_previste_dipendente=mappa_ore.get(a["nome"], 8.0)) for a in assenze_giorno
