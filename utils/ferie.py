@@ -146,13 +146,15 @@ def _chip_html(assenza, opacity="1", ore_previste_dipendente=8.0):
             tooltip += f" — Rettifica"
         else:
             tooltip += f" — Dal {inizio_a.strftime('%d %B')} al {fine_a.strftime('%d %B')}"
-
-    return (
-        f'<div title="{tooltip}" style="background:{colore}22; color:{colore}; '
-        f'border:1px solid {colore}55; border-radius:6px; padding:2px 6px; '
-        f'font-size:11px; font-weight:600; margin-top:4px; white-space:nowrap; '
-        f'overflow:hidden; text-overflow:ellipsis; opacity:{opacity};">{icona}{primo_nome}</div>'
-    )
+    if dettagli.lower() == "rettifica":
+      return
+    else: 
+      return (
+          f'<div title="{tooltip}" style="background:{colore}22; color:{colore}; '
+          f'border:1px solid {colore}55; border-radius:6px; padding:2px 6px; '
+          f'font-size:11px; font-weight:600; margin-top:4px; white-space:nowrap; '
+          f'overflow:hidden; text-overflow:ellipsis; opacity:{opacity};">{icona}{primo_nome}</div>'
+      )
 
 def build_calendario_ferie_html(df_storico, df_dipendenti=None):
     """Genera un calendario HTML/CSS minimale di 2 settimane (questa + prossima)
