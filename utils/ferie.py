@@ -203,8 +203,13 @@ def build_calendario_ferie_html(df_storico, df_dipendenti=None):
             else:
                 bg = t["card_bg"]
             border = f'2px solid #4C6EF5' if is_oggi else f'1px solid {t["card_border"]}'
+            # chips = "".join(
+            #     _chip_html(a, ore_previste_dipendente=mappa_ore.get(a["nome"], 8.0)) for a in assenze_giorno
+            # )
             chips = "".join(
-                _chip_html(a, ore_previste_dipendente=mappa_ore.get(a["nome"], 8.0)) for a in assenze_giorno
+                _chip_html(a, ore_previste_dipendente=mappa_ore.get(a["nome"], 8.0))
+                for a in assenze_giorno
+                if (a.get("dettaglio") or "").lower() != "rettifica"
             )
 
             giorno_label = _GIORNI_IT[g.weekday()]
