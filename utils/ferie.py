@@ -291,8 +291,13 @@ def build_calendario_mensile_html(df_storico, anno, mese, df_dipendenti=None):
             colore_numero = t["text_primary"]
             opacity_chip = "1"
 
+        # chips = "".join(
+        #     _chip_html(a, opacity_chip, mappa_ore.get(a["nome"], 8.0)) for a in assenze_giorno
+        # )
         chips = "".join(
-            _chip_html(a, opacity_chip, mappa_ore.get(a["nome"], 8.0)) for a in assenze_giorno
+            _chip_html(a, ore_previste_dipendente=mappa_ore.get(a["nome"], 8.0))
+            for a in assenze_giorno
+            if (a.get("dettaglio") or "").lower() != "rettifica"
         )
 
         giorno_label = _GIORNI_IT[g.weekday()]
