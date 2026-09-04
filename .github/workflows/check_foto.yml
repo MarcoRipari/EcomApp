@@ -3,7 +3,7 @@ name: 📸 Controllo Foto giornaliero
 on:
   workflow_dispatch:       # Avvio manuale
   schedule:
-    - cron: '0 5 * * *'     # Ogni giorno alle 5:00 UTC
+    - cron: '0 1 * * *'     # Ogni giorno alle 5:00 UTC
 
 jobs:
   check-photos:
