@@ -4,8 +4,9 @@ import holidays
 import hashlib
 import calendar as _calendar_mod
 from datetime import datetime, timedelta, date
-import locale
-locale.setlocale(locale.LC_TIME, 'it_IT.UTF-8')
+#import locale
+#locale.setlocale(locale.LC_TIME, 'it_IT.UTF-8')
+from babel.dates import format_date
 from utils import *
 
 load_functions_from("functions", globals())
@@ -145,7 +146,11 @@ def _chip_html(assenza, opacity="1", ore_previste_dipendente=8.0):
         if dettaglio.lower() == "rettifica":
             tooltip += f" — Rettifica"
         else:
-            tooltip += f" — Dal {inizio_a.strftime('%d %B')} al {fine_a.strftime('%d %B')}"
+            #tooltip += f" — Dal {inizio_a.strftime('%d %B')} al {fine_a.strftime('%d %B')}"
+            # Formattazione sicura in italiano indipendente dal sistema operativo
+            inizio_str = format_date(inizio_a, format="d MMMM", locale="it_IT")
+            fine_str = format_date(fine_a, format="d MMMM", locale="it_IT")
+            tooltip += f" — Dal {inizio_str} al {fine_str}"
 
     return (
         f'<div title="{tooltip}" style="background:{colore}22; color:{colore}; '
