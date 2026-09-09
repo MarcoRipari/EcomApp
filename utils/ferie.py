@@ -713,7 +713,7 @@ def add_ferie(riga):
       riga_da_salvare = [riga[0], inizio_nuovo.strftime('%d-%m-%Y'), fine_nuovo.strftime('%d-%m-%Y'), riga[3], totale_giorni]
     
     try:
-        sheet.append_row(riga_da_salvare)
+        sheet.append_row(riga_da_salvare, value_input_option='USER_ENTERED')
         get_ferie_storico.clear()  # 🔧 invalida la cache: la nuova riga deve essere visibile subito
         return True
     except Exception as e:
