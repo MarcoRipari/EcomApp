@@ -497,7 +497,7 @@ def add_permesso_orario(nome, data_giorno, orario_dipendente, assente_mattina, i
     riga_da_salvare = [nome, data_giorno.strftime('%d-%m-%Y'), data_giorno.strftime('%d-%m-%Y'),
                        "Permesso Orario", frazione_formattata, dettaglio]
     try:
-        sheet.append_row(riga_da_salvare, value_input_option='RAW')
+        sheet.append_row(riga_da_salvare, value_input_option='USER_ENTERED')
         get_ferie_storico.clear()
         return True
     except Exception as e:
