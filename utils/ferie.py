@@ -487,7 +487,7 @@ def add_permesso_orario(nome, data_giorno, orario_dipendente, assente_mattina, i
         return "⚠️ Nessuna variazione rispetto all'orario previsto: nulla da registrare."
 
     #frazione_formattata = "{:.2f}".format(round(frazione_giorno, 2))
-    frazione_formattata = round(float(frazione_giorno), 2)
+    frazione_formattata = f"{round(float(frazione_giorno), 2):.2f}".replace('.', ',')
 
     sheet = get_sheet(ferie_sheet_id, "FERIE")
     # 🆕 6° valore: DETTAGLIO, usato dai tooltip dei calendari per mostrare
