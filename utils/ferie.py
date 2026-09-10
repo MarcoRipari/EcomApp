@@ -495,7 +495,7 @@ def add_permesso_orario(nome, data_giorno, orario_dipendente, assente_mattina, i
     # il foglio FERIE abbia una colonna "DETTAGLIO" in F (se manca l'intestazione,
     # il valore viene comunque scritto in colonna F ma non verrà letto finché
     # non aggiungi l'intestazione "DETTAGLIO" nella riga 1).
-    riga_da_salvare = [nome, data_giorno.strftime('%d-%m-%Y'), data_giorno.strftime('%d-%m-%Y'),
+    riga_da_salvare = [nome, data_giorno.strftime('%m-%d-%Y'), data_giorno.strftime('%m-%d-%Y'),
                        "Permesso Orario", frazione_formattata, dettaglio]
     try:
         sheet.append_row(riga_da_salvare, value_input_option='USER_ENTERED')
@@ -709,9 +709,9 @@ def add_ferie(riga):
     # --- SALVATAGGIO ---
     totale_giorni = calcola_giorni_lavorativi_esatti(inizio_nuovo, fine_nuovo)
     if riga[3] == "Rettifica":
-      riga_da_salvare = [riga[0], inizio_nuovo.strftime('%d-%m-%Y'), fine_nuovo.strftime('%d-%m-%Y'), riga[3], totale_giorni, riga[3]]
+      riga_da_salvare = [riga[0], inizio_nuovo.strftime('%m-%d-%Y'), fine_nuovo.strftime('%m-%d-%Y'), riga[3], totale_giorni, riga[3]]
     else:
-      riga_da_salvare = [riga[0], inizio_nuovo.strftime('%d-%m-%Y'), fine_nuovo.strftime('%d-%m-%Y'), riga[3], totale_giorni]
+      riga_da_salvare = [riga[0], inizio_nuovo.strftime('%m-%d-%Y'), fine_nuovo.strftime('%m-%d-%Y'), riga[3], totale_giorni]
     
     try:
         sheet.append_row(riga_da_salvare, value_input_option='USER_ENTERED')
