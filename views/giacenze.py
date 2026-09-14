@@ -28,6 +28,9 @@ def giacenze_importa():
         "SELE-OUTLET-PE26": "1eR3ZOE6IzGgYP4mPnyGBfWiDof4Gpv9olOVu_G_k1dg",
         "30.06.26_Base_Dati_Retag_26/1+26/2": "12bjlbGOuiYfKrRRe0TPOhaJ64vwts3csdTMdwTMG3Rg",
         "AMAZON PRIME || SELEZIONE": "1O4SH9B6LB7JflQY8UcPcucsQJdMI7jQNRcxJquZlpog",
+        "SELE-BF-FW26-2": "1b4VOxFS14xyGU9Y03Ktwl0yPz1hex0RgyF7L11gc7LA",
+        "OUTLET_FW26": "1LxLWykK_cwf4eVVF61oDNM4hxUzCyIQoGLC-EP1Z8t0",
+        "Base_Dati_RTM_26-1": "11ag7I-Z4U6EzsUUEvyGsFciKlz2gONsynwKwcUBEI1U",
         "SKU FOTO 26/2": "1JW30e-RF2WREWe96Qj-M_zVtjqbvg3ZhRgXuY2E5CqU",
     }
 
