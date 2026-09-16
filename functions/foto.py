@@ -48,7 +48,7 @@ def count_da_scattare(type="totale"):
   elif type == "riscattare":
     return riscattare
   elif type == "totale":
-    return scattare + riscattare
+    return scattare
   elif type == "consegnate":
     return consegnate
   elif type == "disponibili":
