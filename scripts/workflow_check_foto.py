@@ -261,11 +261,11 @@ def build_email_html(missing_rows: List[List[str]]) -> str:
     )
     return f"""
     <html><body>
-        <p>Elenco aggiornato delle paia mancanti/urgenze ({len(missing_rows)} righe):</p>
+        <p>Elenco aggiornato delle paia mancanti/urgenze ({len(missing_rows)} SKU Mancnati):</p>
         <table style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:13px;">
             <tr style="background:#f2f2f2;">
                 <th style='padding:4px 8px;border:1px solid #ddd;'>SKU</th>
-                <th style='padding:4px 8px;border:1px solid #ddd;'>TIPO</th>
+                <th style='padding:4px 8px;border:1px solid #ddd;'>STATO</th>
             </tr>
             {rows_html}
         </table>
