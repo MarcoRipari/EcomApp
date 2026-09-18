@@ -416,16 +416,19 @@ async def main():
 
     # Invio email con CSV allegato al posto della lista nel corpo
     try:
-        oggi = datetime.now().strftime("%d/%m/%Y")
-        html_body = build_email_html(len(sku_email))
-        csv_bytes = build_csv_attachment(sku_email) if sku_email else None
-        nome_file = f"paia_mancanti_{datetime.now().strftime('%Y%m%d')}.csv"
-        send_email(
-            f"Report Paia Mancanti - {oggi}",
-            html_body,
-            attachment_bytes=csv_bytes,
-            attachment_filename=nome_file if csv_bytes else None
-        )
+        if datetime.now().weekday() == 4:
+            oggi = datetime.now().strftime("%d/%m/%Y")
+            html_body = build_email_html(len(sku_email))
+            csv_bytes = build_csv_attachment(sku_email) if sku_email else None
+            nome_file = f"paia_mancanti_{datetime.now().strftime('%Y%m%d')}.csv"
+            send_email(
+                f"Report Paia Mancanti - {oggi}",
+                html_body,
+                attachment_bytes=csv_bytes,
+                attachment_filename=nome_file if csv_bytes else None
+            )
+        else:
+            print("📭 Non è lunedì, invio email saltato.")
     except Exception as e:
         print(f"⚠️ Errore preparazione/invio email: {e}")
 
