@@ -4,12 +4,15 @@ import os
 import json
 import gspread
 import io
+import csv
 import hashlib
 import imagehash
 import smtplib
 import ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.mime.base import MIMEBase
+from email import encoders
 from PIL import Image, ImageChops
 from datetime import datetime
 from typing import List, Dict
@@ -249,30 +252,26 @@ def get_val(row, idx):
 # -------------------------------
 # EMAIL
 # -------------------------------
-def build_email_html(missing_rows: List[List[str]]) -> str:
-    """Costruisce il corpo HTML dell'email a partire dalle righe (SKU, TIPO) di URGENZE."""
-    if not missing_rows:
-        return "<p>Nessuna paia mancante al momento. ✅</p>"
-
-    rows_html = "".join(
-        f"<tr><td style='padding:4px 8px;border:1px solid #ddd;'>{r[0]}</td>"
-        f"<td style='padding:4px 8px;border:1px solid #ddd;'>{r[1] if len(r) > 1 else ''}</td></tr>"
-        for r in missing_rows
-    )
+def build_email_html(num_righe: int) -> str:
+    if num_righe == 0:
+        return "<p>Nessuna foto mancante al momento. ✅</p>"
     return f"""
     <html><body>
-        <p>Elenco aggiornato delle paia mancanti/urgenze ({len(missing_rows)} SKU Mancnati):</p>
-        <table style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:13px;">
-            <tr style="background:#f2f2f2;">
-                <th style='padding:4px 8px;border:1px solid #ddd;'>SKU</th>
-                <th style='padding:4px 8px;border:1px solid #ddd;'>STATO</th>
-            </tr>
-            {rows_html}
-        </table>
+        <p>In allegato l'elenco aggiornato delle sku con foto mancanti.
+        ({num_righe} SKU mancanti).</p>
     </body></html>
     """
 
-def send_email(subject: str, html_body: str):
+def build_csv_attachment(rows: List[List[str]]) -> bytes:
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, delimiter=";")
+    writer.writerow(["SKU", "STATO"])
+    for r in rows:
+        writer.writerow([r[0], r[1] if len(r) > 1 else ""])
+    # Usiamo utf-8-sig per compatibilità con Excel (BOM)
+    return buffer.getvalue().encode("utf-8-sig")
+
+def send_email(subject: str, html_body: str, attachment_bytes: bytes = None, attachment_filename: str = None):
     if not GMAIL_ADDRESS or not GMAIL_APP_PASSWORD:
         print("⚠️ GMAIL_ADDRESS o GMAIL_APP_PASSWORD non impostati, invio email saltato.")
         return
@@ -280,11 +279,24 @@ def send_email(subject: str, html_body: str):
         print("⚠️ Nessun destinatario in EMAIL_RECIPIENTS, invio email saltato.")
         return
 
-    msg = MIMEMultipart("alternative")
+    msg = MIMEMultipart("mixed")
     msg["Subject"] = subject
     msg["From"] = GMAIL_ADDRESS
     msg["To"] = ", ".join(EMAIL_RECIPIENTS)
-    msg.attach(MIMEText(html_body, "html"))
+
+    corpo = MIMEMultipart("alternative")
+    corpo.attach(MIMEText(html_body, "html"))
+    msg.attach(corpo)
+
+    if attachment_bytes is not None and attachment_filename:
+        part = MIMEBase("application", "octet-stream")
+        part.set_payload(attachment_bytes)
+        encoders.encode_base64(part)
+        part.add_header(
+            "Content-Disposition",
+            f'attachment; filename="{attachment_filename}"'
+        )
+        msg.attach(part)
 
     try:
         context = ssl.create_default_context()
@@ -365,6 +377,7 @@ async def main():
     # Aggiornamento Foglio URGENZE
     URGENZE_SHEET_ID = "1YbU9twZgJECIsbxhRft-7yGGuH37xzVdOkz7jJIL5aQ"
     lista_finale = []
+    sku_email = []
     try:
         all_data_updated = get_values_optimized(lista_worksheet, "A:P")
         rows_updated = all_data_updated[1:]
@@ -373,7 +386,6 @@ async def main():
         is_f = lambda v: str(v).strip().upper() in ["FALSE", "FALSO", "0", ""]
 
         nuovi_sku_foto = []
-        sku_email = []
         for r_upd in rows_updated:
             k, m, n, o, p = get_val(r_upd, 10), get_val(r_upd, 12), get_val(r_upd, 13), get_val(r_upd, 14), get_val(r_upd, 15)
             if is_t(k):
@@ -402,14 +414,18 @@ async def main():
     except Exception as e:
         print(f"⚠️ Errore foglio URGENZE: {e}")
 
-    # Invio email con l'elenco aggiornato di URGENZE (esclude l'header)
+    # Invio email con CSV allegato al posto della lista nel corpo
     try:
-        lista_sku_email = [[ "SKU", "STATO" ]]
-        lista_sku_email.extend(sku_email)
-        corpo_righe = lista_sku_email[1:] if len(lista_sku_email) > 1 else []
         oggi = datetime.now().strftime("%d/%m/%Y")
-        html_body = build_email_html(corpo_righe)
-        send_email(f"Report Paia Mancanti - {oggi}", html_body)
+        html_body = build_email_html(len(sku_email))
+        csv_bytes = build_csv_attachment(sku_email) if sku_email else None
+        nome_file = f"paia_mancanti_{datetime.now().strftime('%Y%m%d')}.csv"
+        send_email(
+            f"Report Paia Mancanti - {oggi}",
+            html_body,
+            attachment_bytes=csv_bytes,
+            attachment_filename=nome_file if csv_bytes else None
+        )
     except Exception as e:
         print(f"⚠️ Errore preparazione/invio email: {e}")
 
