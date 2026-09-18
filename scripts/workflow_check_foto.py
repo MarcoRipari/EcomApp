@@ -373,11 +373,15 @@ async def main():
         is_f = lambda v: str(v).strip().upper() in ["FALSE", "FALSO", "0", ""]
 
         nuovi_sku_foto = []
+        sku_email = []
         for r_upd in rows_updated:
             k, m, n, o, p = get_val(r_upd, 10), get_val(r_upd, 12), get_val(r_upd, 13), get_val(r_upd, 14), get_val(r_upd, 15)
-            if is_t(k) and is_f(m) and is_f(n) and is_f(o) and is_f(p):
+            if is_t(k):
                 sku = get_val(r_upd, 0)
-                if sku: nuovi_sku_foto.append([sku, "FOTO"])
+                if sku:
+                    sku_email.append([sku, "MANCANTE"])
+                if is_f(m) and is_f(n) and is_f(o) and is_f(p):
+                    if sku: nuovi_sku_foto.append([sku, "FOTO"])
 
         urg_worksheet = get_worksheet(URGENZE_SHEET_ID, "URGENZE")
         dat_esistenti = get_values_optimized(urg_worksheet, "A:B")
@@ -400,7 +404,9 @@ async def main():
 
     # Invio email con l'elenco aggiornato di URGENZE (esclude l'header)
     try:
-        corpo_righe = lista_finale[1:] if len(lista_finale) > 1 else []
+        lista_sku_email = [[ "SKU", "STATO" ]]
+        lista_sku_email.extend(sku_email)
+        corpo_righe = lista_sku_email[1:] if len(lista_sku_email) > 1 else []
         oggi = datetime.now().strftime("%d/%m/%Y")
         html_body = build_email_html(corpo_righe)
         send_email(f"Report Paia Mancanti - {oggi}", html_body)
