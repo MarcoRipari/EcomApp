@@ -404,7 +404,6 @@ async def main():
         oggi = datetime.now().strftime("%d/%m/%Y")
         html_body = build_email_html(corpo_righe)
         send_email(f"Report Paia Mancanti - {oggi}", html_body)
-        print(f"Email inviata correttamente")
     except Exception as e:
         print(f"⚠️ Errore preparazione/invio email: {e}")
 
