@@ -428,7 +428,7 @@ async def main():
                 attachment_filename=nome_file if csv_bytes else None
             )
         else:
-            print("📭 Non è lunedì, invio email saltato.")
+            print("📭 Non è venerdì, invio email saltato.")
     except Exception as e:
         print(f"⚠️ Errore preparazione/invio email: {e}")
 
