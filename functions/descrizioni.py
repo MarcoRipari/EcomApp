@@ -219,6 +219,10 @@ CONCEPT
 - design minimalista / taglio minimal / silhouette
 - estetica contemporanea / look urbano / allure
 - essenzialità formale / rigore stilistico
+- design bicolore
+- design bicolori
+- bicolore
+- bicolori
 
 Se un concetto non è descrivibile senza usare uno dei termini vietati, deve essere **omesso**.
 
@@ -330,6 +334,10 @@ CONCEPT
 - Una rivisitazione contemporanea del classico
 - Emerge come un'icona di stile
 - Armonie metriche
+- design bicolore
+- design bicolori
+- bicolore
+- bicolori
 
 Se un concetto non è descrivibile senza usare questi approcci, deve essere omesso.
 
@@ -420,6 +428,10 @@ CONCEPT
 - sapientemente
 - assicura proprietà antibatteriche
 - bicolori / "bicolore" (utilizzabile solamente per il fondo se indicato)
+- design bicolore
+- design bicolori
+- bicolore
+- bicolori
 - ispirazione / ispirata / ispirato / ispira / ispirare
 - riferimenti espliciti al marchio / Flower Mountain
 - Stagione del prodotto (tranne per sandali/ciabatte)
@@ -537,6 +549,10 @@ Usa esclusivamente le informazioni presenti nelle INFO ARTICOLO, descrivendo gli
 - riferimenti espliciti ad altri marchi
 - Candice Cooper (il nome del brand non va mai citato nel testo della descrizione)
 - stagionalità del prodotto
+- design bicolore
+- design bicolori
+- bicolore
+- bicolori
 
 ### LESSICO GUIDA (AMMESSO E INCORAGGIATO) ###
 - design intramontabile / eleganza senza tempo
@@ -632,6 +648,10 @@ Usa esclusivamente le informazioni presenti nelle INFO ARTICOLO, ordinando gli e
 - calzatura da running agonistica / performance atletica (il focus rimane il lifestyle urbano)
 - W6YZ / Wizz (vietato inserire il nome del brand all'interno del corpo del testo descrittivo, usa "l'iconico modello", "la sneaker")
 - stagionalità del prodotto (es. collezione estate 2026)
+- design bicolore
+- design bicolori
+- bicolore
+- bicolori
 
 ### LESSICO GUIDA (AMMESSO E INCORAGGIATO) ###
 - Easy e cool
